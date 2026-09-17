@@ -2,17 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { SummaryCards } from '@/components/dashboard/SummaryCards';
-import { IncidentFilters } from '@/components/incidents/IncidentFilters';
-import { IncidentList } from '@/components/incidents/IncidentList';
-import { IncidentMapClient } from '@/components/map/IncidentMapClient';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ErrorState } from '@/components/ui/ErrorState';
-import { IncidentListSkeleton, SummarySkeleton } from '@/components/ui/LoadingState';
-import { useIncidents } from '@/hooks/useIncidents';
-import { DEFAULT_FILTERS } from '@/lib/schema';
-import type { IncidentFilters as IncidentFiltersState } from '@/lib/schema';
+import { DashboardHeader } from '@responder/components/dashboard/DashboardHeader';
+import { SummaryCards } from '@responder/components/dashboard/SummaryCards';
+import { IncidentFilters } from '@responder/components/incidents/IncidentFilters';
+import { IncidentList } from '@responder/components/incidents/IncidentList';
+import { IncidentMapClient } from '@responder/components/map/IncidentMapClient';
+import { EmptyState } from '@responder/components/ui/EmptyState';
+import { ErrorState } from '@responder/components/ui/ErrorState';
+import { IncidentListSkeleton, SummarySkeleton } from '@responder/components/ui/LoadingState';
+import { useIncidents } from '@responder/hooks/useIncidents';
+import { DEFAULT_FILTERS } from '@responder/lib/schema';
+import type { IncidentFilters as IncidentFiltersState } from '@responder/lib/schema';
 
 export default function DashboardPage() {
   const router = useRouter();

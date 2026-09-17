@@ -1,5 +1,5 @@
-import type { IncidentFilters, IncidentResponse, Priority } from '@/lib/schema';
-import { PRIORITY_ORDER } from '@/lib/schema';
+import type { IncidentFilters, IncidentResponse, Priority } from '@responder/lib/schema';
+import { ACTIVE_STATUSES, PRIORITY_ORDER } from '@responder/lib/schema';
 
 const priorityRank: Record<string, number> = Object.fromEntries(
   PRIORITY_ORDER.map((priority, index) => [priority, index])
@@ -20,7 +20,11 @@ export function filterIncidents(
   filters: IncidentFilters
 ): IncidentResponse[] {
   return incidents.filter((incident) => {
-    if (filters.status !== 'all' && incident.status !== filters.status) return false;
+    if (filters.status === 'active') {
+      if (!ACTIVE_STATUSES.includes(incident.status)) return false;
+    } else if (filters.status !== 'all' && incident.status !== filters.status) {
+      return false;
+    }
     if (filters.priority !== 'all' && incident.priority !== filters.priority) return false;
     if (filters.category !== 'all' && incident.category !== filters.category) return false;
     return true;

@@ -1,5 +1,5 @@
-import type { IncidentResponse } from '@/lib/schema';
-import { hasAssignedUnits } from '@/lib/format';
+import type { IncidentResponse } from '@responder/lib/schema';
+import { hasAssignedUnits } from '@responder/lib/format';
 
 interface SummaryCardsProps {
   incidents: IncidentResponse[];

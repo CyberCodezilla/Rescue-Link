@@ -1,12 +1,13 @@
 import {
   CATEGORY_LABELS,
+  DEFAULT_FILTERS,
   IncidentCategoryEnum,
   PRIORITY_LABELS,
   PRIORITY_ORDER,
   STATUS_LABELS,
   STATUS_ORDER,
-} from '@/lib/schema';
-import type { IncidentFilters as IncidentFiltersState } from '@/lib/schema';
+} from '@responder/lib/schema';
+import type { IncidentFilters as IncidentFiltersState } from '@responder/lib/schema';
 
 interface IncidentFiltersProps {
   filters: IncidentFiltersState;
@@ -17,7 +18,10 @@ const selectClasses =
   'rounded border border-line bg-surface px-2.5 py-1.5 text-sm text-ink-700 focus:border-action focus:outline-none focus:ring-1 focus:ring-action';
 
 export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
-  const isFiltered = filters.status !== 'all' || filters.priority !== 'all' || filters.category !== 'all';
+  const isFiltered =
+    filters.status !== DEFAULT_FILTERS.status ||
+    filters.priority !== DEFAULT_FILTERS.priority ||
+    filters.category !== DEFAULT_FILTERS.category;
 
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -28,6 +32,7 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
           value={filters.status}
           onChange={(e) => onChange({ ...filters, status: e.target.value as IncidentFiltersState['status'] })}
         >
+          <option value="active">Active (default)</option>
           <option value="all">All</option>
           {STATUS_ORDER.map((status) => (
             <option key={status} value={status}>
@@ -72,7 +77,7 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
       {isFiltered ? (
         <button
           type="button"
-          onClick={() => onChange({ status: 'all', priority: 'all', category: 'all' })}
+          onClick={() => onChange(DEFAULT_FILTERS)}
           className="rounded border border-line px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-canvas"
         >
           Clear filters

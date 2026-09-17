@@ -26,6 +26,10 @@ incidentsRouter.post('/', async (req: Request, res: Response): Promise<void> => 
   const now = Date.now();
 
   const newIncident: Incident = {
+    category: "other",
+    description: "",
+    peopleAffected: 0,
+    urgentNeeds: [],
     id: uuidv4(),
     createdAt: now,
     updatedAt: now,

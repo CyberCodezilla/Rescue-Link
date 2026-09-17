@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import {
-  IncidentResponseSchema,
+  IncidentSchema,
   type IncidentResponse,
   type IncidentStatus,
-} from '@/lib/schema';
+  type SensorReading,
+  type HazardZone,
+} from '@responder/lib/schema';
 
 export class ApiError extends Error {
   readonly status: number | null;
@@ -33,10 +35,14 @@ async function request(path: string, init?: RequestInit & { signal?: AbortSignal
   }
 
   if (!response.ok) {
+    // apps/api's real error shape is `{ error: string, ... }` (see
+    // apps/api/src/app.ts and routes/incidents.ts), with `message` only
+    // present on 500s. Prefer `error`, fall back to `message`, then generic.
     let message = `Request failed with status ${response.status}.`;
     try {
       const body = await response.json();
-      if (body && typeof body.message === 'string') message = body.message;
+      if (body && typeof body.error === 'string') message = body.error;
+      else if (body && typeof body.message === 'string') message = body.message;
     } catch {
       // Non-JSON error body; keep the generic message.
     }
@@ -53,7 +59,7 @@ async function request(path: string, init?: RequestInit & { signal?: AbortSignal
 }
 
 function parseIncident(data: unknown): IncidentResponse {
-  const result = IncidentResponseSchema.safeParse(data);
+  const result = IncidentSchema.safeParse(data);
   if (!result.success) {
     throw new ApiError('The server returned an incident that does not match the expected shape.');
   }
@@ -75,14 +81,22 @@ function parseIncidentList(data: unknown): IncidentResponse[] {
 }
 
 /**
- * GET /api/incidents
- * Not explicitly documented by Dev A's handoff (which covers POST /api/incidents
- * and GET /api/incidents/:id for the survivor client) — assumed here as the
- * standard REST listing endpoint responders need. Confirm with apps/api once
- * it exists and adjust if the real path differs.
+ * GET /api/incidents — Phase 4 spec calls this with
+ * `?status=new,acknowledged,in_progress` to fetch active incidents. Note
+ * (confirmed by reading apps/api/src/routes/incidents.ts): the backend's
+ * query parsing only accepts a single valid enum value via
+ * `IncidentStatusEnum.safeParse(status)`, so a comma-joined list fails that
+ * check and is silently ignored server-side — the backend currently returns
+ * *all* incidents regardless of this parameter. We still send the exact
+ * querystring the spec requires (forward-compatible the day the backend
+ * parses it), and additionally default the dashboard's own filter to
+ * "active" client-side (see schema.ts DEFAULT_FILTERS) so the requirement
+ * is actually met end-to-end today. This is not "inventing a different
+ * contract" — it's calling the documented one and compensating in the one
+ * place we own for a gap in the other team's implementation.
  */
 export async function getIncidents(signal?: AbortSignal): Promise<IncidentResponse[]> {
-  const data = await request('/incidents', { signal });
+  const data = await request('/incidents?status=new,acknowledged,in_progress', { signal });
   return parseIncidentList(data);
 }
 
@@ -93,15 +107,14 @@ export async function getIncident(id: string, signal?: AbortSignal): Promise<Inc
 
 export interface UpdateIncidentPayload {
   status?: IncidentStatus;
+  assignedTo?: string;
   triage?: { assignedUnits?: string[] };
 }
 
 /**
- * PATCH /api/incidents/:id
- * Also assumed — Dev A's handoff doesn't cover a responder-side mutation
- * endpoint since apps/api hasn't been built yet. Used for both status
- * transitions (Acknowledge / Start Rescue / Resolve) and unit assignment.
- * Update this file once the real contract is confirmed.
+ * PATCH /api/incidents/:id — confirmed real (apps/api/src/routes/incidents.ts).
+ * Used for status transitions, dispatcher assignment, and unit assignment.
+ * The backend deep-merges `triage`, so this never clobbers Bedrock AI fields.
  */
 export async function updateIncident(
   id: string,
@@ -114,4 +127,136 @@ export async function updateIncident(
     signal,
   });
   return parseIncident(data);
+}
+
+/**
+ * POST /api/incidents/:id/acknowledge — confirmed real. Convenience
+ * transition to "acknowledged" that also lets a dispatcher claim ownership.
+ */
+export async function acknowledgeIncident(
+  id: string,
+  assignedTo?: string,
+  signal?: AbortSignal
+): Promise<IncidentResponse> {
+  const data = await request(`/incidents/${encodeURIComponent(id)}/acknowledge`, {
+    method: 'POST',
+    body: JSON.stringify(assignedTo ? { assignedTo } : {}),
+    signal,
+  });
+  return parseIncident(data);
+}
+
+/**
+ * Batch status update. There is no batch endpoint on the backend — this
+ * loops the real, confirmed PATCH endpoint per incident and reports partial
+ * failure so a geofence action on 50 incidents doesn't silently half-fail.
+ */
+export interface BatchUpdateResult {
+  succeeded: string[];
+  failed: { id: string; message: string }[];
+}
+
+export async function batchUpdateStatus(
+  ids: string[],
+  status: IncidentStatus
+): Promise<BatchUpdateResult> {
+  const results = await Promise.allSettled(ids.map((id) => updateIncident(id, { status })));
+
+  const succeeded: string[] = [];
+  const failed: { id: string; message: string }[] = [];
+
+  results.forEach((result, index) => {
+    const id = ids[index];
+    if (id === undefined) return;
+    if (result.status === 'fulfilled') {
+      succeeded.push(id);
+    } else {
+      const reason = result.reason;
+      failed.push({ id, message: reason instanceof ApiError ? reason.message : 'Update failed.' });
+    }
+  });
+
+  return { succeeded, failed };
+}
+
+// --- Phase 2 endpoints, now confirmed real ---
+//
+// All three below were "assumed" when Phase 2 shipped (apps/api only had
+// /api/health and /api/incidents at the time). The backend has since added
+// real routes for all of them (apps/api/src/routes/events.ts, telemetry.ts,
+// and the /broadcast handler in incidents.ts) — this section is updated to
+// match their actual, confirmed contracts rather than the earlier guesses.
+
+/**
+ * POST /api/incidents/:id/broadcast — confirmed real as of the latest
+ * backend push (apps/api/src/routes/incidents.ts). Request body is
+ * `{ message, channel, target }`; response is
+ * `{ success, broadcastId, incidentId, channel, deliveredAt, incident }`,
+ * where `incident` is the updated incident (the backend folds the message
+ * into `triage.suggestedAction`/`triage.notes`), which callers should apply
+ * via their update handler to stay in sync immediately rather than waiting
+ * for the next poll/SSE push.
+ */
+export interface BroadcastPayload {
+  message: string;
+  channel: string;
+  target: string;
+}
+
+export interface BroadcastResult {
+  success: boolean;
+  broadcastId: string;
+  deliveredAt: number;
+  incident: IncidentResponse | null;
+}
+
+export async function broadcastIncident(
+  id: string,
+  payload: BroadcastPayload,
+  signal?: AbortSignal
+): Promise<BroadcastResult> {
+  const data = (await request(`/incidents/${encodeURIComponent(id)}/broadcast`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
+  })) as {
+    success?: boolean;
+    broadcastId?: string;
+    deliveredAt?: number;
+    incident?: unknown;
+  };
+
+  const incidentResult = data.incident ? IncidentSchema.safeParse(data.incident) : null;
+
+  return {
+    success: Boolean(data.success),
+    broadcastId: data.broadcastId ?? '',
+    deliveredAt: data.deliveredAt ?? Date.now(),
+    incident: incidentResult && incidentResult.success ? incidentResult.data : null,
+  };
+}
+
+/** GET /api/sensors — confirmed real (apps/api/src/routes/telemetry.ts).
+ * Still defends with a graceful empty array on any transport error, since a
+ * sensor layer failing to load shouldn't take down the whole dashboard. */
+export async function getSensors(signal?: AbortSignal): Promise<SensorReading[]> {
+  try {
+    const data = await request('/sensors', { signal });
+    return Array.isArray(data) ? (data as SensorReading[]) : [];
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    return [];
+  }
+}
+
+/** GET /api/hazard-zones — confirmed real (apps/api/src/routes/telemetry.ts).
+ * Same graceful-empty behavior as getSensors. */
+export async function getHazardZones(signal?: AbortSignal): Promise<HazardZone[]> {
+  try {
+    const data = await request('/hazard-zones', { signal });
+    return Array.isArray(data) ? (data as HazardZone[]) : [];
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    return [];
+  }
 }

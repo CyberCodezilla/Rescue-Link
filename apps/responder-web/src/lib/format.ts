@@ -1,4 +1,4 @@
-import type { Location } from '@/lib/schema';
+import type { Location } from '@responder/lib/schema';
 
 export function formatTimestamp(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return 'Unknown';

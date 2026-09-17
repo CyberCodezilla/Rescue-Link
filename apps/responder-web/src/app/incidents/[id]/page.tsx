@@ -2,16 +2,19 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { AssignmentControl } from '@/components/incidents/AssignmentControl';
-import { IncidentActions } from '@/components/incidents/IncidentActions';
-import { PriorityBadge } from '@/components/incidents/PriorityBadge';
-import { StatusBadge } from '@/components/incidents/StatusBadge';
-import { TriageCard } from '@/components/incidents/TriageCard';
-import { DetailSkeleton } from '@/components/ui/LoadingState';
-import { ErrorState } from '@/components/ui/ErrorState';
-import { useIncident } from '@/hooks/useIncident';
-import { formatLocation, formatTimestamp } from '@/lib/format';
-import { CATEGORY_LABELS, URGENT_NEED_LABELS } from '@/lib/schema';
+import { AssignmentControl } from '@responder/components/incidents/AssignmentControl';
+import { BroadcastAction } from '@responder/components/incidents/BroadcastAction';
+import { DispatchedUnitsControl } from '@responder/components/incidents/DispatchedUnitsControl';
+import { IncidentActions } from '@responder/components/incidents/IncidentActions';
+import { PriorityBadge } from '@responder/components/incidents/PriorityBadge';
+import { StatusBadge } from '@responder/components/incidents/StatusBadge';
+import { TriageCard } from '@responder/components/incidents/TriageCard';
+import { UnitPositionPanel } from '@responder/components/incidents/UnitPositionPanel';
+import { DetailSkeleton } from '@responder/components/ui/LoadingState';
+import { ErrorState } from '@responder/components/ui/ErrorState';
+import { useIncident } from '@responder/hooks/useIncident';
+import { formatLocation, formatTimestamp } from '@responder/lib/format';
+import { CATEGORY_LABELS, URGENT_NEED_LABELS, getCategory, getDescription, getPeopleAffected, getUrgentNeeds } from '@responder/lib/schema';
 
 export default function IncidentDetailPage() {
   const params = useParams<{ id: string }>();
@@ -46,7 +49,7 @@ export default function IncidentDetailPage() {
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
                 <div>
                   <dt className="text-xs font-medium text-ink-500">Category</dt>
-                  <dd className="text-ink-900">{CATEGORY_LABELS[incident.category]}</dd>
+                  <dd className="text-ink-900">{CATEGORY_LABELS[getCategory(incident)]}</dd>
                 </div>
                 <div>
                   <dt className="text-xs font-medium text-ink-500">Created</dt>
@@ -69,7 +72,7 @@ export default function IncidentDetailPage() {
 
             <section className="rounded-md border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink-900">Incident details</h2>
-              <p className="mt-2 whitespace-pre-wrap text-sm text-ink-700">{incident.description}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-ink-700">{getDescription(incident)}</p>
             </section>
 
             <section className="rounded-md border border-line bg-surface p-4">
@@ -77,13 +80,13 @@ export default function IncidentDetailPage() {
               <dl className="mt-2 space-y-2 text-sm">
                 <div>
                   <dt className="text-xs font-medium text-ink-500">People affected</dt>
-                  <dd className="text-ink-900">{incident.peopleAffected}</dd>
+                  <dd className="text-ink-900">{getPeopleAffected(incident)}</dd>
                 </div>
                 <div>
                   <dt className="text-xs font-medium text-ink-500">Urgent needs</dt>
                   <dd className="text-ink-900">
-                    {incident.urgentNeeds.length > 0
-                      ? incident.urgentNeeds.map((need) => URGENT_NEED_LABELS[need]).join(', ')
+                    {getUrgentNeeds(incident).length > 0
+                      ? getUrgentNeeds(incident).map((need) => URGENT_NEED_LABELS[need]).join(', ')
                       : 'None reported'}
                   </dd>
                 </div>
@@ -104,6 +107,9 @@ export default function IncidentDetailPage() {
             </section>
 
             <AssignmentControl incident={incident} onUpdated={setIncident} />
+            <DispatchedUnitsControl incident={incident} onUpdated={setIncident} />
+            <UnitPositionPanel incident={incident} />
+            <BroadcastAction incident={incident} onUpdated={setIncident} />
             <IncidentActions incident={incident} onUpdated={setIncident} />
           </div>
         )}

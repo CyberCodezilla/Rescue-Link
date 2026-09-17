@@ -1,4 +1,4 @@
-import type { IncidentTriage } from '@/lib/schema';
+import type { IncidentTriage } from '@responder/lib/schema';
 
 export function TriageCard({ triage }: { triage: IncidentTriage | undefined }) {
   const hasTriage = triage && (triage.suggestedAction || triage.notes);

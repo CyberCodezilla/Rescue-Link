@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { filterIncidents, sortIncidents } from '@/lib/sortIncidents';
-import { formatLocation, hasAssignedUnits } from '@/lib/format';
-import type { IncidentResponse } from '@/lib/schema';
+import { filterIncidents, sortIncidents } from '@responder/lib/sortIncidents';
+import { formatLocation, hasAssignedUnits } from '@responder/lib/format';
+import type { IncidentResponse } from '@responder/lib/schema';
 
 function makeIncident(overrides: Partial<IncidentResponse>): IncidentResponse {
   return {
@@ -13,8 +13,8 @@ function makeIncident(overrides: Partial<IncidentResponse>): IncidentResponse {
     urgentNeeds: [],
     status: 'new',
     priority: 'medium',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
+    createdAt: 1767225600000,
+  updatedAt: 1767225600000,    ...overrides,
   };
 }
 
@@ -40,6 +40,19 @@ describe('filterIncidents', () => {
       incidents[1],
     ]);
   });
+
+  it('"active" status matches new/acknowledged/in_progress but excludes resolved/closed', () => {
+    const incidents = [
+      makeIncident({ id: 'new', status: 'new' }),
+      makeIncident({ id: 'ack', status: 'acknowledged' }),
+      makeIncident({ id: 'progress', status: 'in_progress' }),
+      makeIncident({ id: 'resolved', status: 'resolved' }),
+      makeIncident({ id: 'closed', status: 'closed' }),
+    ];
+
+    const active = filterIncidents(incidents, { status: 'active', priority: 'all', category: 'all' });
+    expect(active.map((i) => i.id).sort()).toEqual(['ack', 'new', 'progress']);
+  });
 });
 
 describe('sortIncidents', () => {
@@ -56,8 +69,8 @@ describe('sortIncidents', () => {
 
   it('breaks ties within the same priority by most recently updated first', () => {
     const incidents = [
-      makeIncident({ id: 'older', priority: 'high', updatedAt: '2026-01-01T00:00:00.000Z' }),
-      makeIncident({ id: 'newer', priority: 'high', updatedAt: '2026-01-02T00:00:00.000Z' }),
+      makeIncident({ id: 'older', priority: 'high', updatedAt: 1767225600000 }),
+      makeIncident({ id: 'newer', priority: 'high', updatedAt: 1767312000000 }),
     ];
 
     const sorted = sortIncidents(incidents);

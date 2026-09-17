@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, getIncidents } from '@/lib/api';
-import type { IncidentResponse } from '@/lib/schema';
+import { ApiError, getIncidents } from '@responder/lib/api';
+import type { IncidentResponse } from '@responder/lib/schema';
 
 const POLL_INTERVAL_MS = 15_000;
 

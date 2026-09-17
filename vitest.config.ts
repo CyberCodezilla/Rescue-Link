@@ -16,6 +16,7 @@ export default defineConfig({
       '@rescue-link/schema': path.resolve(__dirname, './packages/schema/src'),
       '@rescue-link/config': path.resolve(__dirname, './packages/config/src'),
       '@': path.resolve(__dirname, './apps/survivor-web/src'),
+      '@responder': path.resolve(__dirname, './apps/responder-web/src'),
     },
   },
 });
