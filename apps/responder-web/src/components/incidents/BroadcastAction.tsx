@@ -2,9 +2,14 @@
 
 import { useState } from 'react';
 import { BroadcastModal } from './BroadcastModal';
-import type { IncidentResponse } from '@/lib/schema';
+import type { IncidentResponse } from '@responder/lib/schema';
 
-export function BroadcastAction({ incident }: { incident: IncidentResponse }) {
+interface BroadcastActionProps {
+  incident: IncidentResponse;
+  onUpdated: (incident: IncidentResponse) => void;
+}
+
+export function BroadcastAction({ incident, onUpdated }: BroadcastActionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -20,7 +25,9 @@ export function BroadcastAction({ incident }: { incident: IncidentResponse }) {
       >
         Broadcast directive
       </button>
-      {isOpen ? <BroadcastModal incident={incident} onClose={() => setIsOpen(false)} /> : null}
+      {isOpen ? (
+        <BroadcastModal incident={incident} onClose={() => setIsOpen(false)} onUpdated={onUpdated} />
+      ) : null}
     </section>
   );
 }

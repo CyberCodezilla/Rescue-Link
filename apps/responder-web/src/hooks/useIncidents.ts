@@ -1,9 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, getIncidents } from '@/lib/api';
-import { cacheIncidentList, getCachedIncidentList } from '@/lib/offlineCache';
-import type { IncidentResponse } from '@/lib/schema';
+import { ApiError, getIncidents } from '@responder/lib/api';
+import type { IncidentResponse } from '@responder/lib/schema';
 
 const POLL_INTERVAL_MS = 15_000;
 
@@ -13,11 +12,7 @@ interface UseIncidentsState {
   isRefreshing: boolean;
   lastRefreshedAt: Date | null;
   refreshError: string | null;
-  /** True when the current `incidents` came from the offline cache, not a live fetch. */
-  isServingCachedData: boolean;
   refresh: () => void;
-  /** Upsert a single incident into local state (e.g. from an SSE push). */
-  applyIncidentUpdate: (incident: IncidentResponse) => void;
 }
 
 export function useIncidents(): UseIncidentsState {
@@ -26,7 +21,6 @@ export function useIncidents(): UseIncidentsState {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
-  const [isServingCachedData, setIsServingCachedData] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const latestRequestId = useRef(0);
@@ -48,25 +42,12 @@ export function useIncidents(): UseIncidentsState {
         if (latestRequestId.current !== requestId) return;
         setIncidents(data);
         setRefreshError(null);
-        setIsServingCachedData(false);
         setLastRefreshedAt(new Date());
-        void cacheIncidentList(data);
       })
-      .catch(async (err: unknown) => {
-        if ((err as { name?: string })?.name === 'AbortError') return;
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         if (latestRequestId.current !== requestId) return;
-
         setRefreshError(err instanceof ApiError ? err.message : 'Unable to load incidents.');
-
-        // Offline-first fallback (Phase 2): if we have nothing on screen yet,
-        // or the live fetch just failed, fall back to the last successfully
-        // cached list so a field tablet that's lost connectivity still shows
-        // something usable instead of a blank error state.
-        const cached = await getCachedIncidentList();
-        if (cached && latestRequestId.current === requestId) {
-          setIncidents((current) => current ?? cached.incidents);
-          setIsServingCachedData(true);
-        }
       })
       .finally(() => {
         if (latestRequestId.current === requestId) {
@@ -86,26 +67,5 @@ export function useIncidents(): UseIncidentsState {
     };
   }, [load]);
 
-  const applyIncidentUpdate = useCallback((incident: IncidentResponse) => {
-    setIncidents((current) => {
-      if (!current) return [incident];
-      const index = current.findIndex((i) => i.id === incident.id);
-      if (index === -1) return [incident, ...current];
-      const next = [...current];
-      next[index] = incident;
-      return next;
-    });
-    setIsServingCachedData(false);
-  }, []);
-
-  return {
-    incidents,
-    isInitialLoading,
-    isRefreshing,
-    lastRefreshedAt,
-    refreshError,
-    isServingCachedData,
-    refresh: load,
-    applyIncidentUpdate,
-  };
+  return { incidents, isInitialLoading, isRefreshing, lastRefreshedAt, refreshError, refresh: load };
 }

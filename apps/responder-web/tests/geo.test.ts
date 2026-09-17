@@ -5,7 +5,7 @@ import {
   estimateEtaMinutes,
   isPointInCircle,
   isPointInPolygon,
-} from '@/lib/geo';
+} from '@responder/lib/geo';
 
 describe('haversineDistanceMeters', () => {
   it('returns 0 for identical points', () => {

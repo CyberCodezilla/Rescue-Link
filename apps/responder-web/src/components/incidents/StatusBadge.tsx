@@ -1,5 +1,5 @@
-import type { IncidentStatus } from '@/lib/schema';
-import { STATUS_LABELS } from '@/lib/schema';
+import type { IncidentStatus } from '@responder/lib/schema';
+import { STATUS_LABELS } from '@responder/lib/schema';
 
 const STYLES: Record<IncidentStatus, string> = {
   new: 'bg-status-newBg text-status-new',

@@ -2,18 +2,19 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { AssignmentControl } from '@/components/incidents/AssignmentControl';
-import { BroadcastAction } from '@/components/incidents/BroadcastAction';
-import { IncidentActions } from '@/components/incidents/IncidentActions';
-import { PriorityBadge } from '@/components/incidents/PriorityBadge';
-import { StatusBadge } from '@/components/incidents/StatusBadge';
-import { TriageCard } from '@/components/incidents/TriageCard';
-import { UnitPositionPanel } from '@/components/incidents/UnitPositionPanel';
-import { DetailSkeleton } from '@/components/ui/LoadingState';
-import { ErrorState } from '@/components/ui/ErrorState';
-import { useIncident } from '@/hooks/useIncident';
-import { formatLocation, formatTimestamp } from '@/lib/format';
-import { CATEGORY_LABELS, URGENT_NEED_LABELS, getCategory, getDescription, getPeopleAffected, getUrgentNeeds } from '@/lib/schema';
+import { AssignmentControl } from '@responder/components/incidents/AssignmentControl';
+import { BroadcastAction } from '@responder/components/incidents/BroadcastAction';
+import { DispatchedUnitsControl } from '@responder/components/incidents/DispatchedUnitsControl';
+import { IncidentActions } from '@responder/components/incidents/IncidentActions';
+import { PriorityBadge } from '@responder/components/incidents/PriorityBadge';
+import { StatusBadge } from '@responder/components/incidents/StatusBadge';
+import { TriageCard } from '@responder/components/incidents/TriageCard';
+import { UnitPositionPanel } from '@responder/components/incidents/UnitPositionPanel';
+import { DetailSkeleton } from '@responder/components/ui/LoadingState';
+import { ErrorState } from '@responder/components/ui/ErrorState';
+import { useIncident } from '@responder/hooks/useIncident';
+import { formatLocation, formatTimestamp } from '@responder/lib/format';
+import { CATEGORY_LABELS, URGENT_NEED_LABELS, getCategory, getDescription, getPeopleAffected, getUrgentNeeds } from '@responder/lib/schema';
 
 export default function IncidentDetailPage() {
   const params = useParams<{ id: string }>();
@@ -74,20 +75,6 @@ export default function IncidentDetailPage() {
               <p className="mt-2 whitespace-pre-wrap text-sm text-ink-700">{getDescription(incident)}</p>
             </section>
 
-            {incident.audioBlob && (
-              <section className="rounded-md border border-red-500/40 bg-red-950/20 p-4">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
-                  </span>
-                  <h2 className="text-sm font-semibold text-red-200">Survivor Voice Distress Dispatch</h2>
-                </div>
-                <p className="mt-1 text-xs text-ink-500">Spoken audio dispatch captured from survivor device:</p>
-                <audio src={incident.audioBlob} controls className="mt-3 w-full" />
-              </section>
-            )}
-
             <section className="rounded-md border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink-900">People and urgent needs</h2>
               <dl className="mt-2 space-y-2 text-sm">
@@ -120,8 +107,9 @@ export default function IncidentDetailPage() {
             </section>
 
             <AssignmentControl incident={incident} onUpdated={setIncident} />
+            <DispatchedUnitsControl incident={incident} onUpdated={setIncident} />
             <UnitPositionPanel incident={incident} />
-            <BroadcastAction incident={incident} />
+            <BroadcastAction incident={incident} onUpdated={setIncident} />
             <IncidentActions incident={incident} onUpdated={setIncident} />
           </div>
         )}

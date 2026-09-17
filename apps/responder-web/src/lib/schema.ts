@@ -83,39 +83,52 @@ export const URGENT_NEED_LABELS: Record<UrgentNeed, string> = {
  * `details` only if a future backend build stops dual-writing.
  */
 export function getCategory(incident: Incident): IncidentCategory {
-  return incident.details?.category ?? 'other';
+  return incident.category ?? incident.details?.category ?? 'other';
 }
 export function getDescription(incident: Incident): string {
-  return incident.details?.description ?? '';
+  return incident.description ?? incident.details?.description ?? '';
 }
 export function getPeopleAffected(incident: Incident): number {
-  return incident.details?.peopleAffected ?? 0;
+  return incident.peopleAffected ?? incident.details?.peopleAffected ?? 0;
 }
 export function getUrgentNeeds(incident: Incident): UrgentNeed[] {
-  return incident.details?.urgentNeeds ?? [];
+  return incident.urgentNeeds ?? incident.details?.urgentNeeds ?? [];
 }
 
+/** Statuses that count as "active" for the dashboard's default view — see
+ * DEFAULT_FILTERS below and the Phase 4 requirement to fetch active incidents
+ * (`GET /api/incidents?status=new,acknowledged,in_progress`). */
+export const ACTIVE_STATUSES: IncidentStatus[] = ['new', 'acknowledged', 'in_progress'];
+
 export interface IncidentFilters {
-  status: IncidentStatus | 'all';
+  status: IncidentStatus | 'all' | 'active';
   priority: Priority | 'all';
   category: IncidentCategory | 'all';
 }
 
+/**
+ * Defaults to "active" (new/acknowledged/in_progress), matching Phase 4's
+ * "fetch active incidents" requirement, while still letting a responder
+ * switch to "All" or a specific status (including resolved/closed) to see
+ * full history — nothing is hidden, just not the default view.
+ */
 export const DEFAULT_FILTERS: IncidentFilters = {
-  status: 'all',
+  status: 'active',
   priority: 'all',
   category: 'all',
 };
 
 /**
- * Acknowledge / Start Rescue / Resolve — the three actions from the task
- * list. "resolved" is terminal in the UI even though the schema also allows
- * "closed"; no product requirement has defined what triggers closure yet.
+ * Acknowledge / Start Rescue / Resolve / Close — the full lifecycle from
+ * the Phase 4 spec. The backend remains the authority for validating each
+ * transition; a rejected PATCH surfaces its error and refreshes the
+ * incident instead of forcing the UI into the rejected state.
  */
 export const NEXT_ACTION: Partial<Record<IncidentStatus, { label: string; next: IncidentStatus }>> = {
   new: { label: 'Acknowledge', next: 'acknowledged' },
   acknowledged: { label: 'Start Rescue', next: 'in_progress' },
   in_progress: { label: 'Resolve', next: 'resolved' },
+  resolved: { label: 'Close', next: 'closed' },
 };
 
 // --- Phase 2 additions ---
@@ -160,15 +173,16 @@ export interface UnitPosition {
   reportedAt: number;
 }
 
-/** A pending broadcast that couldn't be delivered because the backend
- * doesn't yet expose POST /api/incidents/:id/broadcast. Kept in an outbox
+/** A broadcast queued locally because the network was unavailable at send
+ * time (POST /api/incidents/:id/broadcast is real — see lib/api.ts — but a
+ * field tablet can still lose connectivity mid-request). Kept in an outbox
  * (idb) so nothing is silently lost and it can be retried/audited later. */
 export interface PendingBroadcast {
   id: string;
   incidentId: string;
   message: string;
-  recipientMethod: string;
-  recipientValue: string;
+  channel: string;
+  target: string;
   queuedAt: number;
   status: 'pending' | 'sent' | 'failed';
 }

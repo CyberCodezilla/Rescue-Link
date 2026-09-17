@@ -1,5 +1,5 @@
-import type { IncidentFilters, IncidentResponse, Priority } from '@/lib/schema';
-import { PRIORITY_ORDER } from '@/lib/schema';
+import type { IncidentFilters, IncidentResponse, Priority } from '@responder/lib/schema';
+import { ACTIVE_STATUSES, PRIORITY_ORDER } from '@responder/lib/schema';
 
 const priorityRank: Record<string, number> = Object.fromEntries(
   PRIORITY_ORDER.map((priority, index) => [priority, index])
@@ -17,13 +17,22 @@ function toTimestamp(value: string | number | undefined): number {
 
 export function filterIncidents(
   incidents: IncidentResponse[],
-  filters: IncidentFilters
+  filters: IncidentFilters,
 ): IncidentResponse[] {
   return incidents.filter((incident) => {
-    if (filters.status !== 'all' && incident.status !== filters.status) return false;
-    if (filters.priority !== 'all' && incident.priority !== filters.priority) return false;
-    if (filters.category !== 'all' && incident.details?.category !== filters.category) return false;
-    return true;
+    const matchesStatus =
+      filters.status === 'all' ||
+      (filters.status === 'active'
+        ? ACTIVE_STATUSES.includes(incident.status)
+        : incident.status === filters.status);
+
+    const matchesPriority =
+      filters.priority === 'all' || incident.priority === filters.priority;
+
+    const matchesCategory =
+      filters.category === 'all' || incident.category === filters.category;
+
+    return matchesStatus && matchesPriority && matchesCategory;
   });
 }
 

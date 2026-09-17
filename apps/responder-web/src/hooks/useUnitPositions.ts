@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { getUnitPositions, setUnitPosition } from '@/lib/offlineCache';
-import type { UnitPosition } from '@/lib/schema';
+import { getUnitPositions, setUnitPosition } from '@responder/lib/offlineCache';
+import type { UnitPosition } from '@responder/lib/schema';
 
 interface UseUnitPositionsState {
   positions: UnitPosition[];

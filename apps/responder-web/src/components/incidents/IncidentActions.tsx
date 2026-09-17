@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ApiError, acknowledgeIncident, updateIncident } from '@/lib/api';
-import { NEXT_ACTION } from '@/lib/schema';
-import type { IncidentResponse } from '@/lib/schema';
+import { ApiError, acknowledgeIncident, updateIncident } from '@responder/lib/api';
+import { NEXT_ACTION } from '@responder/lib/schema';
+import type { IncidentResponse } from '@responder/lib/schema';
 
 interface IncidentActionsProps {
   incident: IncidentResponse;
@@ -20,7 +20,9 @@ export function IncidentActions({ incident, onUpdated }: IncidentActionsProps) {
     return (
       <section className="rounded-md border border-line bg-surface p-4">
         <h2 className="text-sm font-semibold text-ink-900">Response actions</h2>
-        <p className="mt-2 text-sm text-ink-500">This incident has been resolved.</p>
+        <p className="mt-2 text-sm text-ink-500">
+          {incident.status === 'closed' ? 'This incident is closed.' : 'No further action available.'}
+        </p>
       </section>
     );
   }
@@ -32,7 +34,10 @@ export function IncidentActions({ incident, onUpdated }: IncidentActionsProps) {
       // "Acknowledge" (new -> acknowledged) goes through the dedicated
       // POST /:id/acknowledge endpoint, which apps/api uses to let a
       // dispatcher claim ownership (assignedTo) in the same call. Every
-      // later transition is a plain status PATCH.
+      // later transition (in_progress, resolved, closed) is a plain status
+      // PATCH — the backend is the sole authority on whether the transition
+      // is valid; a rejected request surfaces its error below rather than
+      // the UI pretending the change happened.
       const updated =
         incident.status === 'new'
           ? await acknowledgeIncident(incident.id)

@@ -1,5 +1,5 @@
-import type { Priority } from '@/lib/schema';
-import { PRIORITY_LABELS } from '@/lib/schema';
+import type { Priority } from '@responder/lib/schema';
+import { PRIORITY_LABELS } from '@responder/lib/schema';
 
 const STYLES: Record<Priority, string> = {
   critical: 'bg-priority-criticalBg text-priority-critical',

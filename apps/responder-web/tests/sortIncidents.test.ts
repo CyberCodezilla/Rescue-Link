@@ -1,35 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { filterIncidents, sortIncidents } from '@/lib/sortIncidents';
-import { formatLocation, hasAssignedUnits } from '@/lib/format';
-import type { IncidentResponse } from '@/lib/schema';
+import { filterIncidents, sortIncidents } from '@responder/lib/sortIncidents';
+import { formatLocation, hasAssignedUnits } from '@responder/lib/format';
+import type { IncidentResponse } from '@responder/lib/schema';
 
 function makeIncident(overrides: Partial<IncidentResponse>): IncidentResponse {
-  const base: IncidentResponse = {
-    id: 'test-id',
-    createdAt: 1,
-    updatedAt: 1,
-    status: 'new',
-    priority: 'pending_triage',
-    location: {
-      lat: 13.0827,
-      lng: 80.2707,
-      label: 'Test Location'
-    },
+  return {
+    id: 'inc-1',
     category: 'flood',
-    description: 'test incident',
+    description: 'test',
+    location: { lat: 1, lng: 2 },
     peopleAffected: 1,
     urgentNeeds: [],
-  };
-
-  return {
-    ...base,
-    ...overrides,
-    category: overrides.category ?? base.category,
-    description: overrides.description ?? base.description,
-    peopleAffected: overrides.peopleAffected ?? base.peopleAffected,
-    urgentNeeds: overrides.urgentNeeds ?? base.urgentNeeds
+    status: 'new',
+    priority: 'medium',
+    createdAt: 1767225600000,
+  updatedAt: 1767225600000,    ...overrides,
   };
 }
+
 describe('filterIncidents', () => {
   it('returns all incidents when filters are "all"', () => {
     const incidents = [makeIncident({ id: 'a' }), makeIncident({ id: 'b' })];
@@ -38,8 +26,8 @@ describe('filterIncidents', () => {
 
   it('filters by status, priority, and category independently', () => {
     const incidents = [
-      makeIncident({ id: 'a', status: 'new', priority: 'critical', details: { category: 'flood', description: 'Test incident', peopleAffected: 1, urgentNeeds: [] } }),
-      makeIncident({ id: 'b', status: 'resolved', priority: 'low', details: { category: 'fire', description: 'Test incident', peopleAffected: 1, urgentNeeds: [] } }),
+      makeIncident({ id: 'a', status: 'new', priority: 'critical', category: 'flood' }),
+      makeIncident({ id: 'b', status: 'resolved', priority: 'low', category: 'fire' }),
     ];
 
     expect(filterIncidents(incidents, { status: 'new', priority: 'all', category: 'all' })).toEqual([
@@ -51,6 +39,19 @@ describe('filterIncidents', () => {
     expect(filterIncidents(incidents, { status: 'all', priority: 'all', category: 'fire' })).toEqual([
       incidents[1],
     ]);
+  });
+
+  it('"active" status matches new/acknowledged/in_progress but excludes resolved/closed', () => {
+    const incidents = [
+      makeIncident({ id: 'new', status: 'new' }),
+      makeIncident({ id: 'ack', status: 'acknowledged' }),
+      makeIncident({ id: 'progress', status: 'in_progress' }),
+      makeIncident({ id: 'resolved', status: 'resolved' }),
+      makeIncident({ id: 'closed', status: 'closed' }),
+    ];
+
+    const active = filterIncidents(incidents, { status: 'active', priority: 'all', category: 'all' });
+    expect(active.map((i) => i.id).sort()).toEqual(['ack', 'new', 'progress']);
   });
 });
 
@@ -68,8 +69,8 @@ describe('sortIncidents', () => {
 
   it('breaks ties within the same priority by most recently updated first', () => {
     const incidents = [
-      makeIncident({ id: 'older', priority: 'high', updatedAt: new Date('2026-01-01T00:00:00.000Z').getTime() }),
-      makeIncident({ id: 'newer', priority: 'high', updatedAt: new Date('2026-01-02T00:00:00.000Z').getTime() }),
+      makeIncident({ id: 'older', priority: 'high', updatedAt: 1767225600000 }),
+      makeIncident({ id: 'newer', priority: 'high', updatedAt: 1767312000000 }),
     ];
 
     const sorted = sortIncidents(incidents);

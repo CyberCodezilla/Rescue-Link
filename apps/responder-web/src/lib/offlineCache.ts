@@ -1,7 +1,7 @@
 'use client';
 
 import { openDB, type IDBPDatabase } from 'idb';
-import type { IncidentResponse, PendingBroadcast, UnitPosition } from '@/lib/schema';
+import type { IncidentResponse, PendingBroadcast, UnitPosition } from '@responder/lib/schema';
 
 const DB_NAME = 'rescue-link-responder';
 const DB_VERSION = 1;

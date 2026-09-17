@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, getIncident } from '@/lib/api';
-import type { IncidentResponse } from '@/lib/schema';
+import { ApiError, getIncident } from '@responder/lib/api';
+import type { IncidentResponse } from '@responder/lib/schema';
 
 interface UseIncidentState {
   incident: IncidentResponse | null;

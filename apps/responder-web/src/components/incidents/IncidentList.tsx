@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import type { IncidentFilters as IncidentFiltersState, IncidentResponse } from '@/lib/schema';
-import { filterIncidents, sortIncidents } from '@/lib/sortIncidents';
-import { EmptyState } from '@/components/ui/EmptyState';
+import type { IncidentFilters as IncidentFiltersState, IncidentResponse } from '@responder/lib/schema';
+import { filterIncidents, sortIncidents } from '@responder/lib/sortIncidents';
+import { EmptyState } from '@responder/components/ui/EmptyState';
 import { IncidentTableRow, IncidentCard } from './IncidentRow';
 
 interface IncidentListProps {

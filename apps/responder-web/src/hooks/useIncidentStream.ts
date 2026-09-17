@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { IncidentResponse } from '@/lib/schema';
+import type { IncidentResponse } from '@responder/lib/schema';
 
 export type StreamStatus = 'connecting' | 'live' | 'unavailable';
 
@@ -11,13 +11,16 @@ interface UseIncidentStreamOptions {
 }
 
 /**
- * Assumed contract: GET /api/events, a Server-Sent Events stream emitting
- * `event: incident` messages whose `data` is a JSON-encoded Incident. This
- * endpoint does not exist in apps/api yet (confirmed — only /api/health and
- * /api/incidents are mounted in app.ts), so this hook is built to degrade
- * completely safely: if the connection fails or the endpoint 404s, status
- * flips to "unavailable" and the caller's existing 15s polling (useIncidents)
- * remains the source of truth. Nothing breaks either way.
+ * Real contract (confirmed in apps/api/src/services/eventStream.ts and
+ * routes/events.ts): GET /api/events is a Server-Sent Events stream. Every
+ * message is sent as `event: incident` with `data` being a JSON-encoded
+ * envelope — NOT the incident directly:
+ *   { type: 'incident:created' | 'incident:updated' | 'broadcast:sent',
+ *     incident: Incident, message?: string, timestamp: number }
+ * This hook unwraps `.incident` from that envelope before handing it to the
+ * caller. (An earlier version of this hook incorrectly treated the whole
+ * envelope as the Incident — fixed once the real endpoint's wire format
+ * was confirmed by reading the backend source directly.)
  */
 export function useIncidentStream({ onIncident }: UseIncidentStreamOptions): StreamStatus {
   const [status, setStatus] = useState<StreamStatus>('connecting');
@@ -47,10 +50,12 @@ export function useIncidentStream({ onIncident }: UseIncidentStreamOptions): Str
     source.addEventListener('incident', (event) => {
       if (cancelled) return;
       try {
-        const raw = JSON.parse((event as MessageEvent).data);
-        const incoming: IncidentResponse = raw && raw.incident ? raw.incident : (raw as IncidentResponse);
-        if (incoming && incoming.id) {
-          onIncidentRef.current(incoming);
+        const envelope = JSON.parse((event as MessageEvent).data) as {
+          type?: string;
+          incident?: IncidentResponse;
+        };
+        if (envelope && envelope.incident) {
+          onIncidentRef.current(envelope.incident);
         }
       } catch {
         // Malformed push — ignore this event, polling will still catch up.

@@ -5,7 +5,7 @@ import {
   type IncidentStatus,
   type SensorReading,
   type HazardZone,
-} from '@/lib/schema';
+} from '@responder/lib/schema';
 
 export class ApiError extends Error {
   readonly status: number | null;
@@ -80,8 +80,23 @@ function parseIncidentList(data: unknown): IncidentResponse[] {
   return rawList.map(parseIncident);
 }
 
+/**
+ * GET /api/incidents — Phase 4 spec calls this with
+ * `?status=new,acknowledged,in_progress` to fetch active incidents. Note
+ * (confirmed by reading apps/api/src/routes/incidents.ts): the backend's
+ * query parsing only accepts a single valid enum value via
+ * `IncidentStatusEnum.safeParse(status)`, so a comma-joined list fails that
+ * check and is silently ignored server-side — the backend currently returns
+ * *all* incidents regardless of this parameter. We still send the exact
+ * querystring the spec requires (forward-compatible the day the backend
+ * parses it), and additionally default the dashboard's own filter to
+ * "active" client-side (see schema.ts DEFAULT_FILTERS) so the requirement
+ * is actually met end-to-end today. This is not "inventing a different
+ * contract" — it's calling the documented one and compensating in the one
+ * place we own for a gap in the other team's implementation.
+ */
 export async function getIncidents(signal?: AbortSignal): Promise<IncidentResponse[]> {
-  const data = await request('/incidents', { signal });
+  const data = await request('/incidents?status=new,acknowledged,in_progress', { signal });
   return parseIncidentList(data);
 }
 
@@ -164,61 +179,84 @@ export async function batchUpdateStatus(
   return { succeeded, failed };
 }
 
-// --- Phase 2: assumed / not-yet-built backend endpoints ---
+// --- Phase 2 endpoints, now confirmed real ---
 //
-// Each function below calls an endpoint that does not exist in apps/api yet
-// (confirmed by reading apps/api/src/app.ts — only /api/health and
-// /api/incidents are mounted). They fail gracefully — returning an empty
-// result or a typed "not available" error — rather than crashing the
-// dashboard, so the rest of Phase 2's UI can be built and reviewed now and
-// simply start working the day the backend adds these routes.
+// All three below were "assumed" when Phase 2 shipped (apps/api only had
+// /api/health and /api/incidents at the time). The backend has since added
+// real routes for all of them (apps/api/src/routes/events.ts, telemetry.ts,
+// and the /broadcast handler in incidents.ts) — this section is updated to
+// match their actual, confirmed contracts rather than the earlier guesses.
 
+/**
+ * POST /api/incidents/:id/broadcast — confirmed real as of the latest
+ * backend push (apps/api/src/routes/incidents.ts). Request body is
+ * `{ message, channel, target }`; response is
+ * `{ success, broadcastId, incidentId, channel, deliveredAt, incident }`,
+ * where `incident` is the updated incident (the backend folds the message
+ * into `triage.suggestedAction`/`triage.notes`), which callers should apply
+ * via their update handler to stay in sync immediately rather than waiting
+ * for the next poll/SSE push.
+ */
 export interface BroadcastPayload {
   message: string;
-  recipientMethod: string;
-  recipientValue: string;
+  channel: string;
+  target: string;
 }
 
-/** Assumed: POST /api/incidents/:id/broadcast. Not implemented server-side. */
+export interface BroadcastResult {
+  success: boolean;
+  broadcastId: string;
+  deliveredAt: number;
+  incident: IncidentResponse | null;
+}
+
 export async function broadcastIncident(
   id: string,
   payload: BroadcastPayload,
   signal?: AbortSignal
-): Promise<{ delivered: boolean }> {
-  try {
-    await request(`/incidents/${encodeURIComponent(id)}/broadcast`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      signal,
-    });
-    return { delivered: true };
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') throw err;
-    // 404 is expected until the backend adds this route; any other error
-    // (network, 500) is still worth surfacing distinctly to the caller.
-    return { delivered: false };
-  }
+): Promise<BroadcastResult> {
+  const data = (await request(`/incidents/${encodeURIComponent(id)}/broadcast`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal,
+  })) as {
+    success?: boolean;
+    broadcastId?: string;
+    deliveredAt?: number;
+    incident?: unknown;
+  };
+
+  const incidentResult = data.incident ? IncidentSchema.safeParse(data.incident) : null;
+
+  return {
+    success: Boolean(data.success),
+    broadcastId: data.broadcastId ?? '',
+    deliveredAt: data.deliveredAt ?? Date.now(),
+    incident: incidentResult && incidentResult.success ? incidentResult.data : null,
+  };
 }
 
-/** Assumed: GET /api/sensors. Returns [] (not an error) if unavailable, so
- * the map simply shows no sensor layer instead of an error banner. */
+/** GET /api/sensors — confirmed real (apps/api/src/routes/telemetry.ts).
+ * Still defends with a graceful empty array on any transport error, since a
+ * sensor layer failing to load shouldn't take down the whole dashboard. */
 export async function getSensors(signal?: AbortSignal): Promise<SensorReading[]> {
   try {
     const data = await request('/sensors', { signal });
     return Array.isArray(data) ? (data as SensorReading[]) : [];
-  } catch (err: unknown) {
-    if ((err as { name?: string })?.name === 'AbortError') return [];
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     return [];
   }
 }
 
-/** Assumed: GET /api/hazard-zones. Same graceful-empty behavior. */
+/** GET /api/hazard-zones — confirmed real (apps/api/src/routes/telemetry.ts).
+ * Same graceful-empty behavior as getSensors. */
 export async function getHazardZones(signal?: AbortSignal): Promise<HazardZone[]> {
   try {
     const data = await request('/hazard-zones', { signal });
     return Array.isArray(data) ? (data as HazardZone[]) : [];
-  } catch (err: unknown) {
-    if ((err as { name?: string })?.name === 'AbortError') return [];
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     return [];
   }
 }

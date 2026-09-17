@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useUnitPositions } from '@/hooks/useUnitPositions';
-import { haversineDistanceMeters, estimateEtaMinutes, formatDistance } from '@/lib/geo';
-import type { IncidentResponse } from '@/lib/schema';
+import { useUnitPositions } from '@responder/hooks/useUnitPositions';
+import { haversineDistanceMeters, estimateEtaMinutes, formatDistance } from '@responder/lib/geo';
+import type { IncidentResponse } from '@responder/lib/schema';
 
 interface UnitPositionPanelProps {
   incident: IncidentResponse;

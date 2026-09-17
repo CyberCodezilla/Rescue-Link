@@ -99,4 +99,3 @@ export interface SurvivorSSEEvent {
   message?: string;
   timestamp: number;
 }
-

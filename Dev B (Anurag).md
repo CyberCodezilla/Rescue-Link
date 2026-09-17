@@ -1,9 +1,9 @@
 # Developer Contribution & Handoff Report
 
-**Developer:** Dev B (Anurag Thakur)  
-**Module:** `apps/responder-web`  
-**Role:** Frontend Responder Lead (Phase 4 Responder Command Dashboard & Dispatch)  
-**Date:** September 2026  
+**Developer:** Dev B (Anurag Thakur)
+**Module:** `apps/responder-web`
+**Role:** Frontend Responder Lead (Phase 4 Responder Command Dashboard & Dispatch)
+**Date:** September 2026
 **Status:** **Phase 1 (Completed & Verified)** | **Phase 2 (Completed & Verified)**
 
 ---
@@ -236,4 +236,3 @@ npm run dev   # http://localhost:3002
 - **Live stream:** header shows "Polling (15s)" today (expected, `/api/events` doesn't exist) — will flip to "Live" automatically the moment that route ships.
 - **Geofence:** dashboard map, "Draw zone" chip → draw a circle or polygon → bulk-update the incidents it catches.
 - **Offline mode:** load the dashboard once (populates the idb cache and the service worker's tile/API cache), then simulate a network failure (DevTools → Network → Offline) — the last-loaded incidents and previously-viewed map tiles stay visible with an "Offline" banner instead of a blank error or a gray tile grid.
-

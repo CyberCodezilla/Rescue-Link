@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
-import fs from 'fs';
 
 export default defineConfig({
   test: {
@@ -13,25 +12,11 @@ export default defineConfig({
     ],
   },
   resolve: {
-    alias: [
-      { find: '@rescue-link/schema', replacement: path.resolve(__dirname, './packages/schema/src') },
-      { find: '@rescue-link/config', replacement: path.resolve(__dirname, './packages/config/src') },
-      {
-        find: /^@\/(.*)$/,
-        replacement: (match: string, p1: string) => {
-          const responderPath = path.resolve(__dirname, './apps/responder-web/src', p1);
-          if (
-            fs.existsSync(responderPath) ||
-            fs.existsSync(responderPath + '.ts') ||
-            fs.existsSync(responderPath + '.tsx') ||
-            fs.existsSync(responderPath + '/index.ts') ||
-            fs.existsSync(responderPath + '/index.tsx')
-          ) {
-            return responderPath;
-          }
-          return path.resolve(__dirname, './apps/survivor-web/src', p1);
-        },
-      },
-    ],
+    alias: {
+      '@rescue-link/schema': path.resolve(__dirname, './packages/schema/src'),
+      '@rescue-link/config': path.resolve(__dirname, './packages/config/src'),
+      '@': path.resolve(__dirname, './apps/survivor-web/src'),
+      '@responder': path.resolve(__dirname, './apps/responder-web/src'),
+    },
   },
 });

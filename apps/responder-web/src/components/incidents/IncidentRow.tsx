@@ -1,6 +1,6 @@
-import type { IncidentResponse } from '@/lib/schema';
-import { CATEGORY_LABELS } from '@/lib/schema';
-import { formatLocation, formatTimestamp, hasAssignedUnits } from '@/lib/format';
+import type { IncidentResponse } from '@responder/lib/schema';
+import { CATEGORY_LABELS } from '@responder/lib/schema';
+import { formatLocation, formatTimestamp, hasAssignedUnits } from '@responder/lib/format';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
 

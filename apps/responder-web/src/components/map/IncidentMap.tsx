@@ -5,9 +5,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw';
 import 'leaflet-draw/dist/leaflet.draw.css';
-import { getCategory, CATEGORY_LABELS } from '@/lib/schema';
-import type { HazardZone, IncidentResponse, Priority, SensorReading, UnitPosition } from '@/lib/schema';
-import { haversineDistanceMeters, estimateEtaMinutes, formatDistance } from '@/lib/geo';
+import { getCategory, CATEGORY_LABELS } from '@responder/lib/schema';
+import type { HazardZone, IncidentResponse, Priority, SensorReading, UnitPosition } from '@responder/lib/schema';
+import { haversineDistanceMeters, estimateEtaMinutes, formatDistance } from '@responder/lib/geo';
 
 const FALLBACK_CENTER: [number, number] = [20.5937, 78.9629];
 const FALLBACK_ZOOM = 5;
@@ -35,21 +35,6 @@ const HAZARD_SEVERITY_COLOR: Record<HazardZone['severity'], string> = {
   warning: '#EA580C',
   critical: '#DC2626',
 };
-
-// Defensive guard against Leaflet internal race condition when DOM elements detach during animations
-if (typeof window !== 'undefined' && typeof L !== 'undefined' && L.DomUtil) {
-  const originalGetPosition = L.DomUtil.getPosition;
-  L.DomUtil.getPosition = function (el: HTMLElement) {
-    if (!el) {
-      return new L.Point(0, 0);
-    }
-    try {
-      return originalGetPosition.call(this, el);
-    } catch {
-      return new L.Point(0, 0);
-    }
-  };
-}
 
 function markerIcon(priority: Priority, isSelected: boolean) {
   const size = isSelected ? 18 : 14;
@@ -182,11 +167,7 @@ export function IncidentMap({
     mapRef.current = map;
 
     return () => {
-      try {
-        map.stop();
-        map.closePopup();
-        map.remove();
-      } catch {}
+      map.remove();
       mapRef.current = null;
     };
   }, []);
@@ -196,15 +177,7 @@ export function IncidentMap({
     const map = mapRef.current;
     if (!map) return;
 
-    try {
-      map.closePopup();
-    } catch {}
-
-    markersRef.current.forEach((marker) => {
-      try {
-        marker.remove();
-      } catch {}
-    });
+    markersRef.current.forEach((marker) => marker.remove());
     markersRef.current.clear();
 
     plottable.forEach((incident) => {
@@ -233,13 +206,9 @@ export function IncidentMap({
       const bounds = L.latLngBounds(
         plottable.map((incident) => [incident.location.lat, incident.location.lng] as [number, number])
       );
-      try {
-        map.fitBounds(bounds, { padding: [32, 32], maxZoom: 12, animate: false });
-      } catch {}
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 12 });
     } else {
-      try {
-        map.setView(FALLBACK_CENTER, FALLBACK_ZOOM, { animate: false });
-      } catch {}
+      map.setView(FALLBACK_CENTER, FALLBACK_ZOOM);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plottable]);
@@ -249,10 +218,8 @@ export function IncidentMap({
     if (!map || !selectedId) return;
     const marker = markersRef.current.get(selectedId);
     if (marker) {
-      try {
-        map.setView(marker.getLatLng(), Math.max(map.getZoom(), FOCUSED_ZOOM), { animate: false });
-        marker.openPopup();
-      } catch {}
+      map.setView(marker.getLatLng(), Math.max(map.getZoom(), FOCUSED_ZOOM));
+      marker.openPopup();
     }
   }, [selectedId]);
 
