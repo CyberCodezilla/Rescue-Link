@@ -17,17 +17,22 @@ function toTimestamp(value: string | number | undefined): number {
 
 export function filterIncidents(
   incidents: IncidentResponse[],
-  filters: IncidentFilters
+  filters: IncidentFilters,
 ): IncidentResponse[] {
   return incidents.filter((incident) => {
-    if (filters.status === 'active') {
-      if (!ACTIVE_STATUSES.includes(incident.status)) return false;
-    } else if (filters.status !== 'all' && incident.status !== filters.status) {
-      return false;
-    }
-    if (filters.priority !== 'all' && incident.priority !== filters.priority) return false;
-    if (filters.category !== 'all' && incident.category !== filters.category) return false;
-    return true;
+    const matchesStatus =
+      filters.status === 'all' ||
+      (filters.status === 'active'
+        ? ACTIVE_STATUSES.includes(incident.status)
+        : incident.status === filters.status);
+
+    const matchesPriority =
+      filters.priority === 'all' || incident.priority === filters.priority;
+
+    const matchesCategory =
+      filters.category === 'all' || incident.category === filters.category;
+
+    return matchesStatus && matchesPriority && matchesCategory;
   });
 }
 
