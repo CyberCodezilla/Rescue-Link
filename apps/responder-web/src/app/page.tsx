@@ -10,6 +10,7 @@ import { IncidentFilters } from '@responder/components/incidents/IncidentFilters
 import { IncidentList } from '@responder/components/incidents/IncidentList';
 import { IncidentMapClient } from '@responder/components/map/IncidentMapClient';
 import { GeofencePanel } from '@responder/components/map/GeofencePanel';
+import type { MapMode } from '@responder/components/map/MapLegend';
 import { MapLayerControls } from '@responder/components/map/MapLayerControls';
 import { EmptyState } from '@responder/components/ui/EmptyState';
 import { ErrorState } from '@responder/components/ui/ErrorState';
@@ -39,6 +40,7 @@ export default function DashboardPage() {
   const [filters, setFilters] = useState<IncidentFiltersState>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [mapMode, setMapMode] = useState<MapMode>('tactical');
   const [showSensors, setShowSensors] = useState(false);
   const [showHazardZones, setShowHazardZones] = useState(false);
   const [showUnits, setShowUnits] = useState(false);
@@ -159,6 +161,8 @@ export default function DashboardPage() {
             {incidents ? (
               <>
                 <MapLayerControls
+                  currentMode={mapMode}
+                  onSelectMode={setMapMode}
                   showSensors={showSensors}
                   onToggleSensors={() => setShowSensors((v) => !v)}
                   showHazardZones={showHazardZones}

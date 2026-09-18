@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import { getCategory, CATEGORY_LABELS } from '@responder/lib/schema';
 import type { HazardZone, IncidentResponse, Priority, SensorReading, UnitPosition } from '@responder/lib/schema';
+import { MapLegend, type MapMode } from './MapLegend';
 import { haversineDistanceMeters, estimateEtaMinutes, formatDistance } from '@responder/lib/geo';
 
 const FALLBACK_CENTER: [number, number] = [20.5937, 78.9629];
@@ -184,6 +185,8 @@ export interface IncidentMapProps {
   incidents: IncidentResponse[];
   selectedId: string | null;
   hoveredId?: string | null;
+  currentMode?: MapMode;
+  onSelectMode?: (mode: MapMode) => void;
   onSelect: (id: string) => void;
   sensors?: SensorReading[];
   hazardZones?: HazardZone[];
@@ -199,6 +202,8 @@ export function IncidentMap({
   incidents,
   selectedId,
   hoveredId,
+  currentMode,
+  onSelectMode,
   onSelect,
   sensors = [],
   hazardZones = [],
@@ -209,6 +214,10 @@ export function IncidentMap({
   geofenceEnabled = false,
   onGeofenceChange,
 }: IncidentMapProps) {
+  const [internalMode, setInternalMode] = useState<MapMode>('tactical');
+  const activeMode = currentMode ?? internalMode;
+  const baseLayerRef = useRef<L.TileLayer | null>(null);
+  const thermalLayerRef = useRef<L.LayerGroup | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -238,16 +247,10 @@ export function IncidentMap({
       zoomControl: true,
     });
 
-    // Dark tactical CartoDB Dark Matter tile layer
-    // Tactical dark canvas tile layer (high-contrast, zero watermarks)
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-      attribution: '&copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-      maxZoom: 16,
-    }).addTo(map);
-
     sensorLayerRef.current = L.layerGroup().addTo(map);
     hazardLayerRef.current = L.layerGroup().addTo(map);
     unitLayerRef.current = L.layerGroup().addTo(map);
+    thermalLayerRef.current = L.layerGroup().addTo(map);
 
     const drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
@@ -260,6 +263,86 @@ export function IncidentMap({
       mapRef.current = null;
     };
   }, []);
+
+
+  // Dynamic Smart Multi-Map Base Tile Layer & Thermal Overlay Switcher
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (baseLayerRef.current) {
+      map.removeLayer(baseLayerRef.current);
+      baseLayerRef.current = null;
+    }
+
+    let tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    let maxZoom = 16;
+    let attribution = '&copy; Esri &mdash; Tactical Dark HUD';
+
+    if (activeMode === 'satellite') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      maxZoom = 18;
+      attribution = '&copy; Esri, DigitalGlobe, Earthstar Geographics &mdash; Photorealistic Satellite Recon';
+    } else if (activeMode === 'topo') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+      maxZoom = 18;
+      attribution = '&copy; Esri, USGS, NOAA &mdash; Topographic Elevation & Contours';
+    } else if (activeMode === 'thermal') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+      maxZoom = 16;
+      attribution = '&copy; Esri &mdash; Infrared Thermal Heat Intensity Analysis';
+    }
+
+    const newBase = L.tileLayer(tileUrl, { maxZoom, attribution });
+    newBase.addTo(map);
+    baseLayerRef.current = newBase;
+
+    // Handle Thermal Gradient Overlay
+    const thermalLayer = thermalLayerRef.current;
+    if (thermalLayer) {
+      thermalLayer.clearLayers();
+      if (activeMode === 'thermal') {
+        // Draw heat intensity zones around incidents
+        plottable.forEach((inc) => {
+          const { lat, lng } = inc.location;
+          const isCritical = inc.priority === 'critical';
+          const radius = isCritical ? 1800 : 1000;
+          const heatColor = isCritical ? '#EF4444' : inc.priority === 'high' ? '#F97316' : '#EAB308';
+
+          // Outer ambient thermal heat glow
+          L.circle([lat, lng], {
+            radius: radius * 1.5,
+            color: heatColor,
+            weight: 0,
+            fillColor: heatColor,
+            fillOpacity: 0.12,
+          }).addTo(thermalLayer);
+
+          // Core thermal intensity center
+          L.circle([lat, lng], {
+            radius: radius * 0.6,
+            color: heatColor,
+            weight: 1,
+            fillColor: heatColor,
+            fillOpacity: 0.28,
+          }).addTo(thermalLayer);
+        });
+
+        // Overlay sensor heat points
+        sensors.forEach((s) => {
+          if (s.kind === 'fire_perimeter' || s.status === 'critical') {
+            L.circle([s.location.lat, s.location.lng], {
+              radius: 600,
+              color: '#F43F5E',
+              weight: 1,
+              fillColor: '#F43F5E',
+              fillOpacity: 0.25,
+            }).addTo(thermalLayer);
+          }
+        });
+      }
+    }
+  }, [activeMode, plottable, sensors]);
 
   // Incident markers
   useEffect(() => {
@@ -495,11 +578,14 @@ export function IncidentMap({
   }, [geofenceEnabled]);
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full bg-canvas relative z-0"
-      tabIndex={0}
-      aria-label="Tactical incident map"
-    />
+    <div className="relative h-full w-full">
+      <div
+        ref={containerRef}
+        className="h-full w-full bg-canvas relative z-0"
+        tabIndex={0}
+        aria-label="Tactical incident map"
+      />
+      <MapLegend currentMode={activeMode} className="absolute bottom-3 left-3 z-[1000]" />
+    </div>
   );
 }
