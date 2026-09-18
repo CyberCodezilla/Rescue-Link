@@ -10,6 +10,18 @@ function getAudioContext(): AudioContext | null {
   return audioContext;
 }
 
+
+export async function unlockCriticalAlertAudio(): Promise<boolean> {
+  const ctx = getAudioContext();
+  if (!ctx) return false;
+  try {
+    if (ctx.state === 'suspended') await ctx.resume();
+    return ctx.state === 'running';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Two-tone alert chime for new critical/fire incidents. Synthesized (no MP3
  * asset), matching the approach survivor-web uses for its evacuation chime.

@@ -91,7 +91,7 @@ export type GeofenceShape =
   | { kind: 'circle'; center: { lat: number; lng: number }; radiusMeters: number }
   | { kind: 'polygon'; points: { lat: number; lng: number }[] };
 
-interface IncidentMapProps {
+export interface IncidentMapProps {
   incidents: IncidentResponse[];
   selectedId: string | null;
   onSelect: (id: string) => void;

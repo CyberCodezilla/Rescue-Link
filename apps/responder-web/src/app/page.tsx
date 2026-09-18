@@ -3,34 +3,96 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardHeader } from '@responder/components/dashboard/DashboardHeader';
+import { CriticalAlertBanner } from '@responder/components/dashboard/CriticalAlertBanner';
+import { SensorTelemetryPanel } from '@responder/components/dashboard/SensorTelemetryPanel';
 import { SummaryCards } from '@responder/components/dashboard/SummaryCards';
 import { IncidentFilters } from '@responder/components/incidents/IncidentFilters';
 import { IncidentList } from '@responder/components/incidents/IncidentList';
 import { IncidentMapClient } from '@responder/components/map/IncidentMapClient';
+import { GeofencePanel } from '@responder/components/map/GeofencePanel';
+import { MapLayerControls } from '@responder/components/map/MapLayerControls';
 import { EmptyState } from '@responder/components/ui/EmptyState';
 import { ErrorState } from '@responder/components/ui/ErrorState';
 import { IncidentListSkeleton, SummarySkeleton } from '@responder/components/ui/LoadingState';
+import { useCriticalAlert } from '@responder/hooks/useCriticalAlert';
+import { useHazardLayer } from '@responder/hooks/useHazardLayer';
+import { useIncidentStream } from '@responder/hooks/useIncidentStream';
 import { useIncidents } from '@responder/hooks/useIncidents';
+import { useUnitPositions } from '@responder/hooks/useUnitPositions';
+import { unlockCriticalAlertAudio } from '@responder/lib/alertSound';
+import { buildDashboardMapLayerData } from '@responder/lib/dashboardIntegration';
 import { DEFAULT_FILTERS } from '@responder/lib/schema';
 import type { IncidentFilters as IncidentFiltersState } from '@responder/lib/schema';
+import type { GeofenceShape } from '@responder/components/map/IncidentMap';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { incidents, isInitialLoading, isRefreshing, lastRefreshedAt, refreshError, refresh } =
-    useIncidents();
+  const {
+    incidents,
+    isInitialLoading,
+    isRefreshing,
+    lastRefreshedAt,
+    refreshError,
+    refresh,
+    applyIncidentUpdate,
+  } = useIncidents();
   const [filters, setFilters] = useState<IncidentFiltersState>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showSensors, setShowSensors] = useState(false);
+  const [showHazardZones, setShowHazardZones] = useState(false);
+  const [showUnits, setShowUnits] = useState(false);
+  const [geofenceEnabled, setGeofenceEnabled] = useState(false);
+  const [geofenceShape, setGeofenceShape] = useState<GeofenceShape | null>(null);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+
+  const streamStatus = useIncidentStream({ onIncident: applyIncidentUpdate });
+  const { isActive, latestIncident, dismiss } = useCriticalAlert(incidents);
+  const { sensors, hazardZones, hasLoaded } = useHazardLayer();
+  const { positions: unitPositions } = useUnitPositions();
+  const mapLayerData = buildDashboardMapLayerData(sensors, hazardZones, unitPositions);
+  const showTelemetry = showSensors || showHazardZones;
 
   function handleSelect(id: string) {
     setSelectedId(id);
     router.push(`/incidents/${id}`);
   }
 
+  async function handleUnlockAudio() {
+    const unlocked = await unlockCriticalAlertAudio();
+    setAudioUnlocked(unlocked);
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
-      <DashboardHeader lastRefreshedAt={lastRefreshedAt} isRefreshing={isRefreshing} onRefresh={refresh} />
+      <DashboardHeader
+        lastRefreshedAt={lastRefreshedAt}
+        isRefreshing={isRefreshing}
+        onRefresh={refresh}
+        streamStatus={streamStatus}
+      />
+
+      <CriticalAlertBanner
+        isActive={isActive}
+        incident={latestIncident}
+        onDismiss={dismiss}
+        onView={handleSelect}
+      />
 
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 py-2">
+          <p className="text-xs text-ink-500">
+            {audioUnlocked ? 'Critical alert sound enabled.' : 'Critical alerts are visual until alert sound is enabled.'}
+          </p>
+          <button
+            type="button"
+            onClick={handleUnlockAudio}
+            disabled={audioUnlocked}
+            className="rounded border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {audioUnlocked ? 'Alert sound enabled' : 'Enable alert sound'}
+          </button>
+        </div>
+
         {isInitialLoading ? (
           <SummarySkeleton />
         ) : incidents ? (
@@ -45,6 +107,13 @@ export default function DashboardPage() {
             Latest refresh failed: {refreshError}. Showing the last data loaded successfully.
           </p>
         ) : null}
+
+        <SensorTelemetryPanel
+          sensors={mapLayerData.sensors}
+          hazardZones={mapLayerData.hazardZones}
+          hasLoaded={hasLoaded}
+          visible={showTelemetry}
+        />
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
           <section className="flex flex-1 flex-col gap-4 lg:max-w-xl">
@@ -65,11 +134,44 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="h-[420px] flex-1 lg:sticky lg:top-4 lg:h-[calc(100vh-220px)]">
+          <section className="relative h-[420px] flex-1 lg:sticky lg:top-4 lg:h-[calc(100vh-220px)]">
             {incidents ? (
-              <IncidentMapClient incidents={incidents} selectedId={selectedId} onSelect={handleSelect} />
+              <IncidentMapClient
+                incidents={incidents}
+                selectedId={selectedId}
+                onSelect={handleSelect}
+                sensors={mapLayerData.sensors}
+                hazardZones={mapLayerData.hazardZones}
+                unitPositions={mapLayerData.unitPositions}
+                showSensors={showSensors}
+                showHazardZones={showHazardZones}
+                showUnits={showUnits}
+                geofenceEnabled={geofenceEnabled}
+                onGeofenceChange={setGeofenceShape}
+              />
             ) : !isInitialLoading ? (
               <EmptyState title="Map unavailable" description="Incident data failed to load." />
+            ) : null}
+
+            {incidents ? (
+              <>
+                <MapLayerControls
+                  showSensors={showSensors}
+                  onToggleSensors={() => setShowSensors((v) => !v)}
+                  showHazardZones={showHazardZones}
+                  onToggleHazardZones={() => setShowHazardZones((v) => !v)}
+                  showUnits={showUnits}
+                  onToggleUnits={() => setShowUnits((v) => !v)}
+                  geofenceEnabled={geofenceEnabled}
+                  onToggleGeofence={() => setGeofenceEnabled((v) => !v)}
+                />
+                <GeofencePanel
+                  shape={geofenceShape}
+                  incidents={incidents}
+                  onClear={() => setGeofenceShape(null)}
+                  onBatchComplete={refresh}
+                />
+              </>
             ) : null}
           </section>
         </div>

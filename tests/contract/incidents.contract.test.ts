@@ -209,8 +209,10 @@ describe('API Contract Tests - /api/incidents', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.result.snsSent).toBe(true);
-      expect(res.body.result.sesSent).toBe(true);
+      expect(res.body.result.snsSent).toBe(false);
+      expect(res.body.result.sesSent).toBe(false);
+      expect(res.body.result.mode).toBe('mock');
+      expect(res.body.result.message).toContain('SNS/SES delivery was not performed');
     });
   });
 });

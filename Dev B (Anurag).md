@@ -285,3 +285,132 @@ npm run dev   # http://localhost:3002
 - **Live stream:** header should show "Live" against a running backend (was "Polling (15s)" in Phase 2 before the endpoint existed).
 - **Geofence:** dashboard map, "Draw zone" chip → draw a circle or polygon → bulk-update the incidents it catches.
 - **Offline mode:** load the dashboard once, then simulate a network failure (DevTools → Network → Offline) — the last-loaded incidents and previously-viewed map tiles stay visible with an "Offline" banner instead of a blank error.
+
+---
+
+## 7. Final Dev 2 Integration Pass
+
+**Scope:** Final responder dashboard gap closure and verification pass.
+
+### Implemented
+
+1. Voice Distress Audio Playback
+   - Added `apps/responder-web/src/components/incidents/DistressAudioPlayer.tsx`.
+   - Uses the real `incident.audioBlob` only when present.
+   - No player is rendered when audio is absent.
+
+2. Hazard Layer Map Wiring
+   - Updated `apps/responder-web/src/app/page.tsx` to call `useHazardLayer()`.
+   - Passes the real `sensors`, `hazardZones`, and field unit positions into `IncidentMapClient`.
+   - Preserved the existing `IncidentMap`, `MapLayerControls`, sensor layer, hazard layer, field-unit layer, polling, and graceful empty-array behavior.
+
+3. Critical Alert Chime + Banner
+   - Wired `useIncidentStream()` into the dashboard.
+   - Wired `useCriticalAlert()` into the dashboard.
+   - Existing ID-based deduplication prevents repeated alerts from the 15-second polling cycle.
+   - Added an explicit `Enable alert sound` control using `unlockCriticalAlertAudio()` so Web Audio follows browser user-interaction requirements.
+   - Existing reduced-motion CSS behavior and visual banner remain unchanged.
+
+4. SNS / SES Notification Status UI
+   - Added `apps/responder-web/src/components/incidents/NotificationStatus.tsx`.
+   - Incident detail explicitly shows `Status unavailable from incident API` because the incident schema exposes no persisted SNS/SES delivery fields.
+   - No delivery state is fabricated.
+
+5. Trigger Test Notification
+   - Added the real `POST /api/notifications/test` call to the responder detail UI.
+   - Added loading state and duplicate-click protection.
+   - The UI reports the API result and does not claim SNS/SES delivery when the backend reports no delivery.
+
+6. Phase 5 responder tests
+   - Added `apps/responder-web/tests/phase5.test.ts`.
+   - Covers audio rendering with and without `audioBlob`.
+   - Covers all five priority badge values.
+   - Covers sensor, hazard-zone, and field-unit data passing through the dashboard map integration boundary.
+
+### Backend contract correction for notification honesty
+
+- `POST /api/notifications/test` exists at `apps/api/src/routes/notifications.ts`.
+- No incident-level SNS/SES delivery status field exists in `packages/schema/src/incident.ts`.
+- The local notification fallback now reports `snsSent: false` and `sesSent: false`. Console logging is not treated as AWS delivery.
+- AWS partial failures now report the individual SNS and SES results instead of claiming both channels were dispatched.
+
+### Files changed in this final pass
+
+- `apps/responder-web/src/app/page.tsx`
+- `apps/responder-web/src/app/incidents/[id]/page.tsx`
+- `apps/responder-web/src/components/incidents/DistressAudioPlayer.tsx`
+- `apps/responder-web/src/components/incidents/NotificationStatus.tsx`
+- `apps/responder-web/src/components/map/IncidentMap.tsx`
+- `apps/responder-web/src/components/map/IncidentMapClient.tsx`
+- `apps/responder-web/src/hooks/useIncidents.ts`
+- `apps/responder-web/src/lib/alertSound.ts`
+- `apps/responder-web/src/lib/api.ts`
+- `apps/responder-web/src/lib/dashboardIntegration.ts`
+- `apps/responder-web/tests/phase5.test.ts`
+- `apps/api/src/services/notificationService.ts`
+- `apps/api/tests/notifications.test.ts`
+- `Dev B (Anurag).md`
+
+### Backend endpoints confirmed from the repository
+
+- `GET /api/incidents`
+- `GET /api/incidents/:id`
+- `PATCH /api/incidents/:id`
+- `POST /api/incidents/:id/acknowledge`
+- `POST /api/incidents/:id/broadcast`
+- `GET /api/events`
+- `GET /api/sensors`
+- `GET /api/hazard-zones`
+- `POST /api/notifications/test`
+
+### Verification status
+
+The source tree was inspected after the implementation. Automated npm verification could not be executed in the isolated build environment because the dependency registry was unavailable and the required npm packages were not present in the local cache. `npm ci --offline` failed because the `zod` package archive was not cached.
+
+Therefore this deliverable does not claim passing typecheck, tests, lint, build, or CI without executing them. The final ZIP excludes installed dependency artifacts and machine-specific files.
+
+The final required verification commands remain:
+
+```text
+npm run typecheck
+npm test
+npm run build --workspace=@rescue-link/responder-web
+npm run lint
+npm run build
+npm run ci
+git diff --check
+```
+
+Manual browser verification should cover dashboard loading, incidents, map, sensors, hazard zones, field units, critical alert banner, alert sound unlock, incident detail, distress audio, notification status, test notification, acknowledge, start rescue, resolve, assignment, broadcast, and offline behavior.
+
+
+## 8. Final Phase 6 Handoff Status
+
+Required deliverables in the Phase 6 master prompt are present in this ZIP:
+
+- Final `apps/responder-web` implementation
+- Updated `Dev B (Anurag).md`
+- `apps/responder-web/tests/phase5.test.ts`
+- Clean ZIP structure with no `node_modules`, `.next`, `.git`, or temporary logs
+
+Implementation-level checks completed in this environment:
+
+- Changed-file inspection: passed
+- ZIP structure inspection: passed
+- `git diff --check` equivalent against the source snapshot: passed
+- Required Phase 5 test file path: passed
+- Static source inspection of the five Phase 6 gaps: passed
+- Phase 5 responder tests added: 4
+- Static repository test count: 98 total test cases after the Phase 5 additions
+
+Environment-dependent checks were not marked as passed because this build environment does not have the npm registry dependency cache required by the repository. `npm ci --offline` stopped at the uncached `zod` package. The following therefore require execution in a normal Node/npm environment or CI:
+
+- `npm run typecheck`
+- `npm test`
+- `npm run build --workspace=@rescue-link/responder-web`
+- `npm run lint`
+- `npm run build`
+- `npm run ci`
+- browser/manual verification
+
+GitHub write access was also unavailable in this environment, so no remote branch push or GitHub commit SHA is claimed here. The required branch name from the master prompt is `feature/responder-final-phase`.

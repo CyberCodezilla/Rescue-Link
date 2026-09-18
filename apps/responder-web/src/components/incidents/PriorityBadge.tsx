@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Priority } from '@responder/lib/schema';
 import { PRIORITY_LABELS } from '@responder/lib/schema';
 

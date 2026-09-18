@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import { AssignmentControl } from '@responder/components/incidents/AssignmentControl';
 import { BroadcastAction } from '@responder/components/incidents/BroadcastAction';
 import { DispatchedUnitsControl } from '@responder/components/incidents/DispatchedUnitsControl';
+import { DistressAudioPlayer } from '@responder/components/incidents/DistressAudioPlayer';
+import { NotificationStatus } from '@responder/components/incidents/NotificationStatus';
 import { IncidentActions } from '@responder/components/incidents/IncidentActions';
 import { PriorityBadge } from '@responder/components/incidents/PriorityBadge';
 import { StatusBadge } from '@responder/components/incidents/StatusBadge';
@@ -94,6 +96,10 @@ export default function IncidentDetailPage() {
             </section>
 
             <TriageCard triage={incident.triage} />
+
+            <DistressAudioPlayer incident={incident} />
+
+            <NotificationStatus incident={incident} />
 
             <section className="rounded-md border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink-900">Reporter</h2>

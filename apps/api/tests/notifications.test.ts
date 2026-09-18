@@ -21,10 +21,10 @@ describe('NotificationService Unit Tests', () => {
 
     const res = await notificationService.sendCriticalAlert(mockCritical);
 
-    expect(res.snsSent).toBe(true);
-    expect(res.sesSent).toBe(true);
+    expect(res.snsSent).toBe(false);
+    expect(res.sesSent).toBe(false);
     expect(res.mode).toBe('mock');
-    expect(res.message).toContain('Local Mock Notification Engine');
+    expect(res.message).toContain('SNS/SES delivery was not performed');
   });
 
   it('should skip alert for LOW priority incidents', async () => {
