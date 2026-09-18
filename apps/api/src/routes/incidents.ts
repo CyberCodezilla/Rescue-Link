@@ -12,11 +12,12 @@ import { triageWorkflow } from '../services/triageWorkflow';
 import { eventStreamManager } from '../services/eventStream';
 import { CONFIG } from '@rescue-link/config';
 import { requireApiKey } from '../middleware/auth';
+import { sosRateLimit } from '../middleware/rateLimit';
 
 export const incidentsRouter = Router();
 
 // POST /api/incidents - Create SOS Incident
-incidentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.post('/', sosRateLimit, async (req: Request, res: Response): Promise<void> => {
   const parseResult = SOSSubmissionSchema.safeParse(req.body);
 
   if (!parseResult.success) {

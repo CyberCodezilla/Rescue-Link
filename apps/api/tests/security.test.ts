@@ -50,4 +50,9 @@ describe('API Security & Authentication Tests', () => {
     expect(res.status).toBe(401);
     expect(res.body.error).toBe('Unauthorized access');
   });
+
+  it('includes rate limit standard headers on API requests', async () => {
+    const res = await request(app).get('/api/health');
+    expect(res.headers).toHaveProperty('ratelimit-limit');
+  });
 });
