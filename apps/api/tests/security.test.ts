@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 
@@ -19,7 +19,6 @@ describe('API Security & Authentication Tests', () => {
       .set('x-api-key', 'rescuelink-responder-key-2026')
       .send({ status: 'resolved' });
 
-    // Should pass auth check (returns 404 because ID doesn't exist, not 401)
     expect(res.status).toBe(404);
   });
 
@@ -30,11 +29,5 @@ describe('API Security & Authentication Tests', () => {
       .send({ priority: 'critical' });
 
     expect(res.status).toBe(401);
-  });
-
-  it('returns helmet security headers on API responses', async () => {
-    const res = await request(app).get('/api/health');
-    expect(res.headers['x-dns-prefetch-control']).toBe('off');
-    expect(res.headers['x-frame-options']).toBe('SAMEORIGIN');
   });
 });

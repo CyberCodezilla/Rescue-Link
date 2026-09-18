@@ -1,11 +1,11 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { CONFIG } from '@rescue-link/config';
-import { bedrockService } from '../services/bedrockService';
 import { incidentStore } from '../store/incidentStore';
+import { bedrockService } from '../services/bedrockService';
 
 export const healthRouter = Router();
 
-healthRouter.get('/', (_req: Request, res: Response) => {
+healthRouter.get('/', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     service: 'rescue-link-api',

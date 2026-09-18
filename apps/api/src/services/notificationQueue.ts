@@ -69,7 +69,7 @@ export class NotificationQueue {
 
       try {
         job.attempts++;
-        const result = await notificationService.sendCriticalAlert(job.incident, effectiveTraceId);
+        const result = await notificationService.sendCriticalAlert(job.incident);
         this.completedCount++;
 
         LifeSafetyTracer.log({

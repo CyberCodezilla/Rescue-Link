@@ -13,4 +13,4 @@ Survivor → Express API → Step Functions
                          └─ Lambda → Express callback → SSE → Responder
 ```
 
-See `docs/AWS_LAMBDA_INTEGRATION.md` for deployment and configuration.
+See `docs/AWS_LAMBDA_INTEGRATION.md` for Lambda deployment and `docs/SATELLITE_UPLINK.md` for the satellite / LoRa uplink path.
