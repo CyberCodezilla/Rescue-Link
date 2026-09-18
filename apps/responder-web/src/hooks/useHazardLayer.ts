@@ -6,23 +6,21 @@ import type { HazardZone, SensorReading } from '@/lib/schema';
 
 const POLL_INTERVAL_MS = 60_000;
 
+// Persistent memory cache across client navigations
+let memorySensors: SensorReading[] = [];
+let memoryHazardZones: HazardZone[] = [];
+let memoryHasLoaded = false;
+
 interface UseHazardLayerState {
   sensors: SensorReading[];
   hazardZones: HazardZone[];
-  /** True once at least one poll attempt has completed, so the UI can tell
-   * "no sensors configured yet" apart from "still loading". */
   hasLoaded: boolean;
 }
 
-/**
- * Polls live environmental telemetry endpoints (/api/sensors and /api/hazard-zones)
- * at regular intervals with AbortController cancellation on unmount and graceful
- * degradation on network failure.
- */
 export function useHazardLayer(): UseHazardLayerState {
-  const [sensors, setSensors] = useState<SensorReading[]>([]);
-  const [hazardZones, setHazardZones] = useState<HazardZone[]>([]);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [sensors, setSensors] = useState<SensorReading[]>(memorySensors);
+  const [hazardZones, setHazardZones] = useState<HazardZone[]>(memoryHazardZones);
+  const [hasLoaded, setHasLoaded] = useState(memoryHasLoaded);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +33,10 @@ export function useHazardLayer(): UseHazardLayerState {
           getHazardZones(controller.signal),
         ]);
         if (cancelled) return;
+        memorySensors = sensorData;
+        memoryHazardZones = zoneData;
+        memoryHasLoaded = true;
+
         setSensors(sensorData);
         setHazardZones(zoneData);
         setHasLoaded(true);
@@ -42,7 +44,6 @@ export function useHazardLayer(): UseHazardLayerState {
         if (cancelled || (err as { name?: string })?.name === 'AbortError') {
           return;
         }
-        // Non-abort errors are ignored so the UI gracefully shows empty layers
       }
     }
 
