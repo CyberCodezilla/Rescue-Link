@@ -112,7 +112,7 @@ export class NotificationService {
 
       const htmlBody = `
         <div style="font-family: Arial, sans-serif; padding: 20px; border: 2px solid #ef4444; border-radius: 8px;">
-          <h2 style="color: #ef4444;">🚨 RESCUELINK EMERGENCY ${incident.priority.toUpperCase()} ALERT</h2>
+          <h2 style="color: #ef4444;">≡ƒÜ¿ RESCUELINK EMERGENCY ${incident.priority.toUpperCase()} ALERT</h2>
           <p><strong>Incident ID:</strong> ${incident.id}</p>
           <p><strong>Category:</strong> ${incident.category}</p>
           <p><strong>Description:</strong> ${incident.description}</p>
@@ -120,7 +120,7 @@ export class NotificationService {
           <p><strong>Urgent Needs:</strong> ${incident.urgentNeeds.join(', ') || 'None'}</p>
           <p><strong>Coordinates:</strong> Lat ${incident.location.lat}, Lng ${incident.location.lng}</p>
           <hr />
-          <h3>🤖 AI Triage Survival Directive</h3>
+          <h3>≡ƒñû AI Triage Survival Directive</h3>
           <p style="background: #fee2e2; padding: 12px; border-left: 4px solid #ef4444; font-weight: bold;">
             ${incident.triage?.suggestedAction || 'Immediate tactical evaluation required.'}
           </p>
@@ -157,10 +157,10 @@ export class NotificationService {
   private logMockNotification(incident: Incident): void {
     const divider = '=======================================================';
     console.log(`\n${divider}`);
-    console.log(`📱 [LOCAL MOCK SNS SMS ALERT] (${incident.priority.toUpperCase()})`);
+    console.log(`≡ƒô▒ [LOCAL MOCK SNS SMS ALERT] (${incident.priority.toUpperCase()})`);
     console.log(`   To: ${incident.reporter?.contactValue || 'All Response Units'}`);
     console.log(`   Message: [RESCUELINK ${incident.priority.toUpperCase()}] ${incident.category.toUpperCase()} distress alert recorded at Lat:${incident.location.lat}, Lng:${incident.location.lng}. Directive: ${incident.triage?.suggestedAction || 'Stay safe.'}`);
-    console.log(`📧 [LOCAL MOCK SES EMAIL DISPATCH]`);
+    console.log(`≡ƒôº [LOCAL MOCK SES EMAIL DISPATCH]`);
     console.log(`   From: ${CONFIG.SES_FROM_EMAIL} -> To: ${CONFIG.SES_ALERT_RECIPIENT}`);
     console.log(`   Subject: [RESCUELINK DISASTER ALERT] ${incident.priority.toUpperCase()}: ${incident.category}`);
     console.log(`${divider}\n`);

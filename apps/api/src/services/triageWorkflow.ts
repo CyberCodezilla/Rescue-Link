@@ -1,4 +1,4 @@
-﻿import { Incident } from '@rescue-link/schema';
+import { Incident } from '@rescue-link/schema';
 import { bedrockService } from './bedrockService';
 import { incidentStore } from '../store/incidentStore';
 import { eventStreamManager } from './eventStream';
@@ -126,4 +126,3 @@ export class TriageWorkflowOrchestrator {
 }
 
 export const triageWorkflow = new TriageWorkflowOrchestrator();
-
