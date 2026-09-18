@@ -151,7 +151,7 @@ incidentsRouter.get('/:id', async (req: Request, res: Response): Promise<void> =
 });
 
 // PATCH /api/incidents/:id - Update status / assignment / triage
-incidentsRouter.patch('/:id', requireApiKey): Promise<void> => {
+incidentsRouter.patch('/:id', requireApiKey, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
@@ -263,7 +263,6 @@ incidentsRouter.post('/:id/broadcast', async (req: Request, res: Response): Prom
     incident: updated,
   });
 });
-
 
 
 

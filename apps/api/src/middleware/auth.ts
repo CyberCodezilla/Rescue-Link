@@ -1,22 +1,18 @@
-﻿import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from 'express';
+import { CONFIG } from '@rescue-link/config';
 
-export function requireApiKey(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
+export function requireApiKey(req: Request, res: Response, next: NextFunction): void {
+  const configuredKey = process.env.API_KEY;
 
-  const apiKey =
-    process.env.API_KEY ||
-    "rescuelink-responder-key-2026";
+  if (!configuredKey) {
+    next();
+    return;
+  }
 
-  const provided =
-    req.header("x-api-key");
+  const providedKey = req.header("x-api-key");
 
-  if (!provided || provided !== apiKey) {
-    res.status(401).json({
-      error: "Unauthorized access"
-    });
+  if (!providedKey || providedKey !== configuredKey) {
+    res.status(401).json({ error: "Unauthorized access" });
     return;
   }
 
