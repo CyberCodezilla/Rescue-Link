@@ -73,6 +73,39 @@ describe('API Scalability, Notification Queue & Pub/Sub Architecture Tests', () 
     eventStreamManager.setAdapter(new LocalBroadcastAdapter());
   });
 
+  it('LocalBroadcastAdapter dispatches events to registered onMessage handlers', async () => {
+    const localAdapter = new LocalBroadcastAdapter();
+    const receivedEvents: SSEEvent[] = [];
+
+    localAdapter.onMessage((event) => {
+      receivedEvents.push(event);
+    });
+
+    const mockEvent: SSEEvent = {
+      type: 'broadcast:sent',
+      incident: {
+        id: 'local-pubsub-1',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        status: 'in_progress',
+        priority: 'critical',
+        category: 'fire',
+        description: 'Local adapter test',
+        peopleAffected: 1,
+        urgentNeeds: [],
+        location: { lat: 0, lng: 0 },
+      },
+      message: 'Evacuate immediately',
+      timestamp: Date.now(),
+    };
+
+    localAdapter.publish(mockEvent);
+
+    expect(receivedEvents.length).toBe(1);
+    expect(receivedEvents[0].message).toBe('Evacuate immediately');
+    expect(receivedEvents[0].incident.id).toBe('local-pubsub-1');
+  });
+
   it('GET /api/incidents supports multi-status filter ?status=new,acknowledged', async () => {
     await incidentStore.create({
       id: 'inc-1',
