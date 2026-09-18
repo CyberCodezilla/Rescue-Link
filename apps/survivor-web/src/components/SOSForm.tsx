@@ -621,18 +621,16 @@ export const SOSForm: React.FC<SOSFormProps> = ({
 
             <input
               id="peopleAffectedInput"
-              type="number"
-              min={1}
-              max={9999}
+              type="text"
               inputMode="numeric"
               pattern="[0-9]*"
               value={peopleAffected === 0 ? '' : peopleAffected}
               onChange={(e) => {
-                const val = e.target.value;
-                if (val === '') {
+                const cleanVal = e.target.value.replace(/[^0-9]/g, '');
+                if (cleanVal === '') {
                   setPeopleAffected(0);
                 } else {
-                  const parsed = parseInt(val, 10);
+                  const parsed = parseInt(cleanVal, 10);
                   if (!isNaN(parsed)) {
                     setPeopleAffected(Math.max(1, Math.min(9999, parsed)));
                   }
@@ -653,7 +651,6 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 }
               }}
               aria-label="Total individuals with you"
-              className="no-spinners"
               style={{
                 width: '64px',
                 height: '44px',
