@@ -5,7 +5,7 @@ import { DynamoIncidentStore } from './dynamoStore';
 export interface IIncidentStore {
   create(incident: Incident): Promise<Incident>;
   getById(id: string): Promise<Incident | null>;
-  list(filter?: { status?: IncidentStatus; priority?: Priority; q?: string; since?: number }): Promise<Incident[]>;
+  list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]>;
   update(id: string, updates: Partial<Incident>): Promise<Incident | null>;
   clear(): Promise<void>;
 }
@@ -27,11 +27,14 @@ export class InMemoryIncidentStore implements IIncidentStore {
     return this.incidents.get(id) || null;
   }
 
-  async list(filter?: { status?: IncidentStatus; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
     let result = Array.from(this.incidents.values());
 
     if (filter?.status) {
-      result = result.filter((incident) => incident.status === filter.status);
+      const statusList = Array.isArray(filter.status) ? filter.status : [filter.status];
+      if (statusList.length > 0) {
+        result = result.filter((incident) => statusList.includes(incident.status));
+      }
     }
     if (filter?.priority) {
       result = result.filter((incident) => incident.priority === filter.priority);
@@ -130,7 +133,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
     }
   }
 
-  async list(filter?: { status?: IncidentStatus; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
     if (this.isMock()) {
       return this.memoryStore.list(filter);
     }

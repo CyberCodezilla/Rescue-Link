@@ -103,14 +103,11 @@ incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 
   let list = await incidentStore.list({
+    status: validStatuses.length > 0 ? validStatuses : undefined,
     priority: validPriority,
     q: searchQuery,
     since: sinceTimestamp,
   });
-
-  if (validStatuses.length > 0) {
-    list = list.filter((incident) => validStatuses.includes(incident.status));
-  }
 
   const hasPagination =
     typeof pageQuery === 'string' || typeof limitQuery === 'string';
