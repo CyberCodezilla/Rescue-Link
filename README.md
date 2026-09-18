@@ -1,16 +1,30 @@
 # RescueLink
 
-Offline-first emergency response platform with survivor SOS, responder dispatch, AI triage, real-time SSE, DynamoDB, SNS, SES, and AWS Lambda workflows.
+Offline-first disaster emergency response platform featuring survivor SOS ingestion, AI-driven emergency triage, automated responder dispatch, real-time SSE event streaming, structured telemetry, and cloud resilience via AWS Lambda, Step Functions, DynamoDB, SNS, and SES.
 
-## AWS architecture
+## 🏗️ System Architecture
 
-Express.js remains responsible for REST APIs and long-lived SSE connections. AWS Step Functions orchestrates asynchronous emergency processing through Lambda.
+RescueLink operates in a hybrid deployment mode: Express.js powers the high-concurrency REST API, local background notification queue, and long-lived Server-Sent Events (SSE) connections, while AWS Step Functions orchestrates cloud-native asynchronous emergency processing.
 
 ```text
-Survivor → Express API → Step Functions
-                         ├─ Lambda → Bedrock → DynamoDB
-                         ├─ Lambda → SNS / SES
-                         └─ Lambda → Express callback → SSE → Responder
+Survivor SOS → Express API → LifeSafetyTracer Telemetry
+                              ├─ Local Path: Bedrock AI / Circuit Breaker → NotificationQueue (SNS/SES) → SSE Stream
+                              └─ AWS Cloud Path: Step Functions State Machine
+                                                 ├─ Triage Lambda → AWS Bedrock → DynamoDB
+                                                 ├─ Notification Lambda → SNS SMS / SES Email
+                                                 └─ Callback Lambda → Express Callback → SSE Broadcast
 ```
 
-See `docs/AWS_LAMBDA_INTEGRATION.md` for Lambda deployment and `docs/SATELLITE_UPLINK.md` for the satellite / LoRa uplink path.
+## 🛠️ Key Monorepo Components
+
+- **`apps/api`**: Express.js REST & SSE API with rate limiting, background `NotificationQueue`, `BedrockService` circuit breaker, and DynamoDB GSI queries.
+- **`apps/lambda`**: AWS Lambda functions (`triage`, `notifications`, `callback`, `satellite`) for serverless emergency workflow execution.
+- **`apps/survivor-web`**: Offline-first Next.js PWA with IndexedDB offline queue, voice distress recorder, and auto-sync worker.
+- **`apps/responder-web`**: Real-time responder tactical dashboard with map visualization, unit assignment, and SSE updates.
+- **`packages/schema`**: Shared Zod schemas, TypeScript types, domain models, heuristic triage evaluator, and alert notification formatters.
+- **`packages/config`**: Centralized environment variable validation (`validateApiEnv`, `validateClientEnv`) and helper parsers.
+
+## 📚 Documentation & Reference Guides
+
+- `docs/AWS_LAMBDA_INTEGRATION.md`: Serverless deployment and SAM template configuration (`template.yaml`).
+- `docs/SATELLITE_UPLINK.md`: Satellite and LoRa emergency uplink integration via AWS IoT Core.

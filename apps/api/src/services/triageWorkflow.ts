@@ -56,7 +56,18 @@ export class TriageWorkflowOrchestrator {
     if (CONFIG.STATE_MACHINE_ARN) {
       try {
         const started = await this.startAwsWorkflow(incident);
-        if (started) return started;
+        if (started) {
+          LifeSafetyTracer.log({
+            traceId: effectiveTraceId,
+            incidentId: incident.id,
+            step: 'TRIAGE_COMPLETE',
+            timestamp: Date.now(),
+            status: 'SUCCESS',
+            priority: incident.priority,
+            mode: 'step_functions',
+          });
+          return started;
+        }
       } catch (error) {
         console.error(`[TriageWorkflow] Step Functions start failed for ${incident.id}, using local fallback:`, error);
       }

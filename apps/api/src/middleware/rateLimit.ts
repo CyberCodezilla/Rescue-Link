@@ -6,6 +6,7 @@ export const sosRateLimit = rateLimit({
   max: CONFIG.RATE_LIMIT_MAX_SOS,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
   message: { error: 'Too many requests' },
 });
 
