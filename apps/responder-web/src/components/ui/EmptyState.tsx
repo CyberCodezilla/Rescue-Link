@@ -9,15 +9,15 @@ interface EmptyStateProps {
 
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2.5 rounded-md border border-dashed border-line-2 bg-surface-2/30 px-6 py-12 text-center">
-      <Inbox size={28} className="text-ink-500" />
-      <p className="font-mono text-xs font-bold uppercase tracking-wider text-ink-900">{title}</p>
-      <p className="font-mono text-xs text-ink-500 max-w-sm">{description}</p>
+    <div className="flex flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-12 text-center backdrop-blur-sm shadow-sm">
+      <Inbox size={28} className="text-slate-500" />
+      <p className="font-mono text-xs font-bold uppercase tracking-wider text-slate-200">{title}</p>
+      <p className="font-mono text-xs text-slate-400 max-w-sm">{description}</p>
       {action ? (
         <button
           type="button"
           onClick={action.onClick}
-          className="mt-2 rounded border border-line-2 bg-surface-2 px-3.5 py-1.5 font-mono text-xs font-semibold text-ink-700 hover:text-ink-900 hover:bg-surface-3 transition-colors"
+          className="mt-2 rounded-lg border border-slate-700 bg-slate-800 px-4 py-1.5 font-mono text-xs font-bold text-slate-200 hover:text-white hover:bg-slate-700 transition-all duration-150 shadow-sm active:scale-95"
         >
           {action.label}
         </button>

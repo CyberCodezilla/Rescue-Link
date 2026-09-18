@@ -92,8 +92,15 @@ export default function DashboardPage() {
             type="button"
             onClick={handleUnlockAudio}
             disabled={audioUnlocked}
-            className="rounded border border-action/40 bg-action/15 px-3 py-1 font-mono text-xs font-bold text-action hover:bg-action/25 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+            className={`flex items-center gap-2 rounded-lg border px-3.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all duration-200 shadow-sm active:scale-95 disabled:cursor-not-allowed ${
+              audioUnlocked
+                ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                : 'border-blue-500/50 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50 hover:text-white shadow-[0_0_10px_rgba(59,130,246,0.2)]'
+            }`}
           >
+            <span
+              className={`h-2 w-2 rounded-full ${audioUnlocked ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]' : 'bg-blue-400 shadow-[0_0_6px_#60a5fa] animate-pulse'}`}
+            />
             {audioUnlocked ? 'AUDIO RELAY ARMED' : 'ARM AUDIO ALERTS'}
           </button>
         </div>

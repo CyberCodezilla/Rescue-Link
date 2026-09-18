@@ -17,7 +17,7 @@ interface IncidentFiltersProps {
 }
 
 const selectClasses =
-  'rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs text-ink-900 focus:border-action focus:outline-none focus:ring-1 focus:ring-action transition-colors cursor-pointer';
+  'rounded-lg border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 font-mono text-xs font-medium text-slate-200 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all duration-150 cursor-pointer hover:border-slate-600 hover:bg-slate-900';
 
 export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
   const isFiltered =
@@ -26,13 +26,13 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
     filters.category !== DEFAULT_FILTERS.category;
 
   return (
-    <div className="flex flex-wrap items-end gap-3 p-3 bg-surface/50 border border-line rounded-md">
-      <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-ink-500 uppercase tracking-wider mr-1">
-        <Filter size={14} className="text-action" />
+    <div className="flex flex-wrap items-end gap-3 p-3.5 bg-slate-900/60 border border-slate-800/80 rounded-xl shadow-sm backdrop-blur-md">
+      <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mr-1">
+        <Filter size={14} className="text-blue-400" />
         <span>FILTERS:</span>
       </div>
 
-      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-ink-500">
+      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
         Status
         <select
           className={selectClasses}
@@ -49,7 +49,7 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-ink-500">
+      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
         Priority
         <select
           className={selectClasses}
@@ -65,7 +65,7 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-ink-500">
+      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
         Category
         <select
           className={selectClasses}
@@ -85,10 +85,10 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
         <button
           type="button"
           onClick={() => onChange(DEFAULT_FILTERS)}
-          className="flex items-center gap-1 rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs font-semibold text-ink-700 hover:text-ink-900 hover:bg-surface-3 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/90 px-3 py-1.5 font-mono text-xs font-bold text-slate-200 hover:text-white hover:bg-slate-700 transition-all duration-150 shadow-sm active:scale-95"
         >
           <X size={12} />
-          CLEAR
+          <span>CLEAR</span>
         </button>
       ) : null}
     </div>
