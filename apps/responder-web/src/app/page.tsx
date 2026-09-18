@@ -329,11 +329,13 @@ export default function DashboardPage() {
         </main>
 
         {/* Tactical Slide-Over Dispatcher Side Panel Drawer */}
-        <DispatchDrawer
-          incident={drawerIncident}
-          onClose={() => setDrawerIncident(null)}
-          onUpdated={handleDrawerUpdated}
-        />
+        {drawerIncident ? (
+          <DispatchDrawer
+            incident={drawerIncident}
+            onClose={() => setDrawerIncident(null)}
+            onUpdated={handleDrawerUpdated}
+          />
+        ) : null}
       </div>
     </ThemeProvider>
   );

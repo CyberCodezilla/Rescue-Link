@@ -46,7 +46,7 @@ import {
 } from '@responder/lib/dispatcherRecommendations';
 
 interface DispatchDrawerProps {
-  incident: IncidentResponse | null;
+  incident: IncidentResponse;
   onClose: () => void;
   onUpdated: (incident: IncidentResponse) => void;
 }
@@ -59,8 +59,6 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
 };
 
 export function DispatchDrawer({ incident, onClose, onUpdated }: DispatchDrawerProps) {
-  if (!incident) return null;
-
   const category = getCategory(incident);
   const Icon = CATEGORY_ICONS[category] || HelpCircle;
   const casualties = getPeopleAffected(incident);
@@ -248,7 +246,7 @@ export function DispatchDrawer({ incident, onClose, onUpdated }: DispatchDrawerP
   };
 
   return (
-    <>
+    <div className="relative z-50">
       {/* Backdrop */}
       <div
         onClick={onClose}
@@ -643,6 +641,6 @@ export function DispatchDrawer({ incident, onClose, onUpdated }: DispatchDrawerP
           onUpdated={onUpdated}
         />
       )}
-    </>
+    </div>
   );
 }
