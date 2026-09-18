@@ -33,11 +33,13 @@ export async function fetchWithRetry(
         if (attempt < maxRetries) {
           attempt++;
           const retryAfterHeader = response.headers.get('Retry-After');
-          const delayMs = retryAfterHeader
+          const baseDelay = retryAfterHeader
             ? (parseInt(retryAfterHeader, 10) * 1000) || (initialDelayMs * Math.pow(backoffFactor, attempt - 1))
             : (initialDelayMs * Math.pow(backoffFactor, attempt - 1));
+          // Full decorrelated jitter (75% - 125% of base delay) to prevent thundering herd spikes
+          const delayMs = Math.floor(baseDelay * 0.75 + Math.random() * (baseDelay * 0.5));
 
-          console.warn(`[SurvivorAPI] Rate limited (429) on ${url}. Retrying attempt ${attempt}/${maxRetries} after ${delayMs}ms...`);
+          console.warn(`[SurvivorAPI] Rate limited (429) on ${url}. Retrying attempt ${attempt}/${maxRetries} after ${delayMs}ms (jittered)...`);
           await new Promise((res) => setTimeout(res, delayMs));
           continue;
         }

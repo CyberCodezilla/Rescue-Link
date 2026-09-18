@@ -246,7 +246,7 @@ Assistant:`;
   /**
    * Intelligent heuristic AI fallback engine when offline or without active AWS keys.
    */
-  private generateHeuristicTriage(incident: Incident): BedrockTriageResult {
+  public generateHeuristicTriage(incident: Incident): BedrockTriageResult {
     let priority: Priority = 'medium';
     let suggestedAction = 'Stay calm, keep location service active, and await rescue team dispatch.';
     let summary = `Triage completed for ${incident.category} alert.`;

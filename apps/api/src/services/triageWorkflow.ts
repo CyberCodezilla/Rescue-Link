@@ -63,18 +63,58 @@ export class TriageWorkflowOrchestrator {
       return finalIncident;
     } catch (error) {
       const durationMs = Date.now() - startTime;
+      console.warn(
+        `[TriageWorkflow] Bedrock or async triage failed for ${incident.id}, falling back to deterministic heuristic triage:`,
+        error
+      );
+
+      // Deterministic rule-based fallback so life-safety triage never stays stranded in 'pending_triage'
+      const fallbackResult = bedrockService.generateHeuristicTriage(incident);
+
+      let finalIncident: Incident = {
+        ...incident,
+        priority: fallbackResult.priority,
+        triage: {
+          ...(incident.triage || {}),
+          ...fallbackResult.triage,
+        },
+        updatedAt: Date.now(),
+      };
+
+      try {
+        const updated = await incidentStore.update(incident.id, {
+          priority: fallbackResult.priority,
+          triage: finalIncident.triage,
+        });
+        if (updated) finalIncident = updated;
+      } catch (storeErr) {
+        console.error(`[TriageWorkflow] Store update failed during fallback triage:`, storeErr);
+      }
+
       LifeSafetyTracer.log({
         traceId,
         incidentId: incident.id,
         step: 'TRIAGE_COMPLETE',
         timestamp: Date.now(),
         durationMs,
-        status: 'FAILED',
+        status: 'WARNING',
+        mode: 'heuristic_fallback',
+        priority: finalIncident.priority,
         error: error instanceof Error ? error.message : String(error),
+        metadata: { reason: 'Async Bedrock triage failed, recovered via heuristic fallback' },
       });
 
-      console.error(`[TriageWorkflow] Failed async triage for incident ${incident.id}:`, error);
-      return incident;
+      // Broadcast updated incident state via SSE
+      eventStreamManager.broadcast({
+        type: 'incident:updated',
+        incident: finalIncident,
+        timestamp: Date.now(),
+      });
+
+      // Decoupled background notification queue (non-blocking) with trace correlation
+      notificationQueue.enqueue(finalIncident, traceId);
+
+      return finalIncident;
     }
   }
 }

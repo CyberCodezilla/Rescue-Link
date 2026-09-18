@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Incident, IncidentStatus, Priority, IncidentSchema } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 import { DynamoIncidentStore } from './dynamoStore';
@@ -140,16 +141,22 @@ export class DelegatingIncidentStore implements IIncidentStore {
   }
 
   async create(incident: Incident): Promise<Incident> {
+    // Upfront schema enforcement at the persistence entry point
+    const validated = IncidentSchema.parse(incident);
+
     if (this.isMock()) {
-      return this.memoryStore.create(incident);
+      return this.memoryStore.create(validated);
     }
     try {
-      const created = await this.dynamoStore.create(incident);
+      const created = await this.dynamoStore.create(validated);
       await this.memoryStore.create(created);
       return created;
     } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw err;
+      }
       this.recordFallback('create', err);
-      return this.memoryStore.create(incident);
+      return this.memoryStore.create(validated);
     }
   }
 
@@ -192,6 +199,9 @@ export class DelegatingIncidentStore implements IIncidentStore {
       }
       return updated ?? this.memoryStore.update(id, updates);
     } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw err;
+      }
       this.recordFallback('update', err);
       return this.memoryStore.update(id, updates);
     }

@@ -11,6 +11,7 @@ import {
 } from '@rescue-link/schema';
 import { incidentStore } from '../store/incidentStore';
 import { triageWorkflow } from '../services/triageWorkflow';
+import { LifeSafetyTracer } from '../services/lifeSafetyTracer';
 import { eventStreamManager } from '../services/eventStream';
 import { CONFIG } from '@rescue-link/config';
 import { sosRateLimiter } from '../middleware/rateLimit';
@@ -54,6 +55,21 @@ incidentsRouter.post('/', sosRateLimiter, async (req: Request, res: Response): P
     },
   };
 
+  const traceId = LifeSafetyTracer.createTraceId(newIncident.id);
+  LifeSafetyTracer.log({
+    traceId,
+    incidentId: newIncident.id,
+    step: 'ROUTE_RECVD',
+    timestamp: now,
+    status: 'STARTED',
+    priority: newIncident.priority,
+    metadata: {
+      category: payload.category,
+      peopleAffected: payload.peopleAffected,
+      ip: req.ip,
+    },
+  });
+
   const created = await incidentStore.create(newIncident);
 
   // Broadcast creation to connected SSE clients
@@ -63,8 +79,8 @@ incidentsRouter.post('/', sosRateLimiter, async (req: Request, res: Response): P
     timestamp: now,
   });
 
-  // Trigger background AI triage workflow
-  triageWorkflow.runTriage(created).catch((err) => {
+  // Trigger background AI triage workflow with correlated traceId
+  triageWorkflow.runTriage(created, traceId).catch((err) => {
     console.error(`[IncidentsRouter] Triage background task error for ${created.id}:`, err);
   });
 

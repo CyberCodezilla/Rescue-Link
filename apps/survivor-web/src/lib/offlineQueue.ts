@@ -108,6 +108,10 @@ export async function flushPendingIncidents(
         const serverId = data.id || data.incident?.id || `srv-${Date.now()}`;
         await removePendingIncident(item.localId);
         syncedIncidents.push({ localId: item.localId, serverId });
+      } else if (response.status === 429) {
+        failedCount++;
+        console.warn('[OfflineQueue] Rate limited (429) during bulk sync. Pausing queue flush until cooldown.');
+        break; // Halt batch processing early to prevent rate limit hammering
       } else {
         failedCount++;
       }

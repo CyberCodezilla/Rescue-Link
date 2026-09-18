@@ -78,6 +78,8 @@ export const ClientEnvSchema = z.object({
   RESCUE_LINK_API_ORIGIN: z.string().default('http://localhost:3001'),
   NEXT_PUBLIC_API_KEY: z.string().default('rescuelink-responder-key-2026'),
   NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN: z.string().optional(),
+  NEXT_PUBLIC_MAP_TILE_URL: z.string().default('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+  NEXT_PUBLIC_MAP_TILE_ATTRIBUTION: z.string().default('&copy; OpenStreetMap contributors'),
 });
 
 export type ClientEnv = z.infer<typeof ClientEnvSchema>;
