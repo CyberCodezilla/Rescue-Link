@@ -183,6 +183,8 @@ export function IncidentMap({
 
     let tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
     let maxZoom = 16;
+    let maxNativeZoom: number | undefined = undefined;
+    let subdomains: string[] = ['a', 'b', 'c'];
     let attribution = '&copy; Esri &mdash; Tactical Dark HUD';
 
     const container = map.getContainer();
@@ -193,9 +195,11 @@ export function IncidentMap({
       attribution = '&copy; Esri, DigitalGlobe, Earthstar Geographics &mdash; Photorealistic Satellite Recon';
     } else if (activeMode === 'topo') {
       container.classList.remove('leaflet-thermal-mode');
-      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+      tileUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
       maxZoom = 18;
-      attribution = '&copy; Esri, USGS, NOAA &mdash; Topographic Elevation & Contours';
+      maxNativeZoom = 17;
+      subdomains = ['a', 'b', 'c'];
+      attribution = '&copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)';
     } else if (activeMode === 'thermal') {
       container.classList.add('leaflet-thermal-mode');
       tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
@@ -208,7 +212,7 @@ export function IncidentMap({
       attribution = '&copy; Esri &mdash; Tactical Dark HUD';
     }
 
-    const newBase = L.tileLayer(tileUrl, { maxZoom, attribution });
+    const newBase = L.tileLayer(tileUrl, { maxZoom, maxNativeZoom, subdomains, attribution });
     newBase.addTo(map);
     baseLayerRef.current = newBase;
 
@@ -478,6 +482,8 @@ export function IncidentMap({
     </div>
   );
 }
+
+
 
 
 

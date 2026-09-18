@@ -57,15 +57,16 @@ export function MapLegend({ currentMode, variant = 'panel', className = '' }: Ma
                 <div className="rounded border border-line-2 bg-surface-2/60 p-2 text-[11px] space-y-1.5">
                   <div className="flex items-center gap-1.5 text-amber-400 font-semibold">
                     <Mountain size={12} />
-                    <span>Topographic & Elevation Contours</span>
+                    <span>OpenTopoMap Elevation & Depth Contours</span>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-ink-500">
-                    <span>Sea Level / Basin</span>
-                    <span>High Ridge / Summit</span>
+                  <div className="flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-emerald-400">Sea Level / Basin (0-20m)</span>
+                    <span className="text-amber-400">Slope (50-150m)</span>
+                    <span className="text-rose-400">Peak (250m+)</span>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-emerald-600 via-amber-500 to-yellow-200" />
+                  <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 via-orange-500 to-rose-600" />
                   <p className="text-[10px] text-ink-500 font-sans leading-tight">
-                    Contour intervals show terrain elevation, slope angles, and flood run-off channels.
+                    Hypsometric elevation contour lines with altitude numbers and 3D hillshaded relief.
                   </p>
                 </div>
               )}
@@ -152,15 +153,16 @@ export function MapLegend({ currentMode, variant = 'panel', className = '' }: Ma
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-xs">
                     <Mountain size={13} />
-                    <span>Topographic & Elevation Contours</span>
+                    <span>OpenTopoMap Elevation & Depth Contours</span>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-ink-500">
-                    <span>Sea Level / Basin</span>
-                    <span>High Ridge / Summit</span>
+                  <div className="flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-emerald-400">Sea Level / Basin (0-20m)</span>
+                    <span className="text-amber-400">Mid-Slope (50-150m)</span>
+                    <span className="text-rose-400">High Peak (250m+)</span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-gradient-to-r from-emerald-600 via-amber-500 to-yellow-200" />
+                  <div className="h-2 w-full rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 via-orange-500 to-rose-600" />
                   <p className="text-[11px] text-ink-500 font-sans leading-relaxed">
-                    Contour intervals and shaded relief depict terrain slope, elevation gradients, and drainage basins.
+                    Accurate hypsometric elevation contour lines (isohypses) with altitude metrics and 3D hillshaded relief denoting terrain gradient, slope angle, and drainage depth.
                   </p>
                 </div>
               )}
@@ -263,4 +265,5 @@ export function MapLegend({ currentMode, variant = 'panel', className = '' }: Ma
     </div>
   );
 }
+
 
