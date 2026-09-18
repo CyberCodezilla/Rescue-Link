@@ -89,8 +89,22 @@ export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
     throw new Error('NODE_ENV must be development, test, or production');
   }
 
-  if (nodeEnv === 'production' && (!env.API_KEY || env.API_KEY === 'rescuelink-responder-key-2026')) {
-    throw new Error('API_KEY environment variable must be explicitly defined in production');
+  if (nodeEnv === 'production') {
+    if (!env.API_KEY || env.API_KEY === 'rescuelink-responder-key-2026') {
+      throw new Error('API_KEY environment variable must be explicitly defined in production');
+    }
+    if (env.DYNAMODB_TABLE_INCIDENTS !== undefined && env.DYNAMODB_TABLE_INCIDENTS.trim() === '') {
+      throw new Error('DYNAMODB_TABLE_INCIDENTS environment variable cannot be empty in production');
+    }
+    if (env.SES_FROM_EMAIL && env.SES_FROM_EMAIL.includes('example.com')) {
+      throw new Error('SES_FROM_EMAIL cannot use placeholder example.com in production');
+    }
+    if (env.SES_ALERT_RECIPIENT && env.SES_ALERT_RECIPIENT.includes('example.com')) {
+      throw new Error('SES_ALERT_RECIPIENT cannot use placeholder example.com in production');
+    }
+    if (env.LAMBDA_CALLBACK_SECRET === 'change-me') {
+      throw new Error('LAMBDA_CALLBACK_SECRET must not be placeholder value in production');
+    }
   }
 
   const apiKey = env.API_KEY ?? 'rescuelink-responder-key-2026';
