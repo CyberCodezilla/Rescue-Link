@@ -11,11 +11,13 @@ export const CONFIG = {
   // ── AWS Core ──────────────────────────────────────────────────────────────
   AWS_REGION: process.env.AWS_REGION || 'us-east-1',
   DYNAMODB_TABLE_INCIDENTS: process.env.DYNAMODB_TABLE_INCIDENTS || 'rescue-incidents',
-  /** Set to 'true' explicitly to use the in-memory mock store (dev only). */
-  USE_LOCAL_MOCK_STORE: process.env.USE_LOCAL_MOCK_STORE === 'true',
+  /** Set to 'true' explicitly to use the in-memory mock store, default to true in non-production. */
+  USE_LOCAL_MOCK_STORE: process.env.USE_LOCAL_MOCK_STORE
+    ? process.env.USE_LOCAL_MOCK_STORE === 'true'
+    : (process.env.NODE_ENV || 'development') !== 'production',
 
   // ── Bedrock / LLM ────────────────────────────────────────────────────────
-  BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0',
+  BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID || 'anthropic.claude-haiku-4-5-20251001-v1:0',
   BEDROCK_MAX_TOKENS: process.env.BEDROCK_MAX_TOKENS
     ? parseInt(process.env.BEDROCK_MAX_TOKENS, 10)
     : 300,
@@ -65,7 +67,12 @@ export const CONFIG = {
     ? parseFloat(process.env.TRIAGE_HEURISTIC_CONFIDENCE)
     : 0.92,
 
-  // ── Broadcast ─────────────────────────────────────────────────────────────
+  // ── Broadcast & Security ──────────────────────────────────────────────────
   /** Default communication channel for survivor broadcasts. */
   DEFAULT_BROADCAST_CHANNEL: process.env.DEFAULT_BROADCAST_CHANNEL || 'wifi',
+  /** Comma-separated list of allowed CORS origins for production. */
+  ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
 };

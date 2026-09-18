@@ -37,7 +37,7 @@ In Phase 1, the foundational offline-first architecture was created, tested, and
 4. **Panic-Resilient & Accessible UI (`src/components/SOSForm.tsx`)**:
    - High-contrast emergency color tokens (deep obsidian, safety yellow, danger red, emerald green).
    - Generous 56px+ touch targets optimized for one-handed operation under tremor or stress.
-   - 1-tap browser geolocation capture ([useGeolocation.ts](file:///apps/survivor-web/src/hooks/useGeolocation.ts)) with manual coordinates fallback.
+   - 1-tap browser geolocation capture ([useGeolocation.ts](./apps/survivor-web/src/hooks/useGeolocation.ts)) with manual coordinates fallback.
    - Urgent needs multi-select tags (`medical`, `boat`, `food`, `clean_water`, `infant_care`), people affected counter, and reporter contact selector.
 
 5. **Shared Schema & Contract Alignment (`src/lib/validation.ts`)**:

@@ -151,8 +151,11 @@ export function IncidentMap({
       zoomControl: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
+    const tileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileAttr = process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION || '© OpenStreetMap contributors';
+
+    L.tileLayer(tileUrl, {
+      attribution: tileAttr,
       maxZoom: 19,
     }).addTo(map);
 

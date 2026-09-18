@@ -2,9 +2,9 @@ name: RescueLink CI
 
 on:
   push:
-    branches: [ main, feature/* ]
+    branches: [ main, 'feature/**', rescuer, responder, survivor ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, rescuer, responder, survivor ]
 
 jobs:
   build-and-test:
