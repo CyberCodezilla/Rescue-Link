@@ -1,4 +1,4 @@
-import { Incident, IncidentStatus, Priority } from '@rescue-link/schema';
+import { Incident, IncidentStatus, Priority, IncidentSchema } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 import { DynamoIncidentStore } from './dynamoStore';
 
@@ -21,8 +21,9 @@ export class InMemoryIncidentStore implements IIncidentStore {
   private incidents: Map<string, Incident> = new Map();
 
   async create(incident: Incident): Promise<Incident> {
-    this.incidents.set(incident.id, incident);
-    return incident;
+    const validIncident = IncidentSchema.parse(incident);
+    this.incidents.set(validIncident.id, validIncident);
+    return validIncident;
   }
 
   async getById(id: string): Promise<Incident | null> {
@@ -73,8 +74,9 @@ export class InMemoryIncidentStore implements IIncidentStore {
       updatedAt: Date.now(),
     };
 
-    this.incidents.set(id, updated);
-    return updated;
+    const validUpdated = IncidentSchema.parse(updated);
+    this.incidents.set(id, validUpdated);
+    return validUpdated;
   }
 
   async clear(): Promise<void> {

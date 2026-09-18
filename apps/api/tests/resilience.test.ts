@@ -47,4 +47,21 @@ describe('Resilience & Telemetry Unit Tests', () => {
     expect(result.priority).toBe('critical');
     expect(result.triage.suggestedAction).toContain('CRITICAL');
   });
+
+  it('enforces IncidentSchema validation at store persistence boundary and rejects malformed objects', async () => {
+    const malformedIncident: any = {
+      id: 'malformed-1',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      status: 'invalid_status_enum',
+      priority: 'critical',
+      category: 'fire',
+      description: 'Test',
+      peopleAffected: -5,
+      urgentNeeds: [],
+      location: { lat: 999, lng: 999 }, // Out of bounds coordinates
+    };
+
+    await expect(incidentStore.create(malformedIncident)).rejects.toThrow();
+  });
 });

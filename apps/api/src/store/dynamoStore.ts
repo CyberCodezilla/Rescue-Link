@@ -1,4 +1,4 @@
-import { Incident, IncidentStatus, Priority } from '@rescue-link/schema';
+import { Incident, IncidentStatus, Priority, IncidentSchema } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 import type { IncidentFilterOptions } from './incidentStore';
 
@@ -22,16 +22,18 @@ export class DynamoIncidentStore {
   }
 
   async create(incident: Incident): Promise<Incident> {
+    // Persistence Boundary Guard: Enforce strict schema validation before writing to DynamoDB
+    const validIncident = IncidentSchema.parse(incident);
     const { docClient, PutCommand } = await this.getDocClient();
 
     await docClient.send(
       new PutCommand({
         TableName: this.tableName,
-        Item: incident,
+        Item: validIncident,
       })
     );
 
-    return incident;
+    return validIncident;
   }
 
   async getById(id: string): Promise<Incident | null> {
@@ -44,7 +46,13 @@ export class DynamoIncidentStore {
       })
     );
 
-    return (res.Item as Incident) || null;
+    if (!res.Item) return null;
+    const parsed = IncidentSchema.safeParse(res.Item);
+    if (!parsed.success) {
+      console.warn(`[DynamoIncidentStore] Ignored malformed item in DB (ID: ${id}):`, parsed.error.format());
+      return null;
+    }
+    return parsed.data;
   }
 
   async list(filter?: IncidentFilterOptions): Promise<Incident[]> {
@@ -61,7 +69,14 @@ export class DynamoIncidentStore {
         })
       );
       if (res.Items) {
-        items.push(...(res.Items as Incident[]));
+        for (const item of res.Items) {
+          const parsed = IncidentSchema.safeParse(item);
+          if (parsed.success) {
+            items.push(parsed.data);
+          } else {
+            console.warn(`[DynamoIncidentStore] Ignored malformed item in DB list scan (ID: ${item?.id}):`, parsed.error.format());
+          }
+        }
       }
       lastEvaluatedKey = res.LastEvaluatedKey;
     } while (lastEvaluatedKey);
@@ -108,8 +123,10 @@ export class DynamoIncidentStore {
       updatedAt: Date.now(),
     };
 
-    await this.create(updated);
-    return updated;
+    // Enforce persistence boundary schema validation before update
+    const validUpdated = IncidentSchema.parse(updated);
+    await this.create(validUpdated);
+    return validUpdated;
   }
 
   async clear(): Promise<void> {

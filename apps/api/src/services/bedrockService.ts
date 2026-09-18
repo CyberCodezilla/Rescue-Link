@@ -1,6 +1,8 @@
 import { Incident, IncidentTriage, Priority } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 
+import { LifeSafetyTracer } from './lifeSafetyTracer';
+
 /** Helper: checks if any element of `arr` is present in `keywords`. */
 const hasAny = (arr: string[], keywords: string[]): boolean =>
   arr.some((item) => keywords.includes(item));
@@ -95,19 +97,41 @@ export class BedrockService {
    * Generates AI Triage assessment for an incoming SOS Incident.
    * Gracefully falls back to heuristic rule-based AI engine when AWS credentials are not provided, circuit is open, or AI call times out.
    */
-  async triageIncident(incident: Incident): Promise<BedrockTriageResult> {
+  async triageIncident(incident: Incident, traceId?: string): Promise<BedrockTriageResult> {
     this.checkCircuitReset();
-
+    const effectiveTraceId = traceId || LifeSafetyTracer.createTraceId(incident.id);
     const hasAwsKeys = Boolean(process.env.AWS_ACCESS_KEY_ID || process.env.AWS_PROFILE);
 
     if (!hasAwsKeys) {
       console.info(`[BedrockService] TRIAGE_MODE: 'heuristic_fallback' | Reason: AWS credentials absent | Incident: ${incident.id}`);
-      return this.generateHeuristicTriage(incident);
+      const res = this.generateHeuristicTriage(incident);
+      LifeSafetyTracer.log({
+        traceId: effectiveTraceId,
+        incidentId: incident.id,
+        step: 'BEDROCK_TRIAGE',
+        timestamp: Date.now(),
+        status: 'WARNING',
+        mode: 'heuristic_fallback',
+        priority: res.priority,
+        metadata: { reason: 'AWS credentials absent' },
+      });
+      return res;
     }
 
     if (this.circuitOpen) {
       console.warn(`[BedrockService] TRIAGE_MODE: 'heuristic_fallback' | Reason: Circuit breaker is OPEN | Incident: ${incident.id}`);
-      return this.generateHeuristicTriage(incident);
+      const res = this.generateHeuristicTriage(incident);
+      LifeSafetyTracer.log({
+        traceId: effectiveTraceId,
+        incidentId: incident.id,
+        step: 'BEDROCK_TRIAGE',
+        timestamp: Date.now(),
+        status: 'WARNING',
+        mode: 'heuristic_fallback',
+        priority: res.priority,
+        metadata: { reason: 'Circuit breaker OPEN' },
+      });
+      return res;
     }
 
     try {
@@ -118,6 +142,15 @@ export class BedrockService {
       );
       this.recordSuccess();
       console.info(`[BedrockService] TRIAGE_MODE: 'bedrock' | Model: ${CONFIG.BEDROCK_MODEL_ID} | Priority: ${result.priority} | Incident: ${incident.id}`);
+      LifeSafetyTracer.log({
+        traceId: effectiveTraceId,
+        incidentId: incident.id,
+        step: 'BEDROCK_TRIAGE',
+        timestamp: Date.now(),
+        status: 'SUCCESS',
+        mode: 'bedrock',
+        priority: result.priority,
+      });
       return result;
     } catch (error) {
       this.recordFailure(error);
@@ -126,7 +159,18 @@ export class BedrockService {
         `[BedrockService] TRIAGE_MODE: 'heuristic_fallback' | Reason: ${isTimeout ? 'Bedrock API call timed out' : 'Bedrock SDK invocation failed'} | Incident: ${incident.id}`,
         error
       );
-      return this.generateHeuristicTriage(incident);
+      const fallbackRes = this.generateHeuristicTriage(incident);
+      LifeSafetyTracer.log({
+        traceId: effectiveTraceId,
+        incidentId: incident.id,
+        step: 'BEDROCK_TRIAGE',
+        timestamp: Date.now(),
+        status: 'WARNING',
+        mode: 'heuristic_fallback',
+        priority: fallbackRes.priority,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return fallbackRes;
     }
   }
 
