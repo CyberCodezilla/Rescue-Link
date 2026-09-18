@@ -38,7 +38,7 @@ export function useIncident(id: string): UseIncidentState {
         setIncidentState(data);
       })
       .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if ((err as any)?.name === 'AbortError' || err instanceof DOMException) return;
         if (latestRequestId.current !== requestId) return;
         if (err instanceof ApiError && err.status === 404) {
           setNotFound(true);

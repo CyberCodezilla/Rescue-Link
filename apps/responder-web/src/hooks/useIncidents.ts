@@ -6,6 +6,10 @@ import type { IncidentResponse } from '@responder/lib/schema';
 
 const POLL_INTERVAL_MS = 15_000;
 
+// Persistent in-memory session cache: holds incident data when navigating across pages
+let memoryCacheIncidents: IncidentResponse[] | null = null;
+let memoryLastRefreshedAt: Date | null = null;
+
 interface UseIncidentsState {
   incidents: IncidentResponse[] | null;
   isInitialLoading: boolean;
@@ -17,10 +21,11 @@ interface UseIncidentsState {
 }
 
 export function useIncidents(): UseIncidentsState {
-  const [incidents, setIncidents] = useState<IncidentResponse[] | null>(null);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  // Initialize immediately from memory cache so returning to dashboard never flashes empty/error
+  const [incidents, setIncidents] = useState<IncidentResponse[] | null>(memoryCacheIncidents);
+  const [isInitialLoading, setIsInitialLoading] = useState(memoryCacheIncidents === null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(memoryLastRefreshedAt);
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -32,7 +37,9 @@ export function useIncidents(): UseIncidentsState {
     isFetchingRef.current = true;
 
     const requestId = ++latestRequestId.current;
-    abortRef.current?.abort();
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -41,14 +48,23 @@ export function useIncidents(): UseIncidentsState {
     getIncidents(controller.signal)
       .then((data) => {
         if (latestRequestId.current !== requestId) return;
+        memoryCacheIncidents = data;
+        memoryLastRefreshedAt = new Date();
         setIncidents(data);
         setRefreshError(null);
-        setLastRefreshedAt(new Date());
+        setLastRefreshedAt(memoryLastRefreshedAt);
       })
       .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
+        // Silently ignore aborts when unmounting or re-requesting
+        if ((err as any)?.name === 'AbortError' || err instanceof DOMException) return;
         if (latestRequestId.current !== requestId) return;
-        setRefreshError(err instanceof ApiError ? err.message : 'Unable to load incidents.');
+        
+        // If we already have data in memory cache, NEVER wipe it out on a background sync glitch
+        if (memoryCacheIncidents && memoryCacheIncidents.length > 0) {
+          setIncidents(memoryCacheIncidents);
+        } else {
+          setRefreshError(err instanceof ApiError ? err.message : 'Unable to load incidents.');
+        }
       })
       .finally(() => {
         if (latestRequestId.current === requestId) {
@@ -61,11 +77,16 @@ export function useIncidents(): UseIncidentsState {
 
   const applyIncidentUpdate = useCallback((incident: IncidentResponse) => {
     setIncidents((current) => {
-      if (!current) return [incident];
-      const index = current.findIndex((item) => item.id === incident.id);
-      if (index === -1) return [incident, ...current];
-      const next = current.slice();
-      next[index] = incident;
+      const base = current || memoryCacheIncidents || [];
+      const index = base.findIndex((item) => item.id === incident.id);
+      let next: IncidentResponse[];
+      if (index === -1) {
+        next = [incident, ...base];
+      } else {
+        next = base.slice();
+        next[index] = incident;
+      }
+      memoryCacheIncidents = next;
       return next;
     });
     setRefreshError(null);
@@ -76,9 +97,20 @@ export function useIncidents(): UseIncidentsState {
     const interval = setInterval(load, POLL_INTERVAL_MS);
     return () => {
       clearInterval(interval);
-      abortRef.current?.abort();
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      isFetchingRef.current = false;
     };
   }, [load]);
 
-  return { incidents, isInitialLoading, isRefreshing, lastRefreshedAt, refreshError, refresh: load, applyIncidentUpdate };
+  return {
+    incidents,
+    isInitialLoading,
+    isRefreshing,
+    lastRefreshedAt,
+    refreshError,
+    refresh: load,
+    applyIncidentUpdate,
+  };
 }

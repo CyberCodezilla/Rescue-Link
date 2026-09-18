@@ -45,7 +45,7 @@ async function request(path: string, init?: RequestInit & { signal?: AbortSignal
       },
     });
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    if ((err as any)?.name === 'AbortError' || err instanceof DOMException) throw err;
     throw new ApiError('Unable to reach the server. Check your connection.');
   }
 
@@ -259,7 +259,7 @@ export async function getSensors(signal?: AbortSignal): Promise<SensorReading[]>
     const data = await request('/sensors', { signal });
     return Array.isArray(data) ? (data as SensorReading[]) : [];
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    if ((err as any)?.name === 'AbortError' || err instanceof DOMException) throw err;
     return [];
   }
 }
@@ -271,7 +271,7 @@ export async function getHazardZones(signal?: AbortSignal): Promise<HazardZone[]
     const data = await request('/hazard-zones', { signal });
     return Array.isArray(data) ? (data as HazardZone[]) : [];
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    if ((err as any)?.name === 'AbortError' || err instanceof DOMException) throw err;
     return [];
   }
 }
