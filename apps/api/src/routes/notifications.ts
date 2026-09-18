@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { notificationService } from '../services/notificationService';
 import { Incident } from '@rescue-link/schema';
 import { requireApiKey } from '../middleware/auth';
@@ -34,5 +34,3 @@ notificationsRouter.post('/test', requireApiKey, async (req: Request, res: Respo
     incident: mockIncident,
   });
 });
-
-

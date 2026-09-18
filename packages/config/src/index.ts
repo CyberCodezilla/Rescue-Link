@@ -1,4 +1,4 @@
-﻿export interface ApiEnvironmentConfig {
+export interface ApiEnvironmentConfig {
   PORT: number;
   NODE_ENV: 'development' | 'test' | 'production';
   AWS_REGION: string;
@@ -182,4 +182,10 @@ export function validateClientEnv(
   };
 }
 
-export const CONFIG = validateApiEnv(process.env);
+export const CONFIG = {
+  ...validateApiEnv(process.env),
+  SATELLITE_API_KEY: process.env.SATELLITE_API_KEY || '',
+  SATELLITE_IOT_TOPIC: process.env.SATELLITE_IOT_TOPIC || 'rescuelink/satellite/+/uplink',
+  SATELLITE_GATEWAY_URL: process.env.SATELLITE_GATEWAY_URL || '',
+  SATELLITE_GATEWAY_SECRET: process.env.SATELLITE_GATEWAY_SECRET || '',
+};
