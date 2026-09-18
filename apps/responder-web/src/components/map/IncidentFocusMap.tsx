@@ -198,8 +198,8 @@ export function IncidentFocusMap({
         {/* Leaflet Map Canvas */}
         <div ref={containerRef} className="h-full w-full" />
 
-        {/* Mode Switcher HUD Bar (Top-Right) */}
-        <div className="pointer-events-auto absolute top-2.5 right-2.5 z-[1000] flex items-center gap-1 bg-slate-950/90 border border-slate-700/80 p-1 rounded-md backdrop-blur-md shadow-lg">
+        {/* Mode Switcher HUD Bar (Shifted to bottom-right beside the +/- zoom buttons) */}
+        <div className="pointer-events-auto absolute bottom-2.5 right-12 z-[1000] flex items-center gap-1 bg-slate-950/92 border border-slate-700/80 p-1 rounded-md backdrop-blur-md shadow-xl">
           {(Object.keys(MODE_CONFIG) as MapMode[]).map((modeKey) => {
             const isActive = activeMode === modeKey;
             return (
@@ -260,3 +260,4 @@ export function IncidentFocusMap({
     </div>
   );
 }
+
