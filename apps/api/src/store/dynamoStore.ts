@@ -3,15 +3,25 @@ import { CONFIG } from '@rescue-link/config';
 
 export class DynamoIncidentStore {
   private tableName = CONFIG.DYNAMODB_TABLE_INCIDENTS;
+  private docClientPromise: Promise<{ docClient: any; PutCommand: any; GetCommand: any; ScanCommand: any }> | null = null;
+
+  private async getDocClient() {
+    if (!this.docClientPromise) {
+      this.docClientPromise = (async () => {
+        const clientPkg = '@aws-sdk/client-dynamodb';
+        const libPkg = '@aws-sdk/lib-dynamodb';
+        const { DynamoDBClient } = await import(clientPkg);
+        const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } = await import(libPkg);
+        const client = new DynamoDBClient({ region: CONFIG.AWS_REGION });
+        const docClient = DynamoDBDocumentClient.from(client);
+        return { docClient, PutCommand, GetCommand, ScanCommand };
+      })();
+    }
+    return this.docClientPromise;
+  }
 
   async create(incident: Incident): Promise<Incident> {
-    const clientPkg = '@aws-sdk/client-dynamodb';
-    const libPkg = '@aws-sdk/lib-dynamodb';
-    const { DynamoDBClient }: any = await import(clientPkg);
-    const { DynamoDBDocumentClient, PutCommand }: any = await import(libPkg);
-
-    const client = new DynamoDBClient({ region: CONFIG.AWS_REGION });
-    const docClient = DynamoDBDocumentClient.from(client);
+    const { docClient, PutCommand } = await this.getDocClient();
 
     await docClient.send(
       new PutCommand({
@@ -24,13 +34,7 @@ export class DynamoIncidentStore {
   }
 
   async getById(id: string): Promise<Incident | null> {
-    const clientPkg = '@aws-sdk/client-dynamodb';
-    const libPkg = '@aws-sdk/lib-dynamodb';
-    const { DynamoDBClient }: any = await import(clientPkg);
-    const { DynamoDBDocumentClient, GetCommand }: any = await import(libPkg);
-
-    const client = new DynamoDBClient({ region: CONFIG.AWS_REGION });
-    const docClient = DynamoDBDocumentClient.from(client);
+    const { docClient, GetCommand } = await this.getDocClient();
 
     const res = await docClient.send(
       new GetCommand({
@@ -43,21 +47,23 @@ export class DynamoIncidentStore {
   }
 
   async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
-    const clientPkg = '@aws-sdk/client-dynamodb';
-    const libPkg = '@aws-sdk/lib-dynamodb';
-    const { DynamoDBClient }: any = await import(clientPkg);
-    const { DynamoDBDocumentClient, ScanCommand }: any = await import(libPkg);
+    const { docClient, ScanCommand } = await this.getDocClient();
 
-    const client = new DynamoDBClient({ region: CONFIG.AWS_REGION });
-    const docClient = DynamoDBDocumentClient.from(client);
+    let items: Incident[] = [];
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
-    const res = await docClient.send(
-      new ScanCommand({
-        TableName: this.tableName,
-      })
-    );
-
-    let items = (res.Items as Incident[]) || [];
+    do {
+      const res: any = await docClient.send(
+        new ScanCommand({
+          TableName: this.tableName,
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+      if (res.Items) {
+        items.push(...(res.Items as Incident[]));
+      }
+      lastEvaluatedKey = res.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
 
     if (filter?.status) {
       items = items.filter((i) => i.status === filter.status);
@@ -76,6 +82,7 @@ export class DynamoIncidentStore {
     const updated: Incident = {
       ...existing,
       ...updates,
+      triage: updates.triage ? { ...(existing.triage || {}), ...updates.triage } : existing.triage,
       updatedAt: Date.now(),
     };
 

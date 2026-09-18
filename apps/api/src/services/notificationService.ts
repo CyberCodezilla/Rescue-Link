@@ -51,14 +51,39 @@ export class NotificationService {
     };
   }
 
+  private snsPromise: Promise<{ snsClient: any; PublishCommand: any }> | null = null;
+  private sesPromise: Promise<{ sesClient: any; SendEmailCommand: any }> | null = null;
+
+  private async getSnsClient() {
+    if (!this.snsPromise) {
+      this.snsPromise = (async () => {
+        const snsPkg = '@aws-sdk/client-sns';
+        const { SNSClient, PublishCommand } = await import(snsPkg);
+        const snsClient = new SNSClient({ region: CONFIG.AWS_REGION });
+        return { snsClient, PublishCommand };
+      })();
+    }
+    return this.snsPromise;
+  }
+
+  private async getSesClient() {
+    if (!this.sesPromise) {
+      this.sesPromise = (async () => {
+        const sesPkg = '@aws-sdk/client-ses';
+        const { SESClient, SendEmailCommand } = await import(sesPkg);
+        const sesClient = new SESClient({ region: CONFIG.AWS_REGION });
+        return { sesClient, SendEmailCommand };
+      })();
+    }
+    return this.sesPromise;
+  }
+
   /**
    * Send SNS SMS / Topic alert via AWS SDK v3
    */
   private async sendSnsNotification(incident: Incident): Promise<boolean> {
     try {
-      const snsPkg = '@aws-sdk/client-sns';
-      const { SNSClient, PublishCommand }: any = await import(snsPkg);
-      const snsClient = new SNSClient({ region: CONFIG.AWS_REGION });
+      const { snsClient, PublishCommand } = await this.getSnsClient();
 
       const smsText = `[RESCUELINK ${incident.priority.toUpperCase()} ALERT] ${incident.category.toUpperCase()} at Lat:${incident.location.lat}, Lng:${incident.location.lng}. ${incident.peopleAffected} affected. Directive: ${incident.triage?.suggestedAction || 'Awaiting dispatch'}`;
 
@@ -83,9 +108,7 @@ export class NotificationService {
    */
   private async sendSesNotification(incident: Incident): Promise<boolean> {
     try {
-      const sesPkg = '@aws-sdk/client-ses';
-      const { SESClient, SendEmailCommand }: any = await import(sesPkg);
-      const sesClient = new SESClient({ region: CONFIG.AWS_REGION });
+      const { sesClient, SendEmailCommand } = await this.getSesClient();
 
       const htmlBody = `
         <div style="font-family: Arial, sans-serif; padding: 20px; border: 2px solid #ef4444; border-radius: 8px;">
