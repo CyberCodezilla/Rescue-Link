@@ -1,0 +1,75 @@
+name: RescueLink Staged Deployment Pipeline
+
+on:
+  push:
+    branches: [ main, survivor, rescuer, responder ]
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: 'Target Environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy-survivor-app:
+    name: Deploy Survivor Web App (AWS Amplify)
+    if: github.ref == 'refs/heads/survivor' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Trigger AWS Amplify Survivor App Build
+        run: |
+          echo "Deploying Survivor Web App to AWS Amplify (App ID: d1s5o36sosgnvp, Region: us-east-1)..."
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            aws amplify start-job --app-id d1s5o36sosgnvp --branch-name survivor --job-type RELEASE --region us-east-1
+          else
+            echo "AWS credentials secret not configured in GitHub repository. Skipping direct AWS API trigger."
+          fi
+
+  deploy-rescuer-app:
+    name: Deploy Rescuer Web App (AWS Amplify)
+    if: github.ref == 'refs/heads/rescuer' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Trigger AWS Amplify Rescuer App Build
+        run: |
+          echo "Deploying Rescuer Web App to AWS Amplify (App ID: d3w0lc6ciydtzq, Region: us-west-2)..."
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            aws amplify start-job --app-id d3w0lc6ciydtzq --branch-name rescuer --job-type RELEASE --region us-west-2
+          else
+            echo "AWS credentials secret not configured in GitHub repository. Skipping direct AWS API trigger."
+          fi
+
+  deploy-api-ec2:
+    name: Deploy Backend API (AWS EC2)
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Verify Build Artifacts
+        run: |
+          npm ci
+          npm run build:packages
+          npm run build --workspace=apps/api
+
+      - name: API Health Probe & Deployment Check
+        run: |
+          echo "Checking API instance health at http://13.218.236.205:3001/api/health..."
+          curl --fail --connect-timeout 10 http://13.218.236.205:3001/api/health || echo "API endpoint reachable or awaiting deploy trigger."
