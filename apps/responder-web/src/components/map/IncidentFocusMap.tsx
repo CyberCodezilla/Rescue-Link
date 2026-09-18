@@ -20,6 +20,7 @@ const MODE_CONFIG: Record<
   MapMode,
   {
     label: string;
+    shortLabel: string;
     url: string;
     maxZoom: number;
     maxNativeZoom?: number;
@@ -30,6 +31,7 @@ const MODE_CONFIG: Record<
 > = {
   satellite: {
     label: 'SATELLITE RECON',
+    shortLabel: 'SATELLITE',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 18,
     attribution: '&copy; Esri, DigitalGlobe &mdash; Photorealistic Aerial Imagery',
@@ -37,6 +39,7 @@ const MODE_CONFIG: Record<
   },
   topo: {
     label: 'TOPOGRAPHY & DEPTH',
+    shortLabel: 'TOPO & DEPTH',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     maxZoom: 18,
     maxNativeZoom: 17,
@@ -46,6 +49,7 @@ const MODE_CONFIG: Record<
   },
   thermal: {
     label: 'THERMAL HAZARD',
+    shortLabel: 'THERMAL',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 18,
     attribution: '&copy; Esri, DigitalGlobe &mdash; False-Color Infrared Thermal Satellite Recon',
@@ -53,6 +57,7 @@ const MODE_CONFIG: Record<
   },
   tactical: {
     label: 'TACTICAL HUD',
+    shortLabel: 'TACTICAL',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 16,
     attribution: '&copy; Esri &mdash; Low-Light Command Grid',
@@ -198,8 +203,8 @@ export function IncidentFocusMap({
         {/* Leaflet Map Canvas */}
         <div ref={containerRef} className="h-full w-full" />
 
-        {/* Mode Switcher HUD Bar (Shifted to bottom-right beside the +/- zoom buttons) */}
-        <div className="pointer-events-auto absolute bottom-2.5 right-12 z-[1000] flex items-center gap-1 bg-slate-950/92 border border-slate-700/80 p-1 rounded-md backdrop-blur-md shadow-xl">
+        {/* Map Type Selection Tabs: Solid, High-Visibility Upper-Right Corner */}
+        <div className="pointer-events-auto absolute top-2.5 right-2.5 z-[1000] flex items-center gap-1.5 bg-[#0f172a] border border-[#334155] p-1.5 rounded-lg shadow-2xl">
           {(Object.keys(MODE_CONFIG) as MapMode[]).map((modeKey) => {
             const isActive = activeMode === modeKey;
             return (
@@ -208,28 +213,17 @@ export function IncidentFocusMap({
                 type="button"
                 onClick={() => setActiveMode(modeKey)}
                 aria-pressed={isActive}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded font-mono text-[10px] font-bold tracking-wider transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-xs font-bold tracking-wide transition-colors ${
                   isActive
-                    ? 'bg-action text-white shadow-[0_0_8px_rgba(59,130,246,0.5)]'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'bg-[#2563eb] text-[#ffffff] border border-[#60a5fa] shadow-[0_0_12px_rgba(37,99,235,0.7)]'
+                    : 'bg-[#1e293b] text-[#f1f5f9] border border-[#475569] hover:bg-[#334155] hover:text-[#ffffff]'
                 }`}
               >
                 {MODE_CONFIG[modeKey].icon}
-                <span className="hidden sm:inline">{MODE_CONFIG[modeKey].label}</span>
+                <span>{MODE_CONFIG[modeKey].shortLabel}</span>
               </button>
             );
           })}
-        </div>
-
-        {/* Top HUD Telemetry Ribbon */}
-        <div className="pointer-events-none absolute top-2.5 left-2.5 flex items-center gap-2 font-mono text-[10px] uppercase font-bold tracking-wider z-[1000]">
-          <span className="px-2.5 py-1 rounded bg-slate-950/85 border border-slate-700 text-action backdrop-blur-sm shadow">
-            {MODE_CONFIG[activeMode].label} // 15.0x
-          </span>
-          <span className="px-2.5 py-1 rounded bg-slate-950/85 border border-slate-700 text-red-400 backdrop-blur-sm shadow flex items-center gap-1.5 font-bold">
-            <span className="h-2 w-2 rounded-full bg-red-500 inline-block"></span>
-            EXACT INCIDENT FIX
-          </span>
         </div>
 
         {/* Accurate Topographic Height & Depth Telemetry Bar (Active in Topo Mode) */}
