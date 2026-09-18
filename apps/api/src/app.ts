@@ -1,35 +1,17 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
 import { healthRouter } from './routes/health';
 import { incidentsRouter } from './routes/incidents';
 import { eventsRouter } from './routes/events';
 import { telemetryRouter } from './routes/telemetry';
 import { notificationsRouter } from './routes/notifications';
-import { generalRateLimiter } from './middleware/rateLimit';
-
-import { CONFIG } from '@rescue-link/config';
+import { workflowCallbackRouter } from './routes/workflowCallback';
 
 export const createApp = (): Express => {
   const app = express();
 
-  // Security Headers via helmet
-  app.use(helmet());
-
-  // Strict CORS hardening
-  const defaultDevOrigins = ['http://localhost:3000', 'http://localhost:3002'];
-  const allowedOrigins = CONFIG.ALLOWED_ORIGINS.length > 0
-    ? CONFIG.ALLOWED_ORIGINS
-    : (CONFIG.NODE_ENV !== 'production' ? defaultDevOrigins : '*');
-
-  app.use(cors({
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
-  }));
-
+  app.use(cors());
   app.use(express.json());
-  app.use('/api', generalRateLimiter);
 
   app.get('/', (req: Request, res: Response) => {
     res.json({
@@ -48,6 +30,7 @@ export const createApp = (): Express => {
   app.use('/api/incidents', incidentsRouter);
   app.use('/api/events', eventsRouter);
   app.use('/api/notifications', notificationsRouter);
+  app.use('/api/workflows', workflowCallbackRouter);
   app.use('/api', telemetryRouter);
 
   // Fallback 404 handler

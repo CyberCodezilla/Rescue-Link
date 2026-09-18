@@ -37,7 +37,7 @@ In Phase 1, the foundational offline-first architecture was created, tested, and
 4. **Panic-Resilient & Accessible UI (`src/components/SOSForm.tsx`)**:
    - High-contrast emergency color tokens (deep obsidian, safety yellow, danger red, emerald green).
    - Generous 56px+ touch targets optimized for one-handed operation under tremor or stress.
-   - 1-tap browser geolocation capture ([useGeolocation.ts](./apps/survivor-web/src/hooks/useGeolocation.ts)) with manual coordinates fallback.
+   - 1-tap browser geolocation capture ([useGeolocation.ts](file:///apps/survivor-web/src/hooks/useGeolocation.ts)) with manual coordinates fallback.
    - Urgent needs multi-select tags (`medical`, `boat`, `food`, `clean_water`, `infant_care`), people affected counter, and reporter contact selector.
 
 5. **Shared Schema & Contract Alignment (`src/lib/validation.ts`)**:
@@ -252,7 +252,7 @@ npm run dev:responder    # http://localhost:3002
 | `HEAD` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): Phase 5 — emergency notification UI (priority badge, SMS/email dispatch confirmation, SNS contact helper, phase5 test suite)` |
 | `prev` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): Phase 4 synchronization - closed status support, 5-stage stepper, assignedTo lead officer display & phase4 test suite` |
 | `187528c` | `Anurag Thakur` | `Update Dev B (Anurag).md` |
-| `1167904` | `Yash` | `Merge branch 'feature/responder-dashboard' into main` |
+| `1167904` | `Yash` | `Merge pull request #3 from yashhh-23/feature/responder-dashboard` |
 | `11253e9` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `docs: consolidate all Phase 1 and Phase 2 documentation into Dev A (Sahil).md` |
 | `0ae83f3` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): implement Phase 2 voice distress audio, rescuer tracking, OLED survival mode & PWA manifest` |
 

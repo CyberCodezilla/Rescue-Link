@@ -32,7 +32,6 @@ import type {
   Priority,
 } from '@/lib/validation';
 import { isLocalIncidentId } from '@/lib/offlineQueue';
-import { fetchWithRetry } from '@/lib/api';
 import { useBatteryOptimization } from '@/hooks/useBatteryOptimization';
 import { useSurvivorStream } from '@/hooks/useSurvivorStream';
 import { useScreenBeacon } from '@/hooks/useScreenBeacon';
@@ -133,7 +132,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
 
     setIsPolling(true);
     try {
-      const res = await fetchWithRetry(`/api/incidents/${incidentId}`);
+      const res = await fetch(`/api/incidents/${incidentId}`);
       if (res.ok) {
         const data = (await res.json()) as IncidentResponse;
         setIncidentData(data);
@@ -242,7 +241,6 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
 
   return (
     <div
-      className="animate-calm-fade"
       style={{
         maxWidth: '680px',
         margin: '0 auto',

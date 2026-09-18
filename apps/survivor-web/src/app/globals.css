@@ -26,24 +26,21 @@
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   min-height: 100vh;
   line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
 }
 
 button {
   font-family: inherit;
   touch-action: manipulation;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 input, textarea, select {
   font-family: inherit;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Panic Accessibility: Minimum 56px touch targets for high-stress usability */
+/* Panic Accessibility: Minimum 48px touch targets */
 .touch-target-large {
   min-height: 56px;
   min-width: 56px;
@@ -64,62 +61,4 @@ input, textarea, select {
 
 .beacon-pulse {
   animation: beacon-pulse 2s infinite;
-}
-
-/* Gentle fade-in for view transitions (Form -> IncidentStatus) */
-@keyframes calm-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-calm-fade {
-  animation: calm-fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Audio waveform bars animation for voice recorder */
-@keyframes wave-bounce {
-  0%, 100% {
-    height: 6px;
-  }
-  50% {
-    height: 20px;
-  }
-}
-
-.wave-bar-1 { animation: wave-bounce 0.6s ease-in-out infinite; }
-.wave-bar-2 { animation: wave-bounce 0.8s ease-in-out 0.15s infinite; }
-.wave-bar-3 { animation: wave-bounce 0.7s ease-in-out 0.3s infinite; }
-
-/* Stepper line fill animation */
-@keyframes line-fill {
-  from {
-    width: 0%;
-  }
-  to {
-    width: 100%;
-  }
-}
-
-.animate-line-fill {
-  animation: line-fill 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .beacon-pulse,
-  .animate-calm-fade,
-  .wave-bar-1,
-  .wave-bar-2,
-  .wave-bar-3,
-  .animate-line-fill {
-    animation: none !important;
-  }
-  * {
-    transition-duration: 0.01ms !important;
-  }
 }

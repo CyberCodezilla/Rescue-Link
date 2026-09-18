@@ -10,7 +10,7 @@ export interface VoiceRecorderState {
   error: string | null;
 }
 
-export function useVoiceRecorder(maxDurationSeconds: number = 30) {
+export function useVoiceRecorder(maxDurationSeconds: number = 15) {
   const [state, setState] = useState<VoiceRecorderState>({
     isRecording: false,
     audioUrl: null,
@@ -23,41 +23,30 @@ export function useVoiceRecorder(maxDurationSeconds: number = 30) {
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const secondsRef = useRef(0);
 
-  const clearTimer = useCallback(() => {
+  const clearTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  }, []);
+  };
 
   const stopRecording = useCallback(() => {
-    clearTimer();
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      try {
-        mediaRecorderRef.current.requestData();
-      } catch {
-        // ignore
-      }
-      try {
-        mediaRecorderRef.current.stop();
-      } catch {
-        // ignore
-      }
+      mediaRecorderRef.current.stop();
     }
-  }, [clearTimer]);
-
-  const clearRecording = useCallback(() => {
-    stopRecording();
+    clearTimer();
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+  }, []);
+
+  const clearRecording = useCallback(() => {
+    stopRecording();
     if (state.audioUrl) {
       URL.revokeObjectURL(state.audioUrl);
     }
-    secondsRef.current = 0;
     setState({
       isRecording: false,
       audioUrl: null,
@@ -79,26 +68,19 @@ export function useVoiceRecorder(maxDurationSeconds: number = 30) {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      // Cross-platform audio format detection
+      // Cross-platform audio format detection (supporting iOS Safari, Android, Chrome, Firefox)
       const candidateTypes = [
         'audio/webm;codecs=opus',
         'audio/webm',
-        'audio/ogg;codecs=opus',
-        'audio/mp4;codecs=mp4a.40.2',
         'audio/mp4',
         'audio/aac',
+        'audio/ogg;codecs=opus',
       ];
       let selectedMimeType = '';
-      if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
+      if (typeof MediaRecorder.isTypeSupported === 'function') {
         for (const candidate of candidateTypes) {
           if (MediaRecorder.isTypeSupported(candidate)) {
             selectedMimeType = candidate;
@@ -120,54 +102,26 @@ export function useVoiceRecorder(maxDurationSeconds: number = 30) {
       };
 
       recorder.onstop = () => {
-        // Stop hardware microphone tracks ONLY after recorder has flushed all chunks
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
-        }
-
-        if (audioChunksRef.current.length === 0) {
-          setState((prev) => ({
-            ...prev,
-            isRecording: false,
-            error: 'No audio data captured. Please check microphone input and try again.',
-          }));
-          return;
-        }
-
         const effectiveType = recorder.mimeType || selectedMimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: effectiveType });
-
-        if (audioBlob.size === 0) {
-          setState((prev) => ({
-            ...prev,
-            isRecording: false,
-            error: 'Recorded audio was empty. Please check microphone input and try again.',
-          }));
-          return;
-        }
-
         const url = URL.createObjectURL(audioBlob);
-        const finalDuration = Math.max(1, secondsRef.current);
 
-        // Convert to base64 Data URL for IndexedDB and JSON payload transport
+        // Convert to base64 Data URL for easy IndexedDB and JSON payload transport
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64data = reader.result as string;
-          setState({
+          setState((prev) => ({
+            ...prev,
             isRecording: false,
             audioUrl: url,
             audioBase64: base64data,
-            recordingDuration: finalDuration,
-            error: null,
-          });
+          }));
         };
         reader.readAsDataURL(audioBlob);
       };
 
       recorder.start(250); // Slice chunks every 250ms
 
-      secondsRef.current = 0;
       setState({
         isRecording: true,
         audioUrl: null,
@@ -176,13 +130,13 @@ export function useVoiceRecorder(maxDurationSeconds: number = 30) {
         error: null,
       });
 
-      // Accurate duration counter and auto-stop at maxDurationSeconds
+      // Duration counter and auto-stop at maxDurationSeconds
+      let seconds = 0;
       timerRef.current = setInterval(() => {
-        secondsRef.current += 1;
-        const currentSec = secondsRef.current;
-        setState((prev) => ({ ...prev, recordingDuration: currentSec }));
+        seconds++;
+        setState((prev) => ({ ...prev, recordingDuration: seconds }));
 
-        if (currentSec >= maxDurationSeconds) {
+        if (seconds >= maxDurationSeconds) {
           stopRecording();
         }
       }, 1000);
@@ -202,7 +156,7 @@ export function useVoiceRecorder(maxDurationSeconds: number = 30) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [clearTimer]);
+  }, []);
 
   return {
     ...state,

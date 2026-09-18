@@ -29,9 +29,7 @@ import {
 } from '@/lib/validation';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
-import { VoiceSOSPlayer } from '@/components/VoiceSOSPlayer';
 import { enqueueIncident } from '@/lib/offlineQueue';
-import { fetchWithRetry } from '@/lib/api';
 
 interface SOSFormProps {
   isOnline: boolean;
@@ -109,7 +107,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     }
   };
 
-  const voice = useVoiceRecorder(30);
+  const voice = useVoiceRecorder(15);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +144,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       category,
       description: finalDescription,
       location: currentLocation,
-      peopleAffected: Math.max(1, Number(peopleAffected) || 1),
+      peopleAffected: Number(peopleAffected),
       urgentNeeds,
       audioBlob: voice.audioBase64 || undefined,
       reporter: {
@@ -188,7 +186,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     }
 
     try {
-      const response = await fetchWithRetry('/api/incidents', {
+      const response = await fetch('/api/incidents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validPayload),
@@ -229,7 +227,6 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     <form
       onSubmit={handleSubmit}
       aria-label="Distress SOS Submission Form"
-      className="animate-calm-fade"
       style={{
         maxWidth: '680px',
         margin: '0 auto',
@@ -335,9 +332,8 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                   backgroundColor: isSelected ? cat.bgColor : '#121826',
                   color: isSelected ? '#ffffff' : '#94a3b8',
                   cursor: 'pointer',
-                  boxShadow: isSelected ? `0 0 16px ${cat.color}40` : 'none',
-                  transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  transition: 'all 0.15s ease',
+                  boxShadow: isSelected ? `0 0 15px ${cat.color}40` : 'none',
                 }}
               >
                 <Icon size={32} color={isSelected ? cat.color : '#94a3b8'} />
@@ -409,26 +405,65 @@ export const SOSForm: React.FC<SOSFormProps> = ({
               {voice.isRecording ? (
                 <>
                   <Square size={16} color="#ffffff" />
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', height: '20px' }}>
-                    <span className="wave-bar-1" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
-                    <span className="wave-bar-2" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
-                    <span className="wave-bar-3" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
-                  </div>
-                  <span>Recording Voice SOS ({voice.recordingDuration}s / 30s) — Click to Complete</span>
+                  <span
+                    className="beacon-pulse"
+                    style={{
+                      display: 'inline-block',
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '50%',
+                      backgroundColor: '#ef4444',
+                    }}
+                  />
+                  <span>Recording Voice SOS ({voice.recordingDuration}s / 15s) - Click to Finish</span>
                 </>
               ) : (
                 <>
                   <Mic size={18} color="#60a5fa" />
-                  <span>1-Tap: Record Voice Distress (30s Max for Trapped Victims)</span>
+                  <span>1-Tap: Record Voice Distress (15s Max for Trapped Victims)</span>
                 </>
               )}
             </button>
           ) : (
-            <VoiceSOSPlayer
-              audioUrl={voice.audioUrl}
-              durationSeconds={voice.recordingDuration}
-              onDiscard={voice.clearRecording}
-            />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '8px',
+                padding: '10px 14px',
+                backgroundColor: '#064e3b',
+                border: '1px solid #059669',
+                borderRadius: '8px',
+                color: '#ecfdf5',
+                fontSize: '13px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Check size={16} color="#34d399" />
+                <span>Voice SOS Ready ({voice.recordingDuration}s)</span>
+                <audio src={voice.audioUrl} controls style={{ height: '28px', maxWidth: '200px' }} />
+              </div>
+              <button
+                type="button"
+                onClick={voice.clearRecording}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fca5a5',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                }}
+              >
+                <Trash2 size={14} />
+                Discard
+              </button>
+            </div>
           )}
 
           {voice.error && (
@@ -597,11 +632,10 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             <span style={{ fontSize: '15px' }}>Total Individuals with you:</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               type="button"
-              onClick={() => setPeopleAffected((prev) => Math.max(1, (prev || 1) - 1))}
-              disabled={peopleAffected <= 1}
+              onClick={() => setPeopleAffected((prev) => Math.max(1, prev - 1))}
               aria-label="Decrease people affected"
               style={{
                 width: '44px',
@@ -609,71 +643,23 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 borderRadius: '8px',
                 border: '1px solid #334155',
                 backgroundColor: '#1e293b',
-                color: peopleAffected <= 1 ? '#64748b' : '#ffffff',
-                cursor: peopleAffected <= 1 ? 'not-allowed' : 'pointer',
+                color: '#ffffff',
+                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'all 0.15s ease',
               }}
             >
               <Minus size={18} />
             </button>
 
-            <input
-              id="peopleAffectedInput"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={peopleAffected === 0 ? '' : peopleAffected}
-              onChange={(e) => {
-                const cleanVal = e.target.value.replace(/[^0-9]/g, '');
-                if (cleanVal === '') {
-                  setPeopleAffected(0);
-                } else {
-                  const parsed = parseInt(cleanVal, 10);
-                  if (!isNaN(parsed)) {
-                    setPeopleAffected(Math.max(1, Math.min(9999, parsed)));
-                  }
-                }
-              }}
-              onBlur={() => {
-                if (!peopleAffected || peopleAffected < 1) {
-                  setPeopleAffected(1);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  setPeopleAffected((prev) => (prev || 0) + 1);
-                } else if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  setPeopleAffected((prev) => Math.max(1, (prev || 1) - 1));
-                }
-              }}
-              aria-label="Total individuals with you"
-              style={{
-                width: '64px',
-                height: '44px',
-                borderRadius: '8px',
-                border: '1px solid #334155',
-                backgroundColor: '#0a0d14',
-                color: '#ffffff',
-                fontSize: '20px',
-                fontWeight: 800,
-                textAlign: 'center',
-                fontFamily: 'inherit',
-                outline: 'none',
-                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)',
-                transition: 'border-color 0.15s ease',
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#38bdf8')}
-              onBlurCapture={(e) => (e.currentTarget.style.borderColor = '#334155')}
-            />
+            <span style={{ fontSize: '20px', fontWeight: 800, minWidth: '32px', textAlign: 'center' }}>
+              {peopleAffected}
+            </span>
 
             <button
               type="button"
-              onClick={() => setPeopleAffected((prev) => (prev || 0) + 1)}
+              onClick={() => setPeopleAffected((prev) => prev + 1)}
               aria-label="Increase people affected"
               style={{
                 width: '44px',
@@ -686,7 +672,6 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'all 0.15s ease',
               }}
             >
               <Plus size={18} />

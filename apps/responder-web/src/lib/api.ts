@@ -32,94 +32,28 @@ export async function triggerTestNotification(signal?: AbortSignal): Promise<Not
   return data;
 }
 
-export interface RetryOptions {
-  maxRetries?: number;
-  initialDelayMs?: number;
-  backoffFactor?: number;
-}
+async function request(path: string, init?: RequestInit & { signal?: AbortSignal }): Promise<unknown> {
+  let response: Response;
 
-async function request(
-  path: string,
-  init?: RequestInit & { signal?: AbortSignal },
-  retryOptions: RetryOptions = {}
-): Promise<unknown> {
-  const maxRetries = retryOptions.maxRetries ?? 3;
-  const initialDelayMs = retryOptions.initialDelayMs ?? 400;
-  const backoffFactor = retryOptions.backoffFactor ?? 2;
-
-  let attempt = 0;
-  let response: Response | undefined;
-
-  while (attempt <= maxRetries) {
-    if (init?.signal?.aborted) {
-      throw new DOMException('The operation was aborted', 'AbortError');
-    }
-
-    try {
-      const apiKey = process.env.NEXT_PUBLIC_API_KEY || 'rescuelink-responder-key-2026';
-      response = await fetch(`/api${path}`, {
-        ...init,
-        headers: {
-          Accept: 'application/json',
-          'x-api-key': apiKey,
-          ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-          ...init?.headers,
-        },
-      });
-
-      // HTTP 429 (Rate Limited) handling with exponential backoff & Retry-After header support
-      if (response.status === 429) {
-        if (attempt < maxRetries) {
-          attempt++;
-          const retryAfterHeader = response.headers.get('Retry-After');
-          const baseDelay = retryAfterHeader
-            ? (parseInt(retryAfterHeader, 10) * 1000) || (initialDelayMs * Math.pow(backoffFactor, attempt - 1))
-            : (initialDelayMs * Math.pow(backoffFactor, attempt - 1));
-          // Full decorrelated jitter (75% - 125% of base delay) to prevent thundering herd spikes
-          const delayMs = Math.floor(baseDelay * 0.75 + Math.random() * (baseDelay * 0.5));
-
-          console.warn(`[ClientAPI] Rate limited (429) on ${path}. Retrying attempt ${attempt}/${maxRetries} after ${delayMs}ms (jittered)...`);
-          await new Promise((res) => setTimeout(res, delayMs));
-          continue;
-        }
-      }
-
-      // Transient server gateway error handling (502, 503, 504)
-      if (response.status >= 502 && response.status <= 504) {
-        if (attempt < maxRetries) {
-          attempt++;
-          const delayMs = initialDelayMs * Math.pow(backoffFactor, attempt - 1);
-          console.warn(`[ClientAPI] Server gateway error (${response.status}) on ${path}. Retrying attempt ${attempt}/${maxRetries} after ${delayMs}ms...`);
-          await new Promise((res) => setTimeout(res, delayMs));
-          continue;
-        }
-      }
-
-      break;
-    } catch (err) {
-      if ((err as any)?.name === 'AbortError' || err instanceof DOMException || init?.signal?.aborted) {
-        throw err;
-      }
-
-      if (attempt < maxRetries) {
-        attempt++;
-        const delayMs = initialDelayMs * Math.pow(backoffFactor, attempt - 1);
-        console.warn(`[ClientAPI] Network error on ${path}. Retrying attempt ${attempt}/${maxRetries} after ${delayMs}ms...`);
-        await new Promise((res) => setTimeout(res, delayMs));
-      } else {
-        throw new ApiError('Unable to reach the server. Check your connection.');
-      }
-    }
-  }
-
-  if (!response) {
+  try {
+    response = await fetch(`/api${path}`, {
+      ...init,
+      headers: {
+        Accept: 'application/json',
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     throw new ApiError('Unable to reach the server. Check your connection.');
   }
 
   if (!response.ok) {
-    let message = response.status === 429
-      ? 'Rate limit exceeded. Please wait a moment before trying again.'
-      : `Request failed with status ${response.status}.`;
+    // apps/api's real error shape is `{ error: string, ... }` (see
+    // apps/api/src/app.ts and routes/incidents.ts), with `message` only
+    // present on 500s. Prefer `error`, fall back to `message`, then generic.
+    let message = `Request failed with status ${response.status}.`;
     try {
       const body = await response.json();
       if (body && typeof body.error === 'string') message = body.error;
@@ -325,7 +259,7 @@ export async function getSensors(signal?: AbortSignal): Promise<SensorReading[]>
     const data = await request('/sensors', { signal });
     return Array.isArray(data) ? (data as SensorReading[]) : [];
   } catch (err) {
-    if ((err as any)?.name === 'AbortError' || err instanceof DOMException) throw err;
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     return [];
   }
 }
@@ -337,7 +271,7 @@ export async function getHazardZones(signal?: AbortSignal): Promise<HazardZone[]
     const data = await request('/hazard-zones', { signal });
     return Array.isArray(data) ? (data as HazardZone[]) : [];
   } catch (err) {
-    if ((err as any)?.name === 'AbortError' || err instanceof DOMException) throw err;
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     return [];
   }
 }

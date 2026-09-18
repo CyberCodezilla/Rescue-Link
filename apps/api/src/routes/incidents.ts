@@ -3,24 +3,19 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   SOSSubmissionSchema,
   Incident,
-  IncidentStatus,
-  Priority,
   IncidentStatusEnum,
   PriorityEnum,
   IncidentTriageSchema,
 } from '@rescue-link/schema';
 import { incidentStore } from '../store/incidentStore';
 import { triageWorkflow } from '../services/triageWorkflow';
-import { LifeSafetyTracer } from '../services/lifeSafetyTracer';
 import { eventStreamManager } from '../services/eventStream';
 import { CONFIG } from '@rescue-link/config';
-import { sosRateLimiter } from '../middleware/rateLimit';
-import { requireAuth } from '../middleware/auth';
 
 export const incidentsRouter = Router();
 
-// POST /api/incidents - Create SOS Incident (Rate limited to prevent spam/cost exhaustion)
-incidentsRouter.post('/', sosRateLimiter, async (req: Request, res: Response): Promise<void> => {
+// POST /api/incidents - Create SOS Incident
+incidentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
   const parseResult = SOSSubmissionSchema.safeParse(req.body);
 
   if (!parseResult.success) {
@@ -55,21 +50,6 @@ incidentsRouter.post('/', sosRateLimiter, async (req: Request, res: Response): P
     },
   };
 
-  const traceId = LifeSafetyTracer.createTraceId(newIncident.id);
-  LifeSafetyTracer.log({
-    traceId,
-    incidentId: newIncident.id,
-    step: 'ROUTE_RECVD',
-    timestamp: now,
-    status: 'STARTED',
-    priority: newIncident.priority,
-    metadata: {
-      category: payload.category,
-      peopleAffected: payload.peopleAffected,
-      ip: req.ip,
-    },
-  });
-
   const created = await incidentStore.create(newIncident);
 
   // Broadcast creation to connected SSE clients
@@ -79,68 +59,32 @@ incidentsRouter.post('/', sosRateLimiter, async (req: Request, res: Response): P
     timestamp: now,
   });
 
-  // Trigger background AI triage workflow with correlated traceId
-  triageWorkflow.runTriage(created, traceId).catch((err) => {
+  // Trigger background AI triage workflow
+  triageWorkflow.runTriage(created).catch((err) => {
     console.error(`[IncidentsRouter] Triage background task error for ${created.id}:`, err);
   });
 
   res.status(201).json(created);
 });
 
-// GET /api/incidents - List Incidents with Multi-filtering, Search & Pagination
+// GET /api/incidents - List Incidents
 incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
-  const { status, priority, q, since, page, limit, paginated } = req.query;
+  const { status, priority } = req.query;
 
-  // Process comma-separated status filters
-  const parseStatuses = (val: unknown): IncidentStatus[] | undefined => {
-    if (typeof val !== 'string') return undefined;
-    const parts = val.split(',').map((s) => s.trim()).filter(Boolean);
-    const valid = parts.filter((p) => IncidentStatusEnum.safeParse(p).success) as IncidentStatus[];
-    return valid.length > 0 ? valid : undefined;
-  };
+  const validStatus =
+    typeof status === 'string' && IncidentStatusEnum.safeParse(status).success
+      ? (status as any)
+      : undefined;
 
-  // Process comma-separated priority filters
-  const parsePriorities = (val: unknown): Priority[] | undefined => {
-    if (typeof val !== 'string') return undefined;
-    const parts = val.split(',').map((s) => s.trim()).filter(Boolean);
-    const valid = parts.filter((p) => PriorityEnum.safeParse(p).success) as Priority[];
-    return valid.length > 0 ? valid : undefined;
-  };
-
-  const parsedStatus = parseStatuses(status);
-  const parsedPriority = parsePriorities(priority);
-  const searchQuery = typeof q === 'string' ? q : undefined;
-  const sinceTime = typeof since === 'string' && !isNaN(parseInt(since, 10)) ? parseInt(since, 10) : undefined;
+  const validPriority =
+    typeof priority === 'string' && PriorityEnum.safeParse(priority).success
+      ? (priority as any)
+      : undefined;
 
   const list = await incidentStore.list({
-    status: parsedStatus,
-    priority: parsedPriority,
-    q: searchQuery,
-    since: sinceTime,
+    status: validStatus,
+    priority: validPriority,
   });
-
-  const shouldPaginate = Boolean(page || limit || paginated === 'true');
-
-  if (shouldPaginate) {
-    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
-    const pageSize = Math.min(200, Math.max(1, parseInt(limit as string, 10) || 50));
-    const totalCount = list.length;
-    const totalPages = Math.ceil(totalCount / pageSize);
-    const startIndex = (pageNum - 1) * pageSize;
-    const paginatedItems = list.slice(startIndex, startIndex + pageSize);
-
-    res.status(200).json({
-      incidents: paginatedItems,
-      pagination: {
-        totalCount,
-        page: pageNum,
-        limit: pageSize,
-        totalPages,
-        hasMore: pageNum < totalPages,
-      },
-    });
-    return;
-  }
 
   res.status(200).json(list);
 });
@@ -158,8 +102,8 @@ incidentsRouter.get('/:id', async (req: Request, res: Response): Promise<void> =
   res.status(200).json(incident);
 });
 
-// PATCH /api/incidents/:id - Update status / assignment / triage (Protected)
-incidentsRouter.patch('/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
+// PATCH /api/incidents/:id - Update status / assignment / triage
+incidentsRouter.patch('/:id', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
@@ -202,8 +146,8 @@ incidentsRouter.patch('/:id', requireAuth, async (req: Request, res: Response): 
   res.status(200).json(updated);
 });
 
-// POST /api/incidents/:id/acknowledge - Convenience endpoint (Protected)
-incidentsRouter.post('/:id/acknowledge', requireAuth, async (req: Request, res: Response): Promise<void> => {
+// POST /api/incidents/:id/acknowledge - Convenience endpoint
+incidentsRouter.post('/:id/acknowledge', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
@@ -228,8 +172,8 @@ incidentsRouter.post('/:id/acknowledge', requireAuth, async (req: Request, res: 
   res.status(200).json(updated);
 });
 
-// POST /api/incidents/:id/broadcast - Send tactical directive broadcast to survivor / zone (Protected)
-incidentsRouter.post('/:id/broadcast', requireAuth, async (req: Request, res: Response): Promise<void> => {
+// POST /api/incidents/:id/broadcast - Send tactical directive broadcast to survivor / zone
+incidentsRouter.post('/:id/broadcast', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
