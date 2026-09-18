@@ -7,7 +7,7 @@ type Incident = { id: string; createdAt: number; updatedAt: number; status: stri
 const CONFIG = {
   AWS_REGION: process.env.AWS_REGION || 'us-east-1',
   TABLE: process.env.DYNAMODB_TABLE_INCIDENTS || 'rescue-incidents',
-  MODEL_ID: process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0',
+  MODEL_ID: process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
   MAX_TOKENS: Number(process.env.BEDROCK_MAX_TOKENS || 300),
   TEMPERATURE: Number(process.env.BEDROCK_TEMPERATURE || 0.2),
   CRITICAL_PEOPLE: Number(process.env.TRIAGE_CRITICAL_PEOPLE_THRESHOLD || 5),
