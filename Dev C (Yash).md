@@ -20,7 +20,7 @@ I have built and delivered the complete **RescueLink Monorepo Architecture**, **
 
 2. **Shared Data Schema & Contracts (`packages/schema/src/incident.ts`)**:
    - Centralized all domain types, enums, and Zod validators (`Incident`, `SOSSubmission`, `Location`, `Reporter`, `IncidentDetails`, `IncidentTriage`, `IncidentStatus`, `Priority`).
-   - Created `@rescue-link/schema` package with declaration build outputs and REST API documentation ([packages/schema/README.md](file:///packages/schema/README.md)).
+   - Created `@rescue-link/schema` package with declaration build outputs and REST API documentation ([packages/schema/README.md](./packages/schema/README.md)).
 
 3. **Backend Express REST API Server (`apps/api/src`)**:
    - `POST /api/incidents`: Validates incoming survivor SOS payloads, generates UUIDs, sets initial status to `new` and priority to `pending_triage`, returns HTTP 201 Created, and triggers background AI triage and SNS/SES emergency notifications.
@@ -50,7 +50,7 @@ I have built and delivered the complete **RescueLink Monorepo Architecture**, **
 
 7. **Contract Test Suite & CI Automation (`tests/contract`, `apps/api/tests/`, `.github/workflows/ci.yml`)**:
    - Unit tests for Bedrock AI triage (`apps/api/tests/triage.test.ts`) and Amazon SNS/SES notifications (`apps/api/tests/notifications.test.ts`).
-   - Supertest contract tests ([incidents.contract.test.ts](file:///tests/contract/incidents.contract.test.ts)) asserting schema compliance, SSE streams, broadcast endpoints, telemetry, and manual alert dispatches.
+   - Supertest contract tests ([incidents.contract.test.ts](./tests/contract/incidents.contract.test.ts)) asserting schema compliance, SSE streams, broadcast endpoints, telemetry, and manual alert dispatches.
    - Automated GitHub Actions CI workflow running build, typecheck, and test scripts on every push/PR.
 
 8. **Verification & Quality Gate**:

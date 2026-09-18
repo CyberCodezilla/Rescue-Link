@@ -6,10 +6,16 @@ import { eventsRouter } from './routes/events';
 import { telemetryRouter } from './routes/telemetry';
 import { notificationsRouter } from './routes/notifications';
 
+import { CONFIG } from '@rescue-link/config';
+
 export const createApp = (): Express => {
   const app = express();
 
-  app.use(cors());
+  const corsOptions = CONFIG.ALLOWED_ORIGINS.length > 0
+    ? { origin: CONFIG.ALLOWED_ORIGINS }
+    : {};
+
+  app.use(cors(corsOptions));
   app.use(express.json());
 
   app.get('/', (req: Request, res: Response) => {
