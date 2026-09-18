@@ -227,6 +227,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     <form
       onSubmit={handleSubmit}
       aria-label="Distress SOS Submission Form"
+      className="animate-calm-fade"
       style={{
         maxWidth: '680px',
         margin: '0 auto',
@@ -332,8 +333,9 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                   backgroundColor: isSelected ? cat.bgColor : '#121826',
                   color: isSelected ? '#ffffff' : '#94a3b8',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  boxShadow: isSelected ? `0 0 15px ${cat.color}40` : 'none',
+                  boxShadow: isSelected ? `0 0 16px ${cat.color}40` : 'none',
+                  transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
               >
                 <Icon size={32} color={isSelected ? cat.color : '#94a3b8'} />
@@ -405,17 +407,12 @@ export const SOSForm: React.FC<SOSFormProps> = ({
               {voice.isRecording ? (
                 <>
                   <Square size={16} color="#ffffff" />
-                  <span
-                    className="beacon-pulse"
-                    style={{
-                      display: 'inline-block',
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '50%',
-                      backgroundColor: '#ef4444',
-                    }}
-                  />
-                  <span>Recording Voice SOS ({voice.recordingDuration}s / 15s) - Click to Finish</span>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', height: '20px' }}>
+                    <span className="wave-bar-1" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
+                    <span className="wave-bar-2" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
+                    <span className="wave-bar-3" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
+                  </div>
+                  <span>Recording Voice SOS ({voice.recordingDuration}s / 15s) — Click to Complete</span>
                 </>
               ) : (
                 <>

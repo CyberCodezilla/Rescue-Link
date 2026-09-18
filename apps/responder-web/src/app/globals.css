@@ -2,16 +2,206 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   RESCUELINK COMMAND CENTER — Design Token System
+   ═══════════════════════════════════════════════════════════════ */
+
 :root {
-  color-scheme: light;
+  color-scheme: dark;
+
+  /* ── Core Surfaces ─────────────────────────────────────────── */
+  --cmd-bg:        #0B0F19;
+  --cmd-surface:   #111827;
+  --cmd-surface-2: #1F2937;
+  --cmd-glass:     rgba(17, 24, 39, 0.72);
+  --cmd-border:    rgba(255, 255, 255, 0.06);
+  --cmd-border-2:  rgba(255, 255, 255, 0.10);
+
+  /* ── Disaster-Contextual Accent (dynamic via JS) ───────────── */
+  --ctx-accent:    #3B82F6;
+  --ctx-glow:      rgba(59, 130, 246, 0.12);
+
+  /* ── Priority Glow ─────────────────────────────────────────── */
+  --pri-critical-glow: rgba(239, 68, 68, 0.20);
+  --pri-high-glow:     rgba(249, 115, 22, 0.18);
+  --pri-medium-glow:   rgba(234, 179, 8, 0.15);
+  --pri-low-glow:      rgba(22, 163, 74, 0.12);
 }
 
+/* ── Base ─────────────────────────────────────────────────────── */
 body {
-  background-color: #f5f6f8;
-  color: #12161f;
+  background-color: var(--cmd-bg);
+  color: #E5E7EB;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
 *:focus-visible {
-  outline: 2px solid #1d4ed8;
+  outline: 2px solid var(--ctx-accent);
   outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLASSMORPHISM UTILITIES
+   ═══════════════════════════════════════════════════════════════ */
+
+@layer utilities {
+  .glass {
+    background: var(--cmd-glass);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid var(--cmd-border);
+  }
+
+  .glass-surface {
+    background: rgba(17, 24, 39, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--cmd-border-2);
+  }
+
+  .glow-critical {
+    box-shadow: 0 0 24px var(--pri-critical-glow), 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .glow-high {
+    box-shadow: 0 0 20px var(--pri-high-glow), 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .glow-medium {
+    box-shadow: 0 0 16px var(--pri-medium-glow), 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .glow-low {
+    box-shadow: 0 0 12px var(--pri-low-glow), 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .glow-accent {
+    box-shadow: 0 0 20px var(--ctx-glow), 0 1px 3px rgba(0,0,0,0.3);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATION KEYFRAMES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Gentle pulse for live status indicator */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-live-pulse {
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+/* Count-up fade for stat numbers */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Stagger entrance for cards */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+
+/* Critical alert gradient border */
+@keyframes alert-gradient {
+  0%, 100% { border-color: #EF4444; }
+  50% { border-color: #F97316; }
+}
+.animate-alert-border {
+  animation: alert-gradient 2s ease-in-out infinite;
+}
+
+/* Subtle ambient glow on header */
+@keyframes ambient-glow {
+  0%, 100% { box-shadow: 0 1px 20px var(--ctx-glow); }
+  50% { box-shadow: 0 1px 30px var(--ctx-glow); }
+}
+.animate-ambient {
+  animation: ambient-glow 4s ease-in-out infinite;
+}
+
+/* Ring progress animation for SVG circles */
+@keyframes ring-fill {
+  from { stroke-dashoffset: var(--ring-circumference, 283); }
+}
+.animate-ring {
+  animation: ring-fill 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Donut segment animation */
+@keyframes donut-fill {
+  from { stroke-dasharray: 0 283; }
+}
+.animate-donut {
+  animation: donut-fill 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Slide in from right for timeline entries */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slide-in {
+  animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Bar grow for priority/sparkline bars */
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.animate-bar {
+  animation: bar-grow 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: left;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-live-pulse,
+  .animate-fade-up,
+  .animate-alert-border,
+  .animate-ambient,
+  .animate-ring,
+  .animate-donut,
+  .animate-slide-in,
+  .animate-bar,
+  .animate-ping {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLLBAR STYLING (Webkit)
+   ═══════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

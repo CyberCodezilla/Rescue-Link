@@ -241,6 +241,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
 
   return (
     <div
+      className="animate-calm-fade"
       style={{
         maxWidth: '680px',
         margin: '0 auto',
