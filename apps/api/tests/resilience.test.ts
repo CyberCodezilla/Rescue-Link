@@ -27,4 +27,24 @@ describe('Resilience & Telemetry Unit Tests', () => {
     expect(telemetry).toHaveProperty('activeStore');
     expect(telemetry).toHaveProperty('fallbackCount');
   });
+
+  it('degrades to heuristic rule-based triage on AI timeout or credential absence without failing request', async () => {
+    const result = await bedrockService.triageIncident({
+      id: 'timeout-test-1',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      status: 'new',
+      priority: 'pending_triage',
+      category: 'fire',
+      description: 'Trapped near smoke line',
+      peopleAffected: 4,
+      urgentNeeds: ['medical'],
+      location: { lat: 37.77, lng: -122.41 },
+    });
+
+    expect(result).toHaveProperty('priority');
+    expect(result).toHaveProperty('triage');
+    expect(result.priority).toBe('critical');
+    expect(result.triage.suggestedAction).toContain('CRITICAL');
+  });
 });

@@ -57,6 +57,22 @@ export class BedrockService {
   }
 
   /**
+   * Helper: Timeout wrapper to guarantee Bedrock AI calls resolve within CONFIG.BEDROCK_TIMEOUT_MS.
+   */
+  private withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    let timer: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`Bedrock API call timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      clearTimeout(timer);
+    });
+  }
+
+  /**
    * Helper: Exponential Backoff & Retry wrapper for transient Bedrock calls.
    */
   private async retryWithBackoff<T>(fn: () => Promise<T>, retries = 2, delayMs = 250): Promise<T> {
@@ -77,7 +93,7 @@ export class BedrockService {
 
   /**
    * Generates AI Triage assessment for an incoming SOS Incident.
-   * Gracefully falls back to heuristic rule-based AI engine when AWS credentials are not provided or circuit is open.
+   * Gracefully falls back to heuristic rule-based AI engine when AWS credentials are not provided, circuit is open, or AI call times out.
    */
   async triageIncident(incident: Incident): Promise<BedrockTriageResult> {
     this.checkCircuitReset();
@@ -95,13 +111,21 @@ export class BedrockService {
     }
 
     try {
-      const result = await this.retryWithBackoff(() => this.invokeBedrockSDK(incident));
+      const timeoutMs = CONFIG.BEDROCK_TIMEOUT_MS || 3500;
+      const result = await this.withTimeout(
+        this.retryWithBackoff(() => this.invokeBedrockSDK(incident)),
+        timeoutMs
+      );
       this.recordSuccess();
       console.info(`[BedrockService] TRIAGE_MODE: 'bedrock' | Model: ${CONFIG.BEDROCK_MODEL_ID} | Priority: ${result.priority} | Incident: ${incident.id}`);
       return result;
     } catch (error) {
       this.recordFailure(error);
-      console.warn(`[BedrockService] TRIAGE_MODE: 'heuristic_fallback' | Reason: Bedrock SDK invocation failed | Incident: ${incident.id}`, error);
+      const isTimeout = error instanceof Error && error.message.includes('timed out');
+      console.warn(
+        `[BedrockService] TRIAGE_MODE: 'heuristic_fallback' | Reason: ${isTimeout ? 'Bedrock API call timed out' : 'Bedrock SDK invocation failed'} | Incident: ${incident.id}`,
+        error
+      );
       return this.generateHeuristicTriage(incident);
     }
   }

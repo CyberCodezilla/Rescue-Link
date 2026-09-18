@@ -24,6 +24,10 @@ export const CONFIG = {
   BEDROCK_TEMPERATURE: process.env.BEDROCK_TEMPERATURE
     ? parseFloat(process.env.BEDROCK_TEMPERATURE)
     : 0.2,
+  /** Timeout in ms for Bedrock AI triage calls before falling back to rule-based triage. */
+  BEDROCK_TIMEOUT_MS: process.env.BEDROCK_TIMEOUT_MS
+    ? parseInt(process.env.BEDROCK_TIMEOUT_MS, 10)
+    : 3500,
 
   // ── Step Functions ────────────────────────────────────────────────────────
   STATE_MACHINE_ARN: process.env.STATE_MACHINE_ARN || '',

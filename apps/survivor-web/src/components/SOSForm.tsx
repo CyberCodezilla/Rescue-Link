@@ -31,6 +31,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { VoiceSOSPlayer } from '@/components/VoiceSOSPlayer';
 import { enqueueIncident } from '@/lib/offlineQueue';
+import { fetchWithRetry } from '@/lib/api';
 
 interface SOSFormProps {
   isOnline: boolean;
@@ -187,7 +188,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     }
 
     try {
-      const response = await fetch('/api/incidents', {
+      const response = await fetchWithRetry('/api/incidents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validPayload),

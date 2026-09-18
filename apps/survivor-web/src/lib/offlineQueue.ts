@@ -1,5 +1,6 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import type { SOSSubmission, PendingIncident } from './validation';
+import { fetchWithRetry } from './api';
 
 const DB_NAME = 'rescue-link-survivor';
 const DB_VERSION = 1;
@@ -94,7 +95,7 @@ export async function flushPendingIncidents(
 
   for (const item of pending) {
     try {
-      const response = await fetch(`${apiBase}/api/incidents`, {
+      const response = await fetchWithRetry(`${apiBase}/api/incidents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
