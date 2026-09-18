@@ -2,7 +2,7 @@
 
 **Developer:** Dev A (Sahil / `CyberCodezilla <sahil.s.rane13012007@gmail.com>`)
 **Module:** `apps/survivor-web`
-**Status:** **Phase 1 (Completed)** | **Phase 2 (Completed)** | **Phase 3 (Completed & Verified)** | **Phase 4 (Completed & Verified)**
+**Status:** **Phase 1 (Completed)** | **Phase 2 (Completed)** | **Phase 3 (Completed & Verified)** | **Phase 4 (Completed & Verified)** | **Phase 5 (Completed & Verified)**
 **Date:** September 2026
 
 ---
@@ -249,9 +249,88 @@ npm run dev:responder    # http://localhost:3002
 
 | Commit | Author | Description |
 | :--- | :--- | :--- |
-| `HEAD` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): Phase 4 synchronization - closed status support, 5-stage stepper, assignedTo lead officer display & phase4 test suite` |
+| `HEAD` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): Phase 5 — emergency notification UI (priority badge, SMS/email dispatch confirmation, SNS contact helper, phase5 test suite)` |
+| `prev` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): Phase 4 synchronization - closed status support, 5-stage stepper, assignedTo lead officer display & phase4 test suite` |
 | `187528c` | `Anurag Thakur` | `Update Dev B (Anurag).md` |
 | `1167904` | `Yash` | `Merge branch 'feature/responder-dashboard' into main` |
 | `11253e9` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `docs: consolidate all Phase 1 and Phase 2 documentation into Dev A (Sahil).md` |
 | `0ae83f3` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): implement Phase 2 voice distress audio, rescuer tracking, OLED survival mode & PWA manifest` |
 
+---
+
+## 10. Phase 5: Emergency Notification Integration (Completed & Verified)
+
+### Context — Dev C's Amazon SNS/SES Engine
+
+Dev C (Yash) implemented `apps/api/src/services/notificationService.ts` — an Amazon SNS SMS + SES Email emergency notification engine. It fires automatically on `POST /api/incidents` after AI Bedrock triage:
+- If `priority === 'critical' || 'high'`, SNS sends an emergency SMS to `incident.reporter.contactValue` (when `contactMethod === 'phone'`).
+- SES dispatches an HTML email alert to the configured `SES_ALERT_RECIPIENT` regardless of contact method.
+- In local development, a mock engine logs all alerts to the server console.
+
+### Dev A Phase 5 Deliverables
+
+#### 1. AI Triage Priority Badge (`IncidentStatus.tsx`)
+- Reads `incidentData.priority` from the SSE-pushed or polled incident response.
+- Renders a color-coded pill badge alongside the existing `DISPATCH TRANSMITTED` and `LIVE RELAY` status chips.
+- Priority → Color mapping:
+  | Priority | Badge | Color |
+  |---|---|---|
+  | `critical` | 🔴 CRITICAL | Red `#ef4444` |
+  | `high` | 🟠 HIGH | Orange `#f97316` |
+  | `medium` | 🟡 MEDIUM | Yellow `#eab308` |
+  | `low` | 🟢 LOW | Green `#22c55e` |
+  | `pending_triage` | ⏳ TRIAGE PENDING | Slate `#64748b` |
+
+#### 2. SMS & Email Dispatch Confirmation Banner (`IncidentStatus.tsx`)
+- Conditionally rendered when `incidentData.priority === 'critical' || 'high'` and incident is not local.
+- Shows a red/amber emergency banner: **"🚨 Emergency Alert Dispatched by Command System"**
+- **📱 SMS Dispatched** row: only shown if `reporter.contactMethod === 'phone'` in the incident or submitted payload.
+- **📧 Email Dispatched** row: always shown for critical/high (SES always fires to response team).
+
+#### 3. Contact Method SNS/SES Helper Text (`SOSForm.tsx`)
+- Added context-aware helper beneath the contact method input:
+  - **Phone selected:** *"Emergency SMS Active: Your phone number enables an automatic emergency SMS alert..."* (green border)
+  - **Email selected:** *"Emergency Email Active: An HTML emergency dispatch notification will be sent..."* (blue border)
+- Educates the survivor **why** providing contact info matters to the emergency pipeline.
+
+#### 4. Phase 5 Survivor Regression Test Suite (`apps/survivor-web/tests/phase5.test.ts`)
+
+17 tests across 5 describe blocks:
+1. `PriorityEnum` — validates all 5 triage levels, rejects unknowns.
+2. `IncidentResponseSchema` — parses `critical`, `high`, `medium`, `low`, `pending_triage` priorities.
+3. `ReporterSchema` — validates `phone + contactValue`, `email + contactValue`, `none` (no value).
+4. Notification display logic — mirrors Dev C's `sendCriticalAlert()` trigger condition.
+5. Full incident payload (critical priority + phone reporter) against the complete SNS contract.
+
+### Cross-Developer Sync Matrix — Phase 5
+
+| Data Flow | Source | Consumer | Interface |
+|---|---|---|---|
+| `reporter.contactMethod + contactValue` | `SOSForm.tsx` (Dev A) | `notificationService.ts` (Dev C) | `POST /api/incidents` body |
+| `incident.priority` (AI-assigned) | `triageWorkflow.ts` (Dev C) | `IncidentStatus.tsx` (Dev A) | `GET /api/incidents/:id` + SSE `incident:updated` |
+| SNS SMS dispatch confirmation | `notificationService.ts` (Dev C) | Priority Badge + Banner (Dev A) | `incidentData.priority === 'critical'/'high'` gate |
+| SES Email dispatch confirmation | `notificationService.ts` (Dev C) | Email Dispatched row (Dev A) | Always shown for critical/high |
+| `POST /api/notifications/test` | Dev C | (Verifiable via browser DevTools) | Manual test endpoint |
+
+### Phase 5 Verification Results
+
+```
+npm run test
+  ✓ apps/survivor-web/tests/phase5.test.ts  (17 tests)  23ms
+  ✓ apps/survivor-web/tests/phase2.test.ts  (6 tests)
+  ✓ apps/survivor-web/tests/phase3.test.ts  (8 tests)
+  ✓ apps/survivor-web/tests/phase4.test.ts  (6 tests)
+  ✓ apps/survivor-web/tests/offlineQueue.test.ts  (6 tests)
+  ✓ tests/contract/incidents.contract.test.ts  (13 tests)
+  ✓ apps/api/tests/notifications.test.ts  (2 tests)
+  ✓ apps/api/tests/triage.test.ts  (3 tests)
+  ✓ apps/responder-web/tests/lifecycle.test.ts  (4 tests)
+  ✓ apps/responder-web/tests/geo.test.ts  (11 tests)
+  ✓ apps/responder-web/tests/sortIncidents.test.ts  (9 tests)
+  ✓ packages/schema/tests/schema.test.ts  (4 tests)
+
+  Test Files: 12 passed (12)
+  Tests: 89 passed (89)
+
+npm run typecheck: 0 errors (5 workspaces)
+```

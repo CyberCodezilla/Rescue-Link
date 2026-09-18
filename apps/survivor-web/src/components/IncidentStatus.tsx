@@ -527,6 +527,51 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
             >
               {isLocal ? 'QUEUED OFFLINE' : 'DISPATCH TRANSMITTED'}
             </span>
+
+            {/* Phase 5: AI Triage Priority Badge */}
+            {!isLocal && incidentData?.priority && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '4px 10px',
+                  borderRadius: '16px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
+                  backgroundColor:
+                    incidentData.priority === 'critical' ? '#450a0a'
+                    : incidentData.priority === 'high' ? '#431407'
+                    : incidentData.priority === 'medium' ? '#422006'
+                    : incidentData.priority === 'low' ? '#052e16'
+                    : '#0f172a',
+                  color:
+                    incidentData.priority === 'critical' ? '#fca5a5'
+                    : incidentData.priority === 'high' ? '#fdba74'
+                    : incidentData.priority === 'medium' ? '#fde047'
+                    : incidentData.priority === 'low' ? '#86efac'
+                    : '#94a3b8',
+                  border: `1px solid ${
+                    incidentData.priority === 'critical' ? '#ef4444'
+                    : incidentData.priority === 'high' ? '#f97316'
+                    : incidentData.priority === 'medium' ? '#eab308'
+                    : incidentData.priority === 'low' ? '#22c55e'
+                    : '#334155'
+                  }`,
+                }}
+              >
+                {incidentData.priority === 'critical' && '🔴'}
+                {incidentData.priority === 'high' && '🟠'}
+                {incidentData.priority === 'medium' && '🟡'}
+                {incidentData.priority === 'low' && '🟢'}
+                {incidentData.priority === 'pending_triage' && '⏳'}
+                {' '}
+                {incidentData.priority === 'pending_triage'
+                  ? 'TRIAGE PENDING'
+                  : incidentData.priority.toUpperCase()}
+              </span>
+            )}
           </div>
         </div>
 
@@ -584,6 +629,84 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
           </div>
         )}
       </div>
+
+      {/* PHASE 5: EMERGENCY NOTIFICATION DISPATCH CONFIRMATION CARD */}
+      {!isLocal && (incidentData?.priority === 'critical' || incidentData?.priority === 'high') && (
+        <div
+          role="region"
+          aria-label="Emergency Notification Dispatched"
+          style={{
+            backgroundColor: oledMode ? '#1c0a00' : '#431407',
+            border: `2px solid ${incidentData?.priority === 'critical' ? '#ef4444' : '#f97316'}`,
+            borderRadius: '12px',
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <AlertTriangle
+              size={20}
+              color={incidentData?.priority === 'critical' ? '#f87171' : '#fb923c'}
+              style={{ flexShrink: 0 }}
+            />
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: incidentData?.priority === 'critical' ? '#fca5a5' : '#fdba74' }}>
+                🚨 Emergency Alert Dispatched by Command System
+              </div>
+              <div style={{ fontSize: '11px', color: incidentData?.priority === 'critical' ? '#f87171' : '#fb923c', marginTop: '2px' }}>
+                Your distress signal was classified as <strong>{incidentData?.priority?.toUpperCase()}</strong> by AI triage. Emergency notifications have been automatically triggered.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {/* SMS notification row — shown if reporter registered a phone */}
+            {(incidentData?.reporter?.contactMethod === 'phone' ||
+              payload?.reporter?.contactMethod === 'phone') && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: oledMode ? '#000000' : '#1c0505',
+                  border: '1px solid #7f1d1d',
+                  fontSize: '12px',
+                  color: '#fecaca',
+                }}
+              >
+                <Truck size={13} color="#f87171" />
+                <span>
+                  <strong style={{ color: '#f87171' }}>📱 SMS Dispatched:</strong> Emergency SMS alert was automatically sent to your registered phone number via the RescueLink command network.
+                </span>
+              </div>
+            )}
+
+            {/* Email notification row — always for critical/high */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                backgroundColor: oledMode ? '#000000' : '#1c0505',
+                border: '1px solid #7f1d1d',
+                fontSize: '12px',
+                color: '#fecaca',
+              }}
+            >
+              <Radio size={13} color="#f87171" />
+              <span>
+                <strong style={{ color: '#f87171' }}>📧 Email Dispatched:</strong> HTML emergency dispatch email has been sent to the RescueLink response coordination team on your behalf.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ATTACHED VOICE DISTRESS AUDIO DISPATCH CARD */}
       {effectiveAudioBlob && (

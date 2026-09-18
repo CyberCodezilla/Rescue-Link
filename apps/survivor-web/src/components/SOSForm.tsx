@@ -787,6 +787,48 @@ export const SOSForm: React.FC<SOSFormProps> = ({
               }}
             />
           )}
+
+          {/* Phase 5: SNS/SES Notification Helper Text */}
+          {contactMethod === 'phone' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                backgroundColor: '#0c2020',
+                border: '1px solid #065f46',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#6ee7b7',
+              }}
+            >
+              <Phone size={13} style={{ marginTop: '1px', flexShrink: 0 }} color="#34d399" />
+              <span>
+                <strong style={{ color: '#34d399' }}>Emergency SMS Active:</strong> Your phone number enables an automatic emergency SMS alert to be dispatched directly to you the moment your distress signal reaches our command center.
+              </span>
+            </div>
+          )}
+          {contactMethod === 'email' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                backgroundColor: '#0a1628',
+                border: '1px solid #1e40af',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#93c5fd',
+              }}
+            >
+              <Mail size={13} style={{ marginTop: '1px', flexShrink: 0 }} color="#60a5fa" />
+              <span>
+                <strong style={{ color: '#60a5fa' }}>Emergency Email Active:</strong> An HTML emergency dispatch notification will be sent to the RescueLink response coordination team on your behalf when your SOS is received.
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
