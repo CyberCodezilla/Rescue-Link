@@ -15,6 +15,7 @@ interface IncidentRowProps {
   isHovered?: boolean;
   onSelect: (id: string) => void;
   onHover?: (id: string | null) => void;
+  onOpenDispatch?: (incident: IncidentResponse) => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -32,7 +33,7 @@ const PRIORITY_COLOR: Record<string, string> = {
   pending_triage: '#64748B',
 };
 
-export function IncidentTableRow({ incident, isSelected, isHovered, onSelect, onHover }: IncidentRowProps) {
+export function IncidentTableRow({ incident, isSelected, isHovered, onSelect, onHover, onOpenDispatch }: IncidentRowProps) {
   const units = incident.triage?.assignedUnits;
   const category = getCategory(incident);
   const Icon = CATEGORY_ICONS[category] || HelpCircle;
@@ -97,8 +98,14 @@ export function IncidentTableRow({ incident, isSelected, isHovered, onSelect, on
           )}
           <Link
             href={`/incidents/${incident.id}`}
-            onClick={(e) => e.stopPropagation()}
-            title="Open Incident Dossier & Assign Units"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onOpenDispatch) {
+                e.preventDefault();
+                onOpenDispatch(incident);
+              }
+            }}
+            title="Open Slide-over Dispatch Dossier"
             className="inline-flex items-center gap-1 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-[10px] font-bold text-action transition-all hover:bg-action hover:text-white"
           >
             <span>ASSIGN</span>
@@ -110,7 +117,7 @@ export function IncidentTableRow({ incident, isSelected, isHovered, onSelect, on
   );
 }
 
-export function IncidentCard({ incident, isSelected, isHovered, onSelect, onHover }: IncidentRowProps) {
+export function IncidentCard({ incident, isSelected, isHovered, onSelect, onHover, onOpenDispatch }: IncidentRowProps) {
   const units = incident.triage?.assignedUnits;
   const category = getCategory(incident);
   const Icon = CATEGORY_ICONS[category] || HelpCircle;
@@ -158,7 +165,13 @@ export function IncidentCard({ incident, isSelected, isHovered, onSelect, onHove
           </span>
           <Link
             href={`/incidents/${incident.id}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onOpenDispatch) {
+                e.preventDefault();
+                onOpenDispatch(incident);
+              }
+            }}
             className="inline-flex items-center gap-1 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-[10px] font-bold text-action transition-all hover:bg-action hover:text-white"
           >
             <span>ASSIGN</span>

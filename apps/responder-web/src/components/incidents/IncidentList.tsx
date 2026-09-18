@@ -14,6 +14,7 @@ interface IncidentListProps {
   hoveredId?: string | null;
   onSelect: (id: string) => void;
   onHover?: (id: string | null) => void;
+  onOpenDispatch?: (incident: IncidentResponse) => void;
   onClearFilters: () => void;
 }
 
@@ -24,6 +25,7 @@ export function IncidentList({
   hoveredId,
   onSelect,
   onHover,
+  onOpenDispatch,
   onClearFilters,
 }: IncidentListProps) {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -114,6 +116,7 @@ export function IncidentList({
                   isHovered={incident.id === hoveredId}
                   onSelect={onSelect}
                   onHover={onHover}
+                  onOpenDispatch={onOpenDispatch}
                 />
               ))}
             </tbody>
@@ -129,6 +132,7 @@ export function IncidentList({
               isHovered={incident.id === hoveredId}
               onSelect={onSelect}
               onHover={onHover}
+              onOpenDispatch={onOpenDispatch}
             />
           ))}
         </div>

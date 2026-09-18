@@ -12,6 +12,7 @@ import { PriorityBar } from '@responder/components/dashboard/PriorityBar';
 import { ActivityTimeline } from '@responder/components/dashboard/ActivityTimeline';
 import { ThemeProvider } from '@responder/components/dashboard/ThemeProvider';
 import { IncidentFilters } from '@responder/components/incidents/IncidentFilters';
+import { DispatchDrawer } from '@responder/components/dashboard/DispatchDrawer';
 import { IncidentList } from '@responder/components/incidents/IncidentList';
 import { IncidentMapClient } from '@responder/components/map/IncidentMapClient';
 import { GeofencePanel } from '@responder/components/map/GeofencePanel';
@@ -28,7 +29,7 @@ import { useKeyboardNavigation } from '@responder/hooks/useKeyboardNavigation';
 import { unlockCriticalAlertAudio } from '@responder/lib/alertSound';
 import { buildDashboardMapLayerData } from '@responder/lib/dashboardIntegration';
 import { DEFAULT_FILTERS } from '@responder/lib/schema';
-import type { IncidentFilters as IncidentFiltersState } from '@responder/lib/schema';
+import type { IncidentFilters as IncidentFiltersState, IncidentResponse } from '@responder/lib/schema';
 import type { GeofenceShape } from '@responder/components/map/IncidentMap';
 
 export default function DashboardPage() {
@@ -52,6 +53,12 @@ export default function DashboardPage() {
   const [geofenceShape, setGeofenceShape] = useState<GeofenceShape | null>(null);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [layoutMode, setLayoutMode] = useState<'split' | 'table-focus' | 'map-focus'>('split');
+  const [drawerIncident, setDrawerIncident] = useState<IncidentResponse | null>(null);
+
+  const handleDrawerUpdated = useCallback((updated: IncidentResponse) => {
+    applyIncidentUpdate(updated);
+    setDrawerIncident(updated);
+  }, [applyIncidentUpdate]);
 
   const streamStatus = useIncidentStream({ onIncident: applyIncidentUpdate });
   const { isActive, latestIncident, dismiss } = useCriticalAlert(incidents);
@@ -262,6 +269,7 @@ export default function DashboardPage() {
                   hoveredId={hoveredId}
                   onSelect={handleSelect}
                   onHover={setHoveredId}
+                  onOpenDispatch={(inc) => setDrawerIncident(inc)}
                   onClearFilters={() => setFilters(DEFAULT_FILTERS)}
                 />
               )}
@@ -319,6 +327,13 @@ export default function DashboardPage() {
             </section>
           </div>
         </main>
+
+        {/* Tactical Slide-Over Dispatcher Side Panel Drawer */}
+        <DispatchDrawer
+          incident={drawerIncident}
+          onClose={() => setDrawerIncident(null)}
+          onUpdated={handleDrawerUpdated}
+        />
       </div>
     </ThemeProvider>
   );
