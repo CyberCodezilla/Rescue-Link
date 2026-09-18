@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { Shield } from 'lucide-react';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { SOSForm } from '@/components/SOSForm';
 import { IncidentStatus } from '@/components/IncidentStatus';
@@ -52,7 +53,7 @@ export default function SurvivorWebPage() {
   };
 
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <main className="min-h-screen flex flex-col bg-[var(--rl-bg)]">
       {/* High-contrast Offline / Mesh Connectivity Banner */}
       <OfflineIndicator
         isOnline={isOnline}
@@ -61,7 +62,24 @@ export default function SurvivorWebPage() {
         onSyncNow={syncNow}
       />
 
-      <div style={{ flex: 1, padding: '16px 8px' }}>
+      {/* Brand Bar */}
+      <header className="px-4 py-3 flex items-center justify-between border-b border-[var(--rl-border)] bg-[var(--rl-surface)]">
+        <div className="flex items-center gap-2 max-w-[680px] mx-auto w-full">
+          <div className="w-8 h-8 rounded-lg bg-[var(--rl-accent-soft)] border border-[var(--rl-accent)] flex items-center justify-center text-[var(--rl-accent)]">
+            <Shield size={18} />
+          </div>
+          <div>
+            <h1 className="text-sm font-extrabold tracking-tight text-[var(--rl-text)] m-0 leading-tight">
+              RESCUELINK
+            </h1>
+            <p className="text-[11px] text-[var(--rl-text-muted)] m-0 font-medium">
+              Emergency Civilian Beacon
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 px-3 py-4 max-w-[680px] mx-auto w-full">
         {activeIncident ? (
           <IncidentStatus
             key={activeIncident.id}
