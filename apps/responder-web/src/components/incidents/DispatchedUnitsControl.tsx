@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Radio, Plus, X } from 'lucide-react';
 import { ApiError, updateIncident } from '@responder/lib/api';
 import type { IncidentResponse } from '@responder/lib/schema';
 import { hasAssignedUnits } from '@responder/lib/format';
@@ -10,15 +11,6 @@ interface DispatchedUnitsControlProps {
   onUpdated: (incident: IncidentResponse) => void;
 }
 
-/**
- * Phase 2 feature: which physical field units (callsigns) are dispatched to
- * this incident — `triage.assignedUnits: string[]`, deep-merged server-side
- * so this never clobbers Bedrock's `suggestedAction`/`reasoning`/`summary`.
- * This is what UnitPositionPanel and the map's field-unit markers read from.
- * Distinct from the Phase 4 "Assignment" (`assignedTo`, a single responder
- * identifier) in AssignmentControl.tsx — previously these two were
- * incorrectly conflated in one component.
- */
 export function DispatchedUnitsControl({ incident, onUpdated }: DispatchedUnitsControlProps) {
   const [draft, setDraft] = useState('');
   const [isPending, setIsPending] = useState(false);
@@ -51,34 +43,39 @@ export function DispatchedUnitsControl({ incident, onUpdated }: DispatchedUnitsC
   }
 
   return (
-    <section className="rounded-md border border-line bg-surface p-4">
-      <h2 className="text-sm font-semibold text-ink-900">Dispatched field units</h2>
+    <section className="hud-panel p-4 border border-line bg-surface">
+      <div className="flex items-center gap-2 border-b border-line pb-2">
+        <Radio size={14} className="text-action" />
+        <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900">
+          ASSIGNED TACTICAL UNITS
+        </h2>
+      </div>
 
       {hasAssignedUnits(units) ? (
-        <ul className="mt-2 flex flex-wrap gap-2">
+        <ul className="mt-3 flex flex-wrap gap-2">
           {units.map((unit) => (
             <li
               key={unit}
-              className="flex items-center gap-1.5 rounded-full bg-action-soft px-3 py-1 text-sm text-action"
+              className="flex items-center gap-2 rounded border border-action/40 bg-action/15 px-3 py-1 font-mono text-xs font-bold text-action"
             >
-              {unit}
+              <span>{unit}</span>
               <button
                 type="button"
                 onClick={() => handleRemove(unit)}
                 disabled={isPending}
                 aria-label={`Remove ${unit}`}
-                className="text-action hover:text-action-hover disabled:opacity-50"
+                className="text-action hover:text-white disabled:opacity-50 transition-colors"
               >
-                ×
+                <X size={12} />
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-ink-500">No units dispatched yet.</p>
+        <p className="mt-2.5 font-mono text-xs text-ink-500">No field units dispatched yet.</p>
       )}
 
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="mt-3.5 flex flex-col gap-2 sm:flex-row sm:items-center">
         <label className="sr-only" htmlFor="unitName">
           Unit callsign
         </label>
@@ -93,20 +90,22 @@ export function DispatchedUnitsControl({ incident, onUpdated }: DispatchedUnitsC
               handleAdd();
             }
           }}
-          placeholder="e.g. Rescue Unit 4"
-          className="w-full rounded border border-line px-3 py-1.5 text-sm focus:border-action focus:outline-none focus:ring-1 focus:ring-action sm:max-w-xs"
+          placeholder="e.g. SAR-Unit-4"
+          className="w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs text-ink-900 placeholder:text-ink-500 focus:border-action focus:outline-none focus:ring-1 focus:ring-action sm:max-w-xs"
         />
         <button
           type="button"
           onClick={handleAdd}
           disabled={isPending || !draft.trim()}
-          className="rounded border border-line px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center justify-center gap-1 rounded border border-action/40 bg-action px-3 py-1.5 font-mono text-xs font-bold text-white hover:bg-action-hover transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending ? 'Saving…' : 'Dispatch'}
+          <Plus size={12} />
+          {isPending ? 'ASSIGNING...' : 'DISPATCH UNIT'}
         </button>
       </div>
+
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-priority-critical">
+        <p role="alert" className="mt-2 font-mono text-xs text-priority-critical">
           {error}
         </p>
       ) : null}

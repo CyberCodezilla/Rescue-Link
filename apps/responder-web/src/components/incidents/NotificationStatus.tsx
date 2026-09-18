@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Send, Radio, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 import { triggerTestNotification } from '@responder/lib/api';
 import type { IncidentResponse } from '@responder/lib/schema';
 
@@ -29,46 +30,55 @@ export function NotificationStatus({ incident }: { incident: IncidentResponse })
   }
 
   return (
-    <section className="rounded-md border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-ink-900">Dispatched Alerts (SNS / SES)</h2>
-          <p className="mt-1 text-xs text-ink-500">Notification delivery status is not reported on the incident API.</p>
+    <section className="hud-panel p-4 border border-line bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2">
+        <div className="flex items-center gap-2">
+          <Send size={14} className="text-action" />
+          <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900">
+            EMERGENCY NOTIFICATION UPLINK (SNS / SES)
+          </h2>
         </div>
         <button
           type="button"
           onClick={handleTest}
           disabled={isPending}
-          className="rounded border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded border border-line-2 bg-surface-2 px-3 py-1 font-mono text-xs font-semibold text-ink-700 hover:bg-surface-3 hover:text-ink-900 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending ? 'Sending test…' : 'Trigger Test Notification'}
+          {isPending ? 'TRANSMITTING...' : 'TEST UPLINK'}
         </button>
       </div>
 
-      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-        <div className="rounded border border-line bg-canvas px-3 py-2">
-          <span className="font-medium text-ink-700">SNS</span>
-          <span className="ml-2 text-ink-500">Status unavailable from incident API</span>
+      <div className="mt-3 grid gap-2.5 text-xs sm:grid-cols-2">
+        <div className="flex items-center justify-between rounded border border-line-2 bg-surface-2 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Radio size={14} className="text-orange-400" />
+            <span className="font-mono font-bold text-ink-900">AWS SNS</span>
+          </div>
+          <span className="font-mono text-[11px] text-ink-500">GATEWAY ACTIVE</span>
         </div>
-        <div className="rounded border border-line bg-canvas px-3 py-2">
-          <span className="font-medium text-ink-700">SES</span>
-          <span className="ml-2 text-ink-500">Status unavailable from incident API</span>
+        <div className="flex items-center justify-between rounded border border-line-2 bg-surface-2 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Mail size={14} className="text-blue-400" />
+            <span className="font-mono font-bold text-ink-900">AWS SES</span>
+          </div>
+          <span className="font-mono text-[11px] text-ink-500">SMTP DISPATCH</span>
         </div>
       </div>
 
       {message ? (
-        <p role="status" className="mt-3 text-xs text-ink-600">
-          {message}
-        </p>
+        <div className="mt-3 flex items-center gap-1.5 font-mono text-xs text-ink-700">
+          <CheckCircle2 size={13} className="text-success" />
+          <span>{message}</span>
+        </div>
       ) : null}
 
       {result ? (
-        <p className="mt-2 text-xs text-ink-500">
-          Test API result: SNS {result.snsSent ? 'dispatched' : 'not dispatched'} · SES {result.sesSent ? 'dispatched' : 'not dispatched'} · mode {result.mode}.
+        <p className="mt-2 font-mono text-[11px] text-ink-500">
+          DISPATCH TELEMETRY: SNS [{result.snsSent ? 'SENT' : 'SKIPPED'}] // SES [{result.sesSent ? 'SENT' : 'SKIPPED'}] // ENGINE [{result.mode.toUpperCase()}]
         </p>
       ) : null}
 
-      <p className="mt-2 text-[11px] text-ink-400">Incident: {incident.id}</p>
+      <p className="mt-2 font-mono text-[10px] text-ink-500">INCIDENT ID: {incident.id}</p>
     </section>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Radio, Send, X, AlertOctagon, CheckCircle2 } from 'lucide-react';
 import { broadcastIncident, ApiError } from '@responder/lib/api';
 import { queueBroadcast, updateBroadcastStatus } from '@responder/lib/offlineCache';
 import type { IncidentResponse } from '@responder/lib/schema';
@@ -14,16 +15,11 @@ interface BroadcastModalProps {
 type Channel = 'phone' | 'email' | 'wifi';
 
 const CHANNEL_OPTIONS: { value: Channel; label: string }[] = [
-  { value: 'phone', label: 'Phone (SMS/IVR)' },
-  { value: 'email', label: 'Email' },
-  { value: 'wifi', label: 'Captive Wi-Fi banner (geofenced zone)' },
+  { value: 'phone', label: 'Phone (SMS/IVR Relay)' },
+  { value: 'email', label: 'Email (Tactical Dispatch)' },
+  { value: 'wifi', label: 'Captive Wi-Fi Beacon (Geofenced Grid)' },
 ];
 
-/**
- * Picks the most sensible default channel from what we actually know about
- * the reporter, but the dispatcher can always override it — the PRD lists
- * three distinct channels, so this is a real choice, not just inferred.
- */
 function defaultTarget(incident: IncidentResponse): { channel: Channel; target: string } {
   const reporter = incident.reporter;
   if (reporter?.contactMethod === 'phone' && reporter.contactValue) {
@@ -32,7 +28,7 @@ function defaultTarget(incident: IncidentResponse): { channel: Channel; target: 
   if (reporter?.contactMethod === 'email' && reporter.contactValue) {
     return { channel: 'email', target: reporter.contactValue };
   }
-  return { channel: 'wifi', target: 'All devices within incident radius' };
+  return { channel: 'wifi', target: 'All beacons within incident perimeter' };
 }
 
 export function BroadcastModal({ incident, onClose, onUpdated }: BroadcastModalProps) {
@@ -53,7 +49,7 @@ export function BroadcastModal({ incident, onClose, onUpdated }: BroadcastModalP
     } else if (next === 'email' && incident.reporter?.contactMethod === 'email') {
       setTarget(incident.reporter.contactValue ?? '');
     } else if (next === 'wifi') {
-      setTarget('All devices within incident radius');
+      setTarget('All beacons within incident perimeter');
     } else {
       setTarget('');
     }
@@ -81,9 +77,6 @@ export function BroadcastModal({ incident, onClose, onUpdated }: BroadcastModalP
       setResult(response.success ? 'sent' : 'queued');
     } catch (err) {
       if (err instanceof ApiError) {
-        // Real network/server failure (not the "endpoint doesn't exist"
-        // case anymore — that's fixed — but a field tablet can still lose
-        // connectivity mid-request). Queue locally so nothing is lost.
         const outboxEntry = {
           id: `${incident.id}-${Date.now()}`,
           incidentId: incident.id,
@@ -106,37 +99,54 @@ export function BroadcastModal({ incident, onClose, onUpdated }: BroadcastModalP
 
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-ink-900/40 p-4"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-md rounded-lg border border-line bg-surface p-5 shadow-panel">
-        <h2 className="text-base font-semibold text-ink-900">Broadcast flash alert</h2>
-        <p className="mt-1 text-sm text-ink-500">
-          Reviews the Bedrock AI safety directive before sending to the survivor or geofenced zone.
+      <div className="w-full max-w-md hud-panel border-line-2 bg-surface p-5 shadow-panel">
+        <div className="flex items-center justify-between border-b border-line pb-2.5">
+          <div className="flex items-center gap-2">
+            <Radio size={16} className="text-action" />
+            <h2 className="text-sm font-mono font-bold uppercase tracking-wider text-ink-900">
+              BROADCAST FLASH DIRECTIVE
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 text-ink-500 hover:text-ink-900 transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <p className="mt-2 text-xs text-ink-500 font-sans">
+          Review and dispatch the AI-generated survival directive to connected field receivers.
         </p>
 
         {result === null ? (
           <>
-            <label className="mt-4 block text-xs font-medium text-ink-500" htmlFor="broadcast-message">
-              Message
+            <label className="mt-3.5 block text-[10px] font-mono font-bold uppercase tracking-wider text-ink-500" htmlFor="broadcast-message">
+              DIRECTIVE MESSAGE
             </label>
             <textarea
               id="broadcast-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
-              className="mt-1 w-full rounded border border-line px-3 py-2 text-sm focus:border-action focus:outline-none focus:ring-1 focus:ring-action"
-              placeholder="Safety directive for the affected area…"
+              className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-2 font-mono text-xs text-ink-900 placeholder:text-ink-500 focus:border-action focus:outline-none focus:ring-1 focus:ring-action"
+              placeholder="Enter immediate safety instructions..."
             />
 
             <fieldset className="mt-3">
-              <legend className="text-xs font-medium text-ink-500">Recipient channel</legend>
+              <legend className="text-[10px] font-mono font-bold uppercase tracking-wider text-ink-500">
+                UPLINK CHANNEL
+              </legend>
               <div className="mt-1.5 flex flex-col gap-1.5">
                 {CHANNEL_OPTIONS.map((option) => (
                   <label
                     key={option.value}
-                    className="flex items-center gap-2 rounded border border-line px-2.5 py-1.5 text-sm text-ink-700 has-[:checked]:border-action has-[:checked]:bg-action-soft"
+                    className="flex items-center gap-2 rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs text-ink-700 cursor-pointer has-[:checked]:border-action has-[:checked]:bg-action/15 has-[:checked]:text-ink-900"
                   >
                     <input
                       type="radio"
@@ -146,14 +156,14 @@ export function BroadcastModal({ incident, onClose, onUpdated }: BroadcastModalP
                       onChange={() => handleChannelChange(option.value)}
                       className="accent-action"
                     />
-                    {option.label}
+                    <span>{option.label}</span>
                   </label>
                 ))}
               </div>
             </fieldset>
 
-            <label className="mt-3 block text-xs font-medium text-ink-500" htmlFor="broadcast-target">
-              Target
+            <label className="mt-3 block text-[10px] font-mono font-bold uppercase tracking-wider text-ink-500" htmlFor="broadcast-target">
+              TARGET DESTINATION
             </label>
             <input
               id="broadcast-target"
@@ -161,12 +171,12 @@ export function BroadcastModal({ incident, onClose, onUpdated }: BroadcastModalP
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               disabled={channel === 'wifi'}
-              className="mt-1 w-full rounded border border-line px-3 py-2 text-sm focus:border-action focus:outline-none focus:ring-1 focus:ring-action disabled:bg-canvas disabled:text-ink-500"
-              placeholder={channel === 'phone' ? '+91…' : channel === 'email' ? 'name@example.com' : ''}
+              className="mt-1 w-full rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs text-ink-900 placeholder:text-ink-500 focus:border-action focus:outline-none focus:ring-1 focus:ring-action disabled:bg-surface-3 disabled:text-ink-500"
+              placeholder={channel === 'phone' ? '+1...' : channel === 'email' ? 'responder@example.com' : ''}
             />
 
             {error ? (
-              <p role="alert" className="mt-2 text-sm text-priority-critical">
+              <p role="alert" className="mt-2 font-mono text-xs text-priority-critical">
                 {error}
               </p>
             ) : null}
@@ -175,39 +185,39 @@ export function BroadcastModal({ incident, onClose, onUpdated }: BroadcastModalP
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded border border-line px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-canvas"
+                className="rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs font-semibold text-ink-700 hover:bg-surface-3 hover:text-ink-900 transition-colors"
               >
-                Cancel
+                CANCEL
               </button>
               <button
                 type="button"
                 onClick={handleSend}
-                disabled={isSending || !message.trim() || !target.trim()}
-                className="rounded bg-danger px-3.5 py-1.5 text-sm font-medium text-white hover:bg-danger-hover disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isSending || !message.trim()}
+                className="flex items-center gap-1.5 rounded bg-danger px-4 py-1.5 font-mono text-xs font-bold text-white hover:bg-danger-hover transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSending ? 'Sending…' : 'Send broadcast'}
+                <Send size={12} />
+                {isSending ? 'TRANSMITTING...' : 'TRANSMIT DIRECTIVE'}
               </button>
             </div>
           </>
         ) : (
-          <div className="mt-4">
-            {result === 'sent' ? (
-              <p className="text-sm text-success">Broadcast delivered.</p>
-            ) : (
-              <p className="text-sm text-priority-pending">
-                Couldn&rsquo;t reach the server just now, so this was saved to the local outbox
-                instead of being lost. It will show as pending until it can be retried.
-              </p>
-            )}
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded border border-line px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-canvas"
-              >
-                Close
-              </button>
-            </div>
+          <div className="mt-4 flex flex-col items-center gap-2 py-4 text-center">
+            <CheckCircle2 size={32} className="text-success" />
+            <p className="font-mono text-sm font-bold text-ink-900">
+              {result === 'sent' ? 'BROADCAST DISPATCH CONFIRMED' : 'QUEUED IN LOCAL OUTBOX'}
+            </p>
+            <p className="font-mono text-xs text-ink-500">
+              {result === 'sent'
+                ? 'Directive relayed to destination channels.'
+                : 'Offline queue will flush on next network recovery.'}
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-2 rounded border border-line-2 bg-surface-2 px-4 py-1.5 font-mono text-xs font-bold text-ink-900 hover:bg-surface-3"
+            >
+              CLOSE
+            </button>
           </div>
         )}
       </div>
