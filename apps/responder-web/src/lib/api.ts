@@ -17,6 +17,21 @@ export class ApiError extends Error {
   }
 }
 
+export interface NotificationTestResult {
+  success: boolean;
+  result?: {
+    snsSent: boolean;
+    sesSent: boolean;
+    mode: 'aws' | 'mock';
+    message: string;
+  };
+}
+
+export async function triggerTestNotification(signal?: AbortSignal): Promise<NotificationTestResult> {
+  const data = (await request('/notifications/test', { method: 'POST', body: JSON.stringify({ priority: 'critical' }), signal })) as NotificationTestResult;
+  return data;
+}
+
 async function request(path: string, init?: RequestInit & { signal?: AbortSignal }): Promise<unknown> {
   let response: Response;
 

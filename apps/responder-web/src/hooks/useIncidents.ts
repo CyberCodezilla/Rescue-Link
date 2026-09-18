@@ -13,6 +13,7 @@ interface UseIncidentsState {
   lastRefreshedAt: Date | null;
   refreshError: string | null;
   refresh: () => void;
+  applyIncidentUpdate: (incident: IncidentResponse) => void;
 }
 
 export function useIncidents(): UseIncidentsState {
@@ -58,6 +59,18 @@ export function useIncidents(): UseIncidentsState {
       });
   }, []);
 
+  const applyIncidentUpdate = useCallback((incident: IncidentResponse) => {
+    setIncidents((current) => {
+      if (!current) return [incident];
+      const index = current.findIndex((item) => item.id === incident.id);
+      if (index === -1) return [incident, ...current];
+      const next = current.slice();
+      next[index] = incident;
+      return next;
+    });
+    setRefreshError(null);
+  }, []);
+
   useEffect(() => {
     load();
     const interval = setInterval(load, POLL_INTERVAL_MS);
@@ -67,5 +80,5 @@ export function useIncidents(): UseIncidentsState {
     };
   }, [load]);
 
-  return { incidents, isInitialLoading, isRefreshing, lastRefreshedAt, refreshError, refresh: load };
+  return { incidents, isInitialLoading, isRefreshing, lastRefreshedAt, refreshError, refresh: load, applyIncidentUpdate };
 }

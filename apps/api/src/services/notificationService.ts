@@ -34,20 +34,20 @@ export class NotificationService {
           snsSent: snsResult,
           sesSent: sesResult,
           mode: 'aws',
-          message: 'Alert dispatched via AWS SNS and SES.',
+          message: `AWS notification result: SNS ${snsResult ? 'dispatched' : 'not dispatched'}; SES ${sesResult ? 'dispatched' : 'not dispatched'}.`,
         };
       } catch (error) {
         console.warn('[NotificationService] AWS alert dispatch error, using local fallback:', error);
       }
     }
 
-    // Local Mock Notification Fallback Engine
+    // Local logging is not delivery. Never report mock output as SNS/SES success.
     this.logMockNotification(incident);
     return {
-      snsSent: true,
-      sesSent: true,
+      snsSent: false,
+      sesSent: false,
       mode: 'mock',
-      message: 'Alert logged via Local Mock Notification Engine.',
+      message: 'SNS/SES delivery was not performed. AWS notification credentials are unavailable or dispatch failed.'
     };
   }
 
