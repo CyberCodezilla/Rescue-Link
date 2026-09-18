@@ -1,94 +1,126 @@
+import { z } from 'zod';
+
 /**
- * Centralized configuration for the RescueLink API.
- * Every key reads from process.env first, falling back to a sensible default.
- * Defaults match the original hardcoded values for backward compatibility.
+ * Shared Zod Schema for Backend API Environment Variables.
  */
-export const CONFIG = {
-  // ── Server ────────────────────────────────────────────────────────────────
-  PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 3001,
-  NODE_ENV: process.env.NODE_ENV || 'development',
+export const ApiEnvSchema = z.object({
+  PORT: z.coerce.number().int().positive().default(3001),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
-  // ── AWS Core ──────────────────────────────────────────────────────────────
-  AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-  DYNAMODB_TABLE_INCIDENTS: process.env.DYNAMODB_TABLE_INCIDENTS || 'rescue-incidents',
-  /** Set to 'true' explicitly to use the in-memory mock store, default to true in non-production. */
-  USE_LOCAL_MOCK_STORE: process.env.USE_LOCAL_MOCK_STORE
-    ? process.env.USE_LOCAL_MOCK_STORE === 'true'
-    : (process.env.NODE_ENV || 'development') !== 'production',
+  // AWS Core
+  AWS_REGION: z.string().default('us-east-1'),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
 
-  // ── Bedrock / LLM ────────────────────────────────────────────────────────
-  BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID || 'anthropic.claude-haiku-4-5-20251001-v1:0',
-  BEDROCK_MAX_TOKENS: process.env.BEDROCK_MAX_TOKENS
-    ? parseInt(process.env.BEDROCK_MAX_TOKENS, 10)
-    : 300,
-  BEDROCK_TEMPERATURE: process.env.BEDROCK_TEMPERATURE
-    ? parseFloat(process.env.BEDROCK_TEMPERATURE)
-    : 0.2,
-  /** Timeout in ms for Bedrock AI triage calls before falling back to rule-based triage. */
-  BEDROCK_TIMEOUT_MS: process.env.BEDROCK_TIMEOUT_MS
-    ? parseInt(process.env.BEDROCK_TIMEOUT_MS, 10)
-    : 3500,
+  // Storage & Database
+  DYNAMODB_TABLE_INCIDENTS: z.string().default('rescue-incidents'),
+  USE_LOCAL_MOCK_STORE: z
+    .union([z.boolean(), z.string()])
+    .transform((val) => (typeof val === 'boolean' ? val : val === 'true'))
+    .optional(),
 
-  // ── Step Functions ────────────────────────────────────────────────────────
-  STATE_MACHINE_ARN: process.env.STATE_MACHINE_ARN || '',
+  // Bedrock AI Configuration
+  BEDROCK_MODEL_ID: z.string().default('anthropic.claude-haiku-4-5-20251001-v1:0'),
+  BEDROCK_MAX_TOKENS: z.coerce.number().int().positive().default(300),
+  BEDROCK_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.2),
+  BEDROCK_TIMEOUT_MS: z.coerce.number().int().positive().default(3500),
 
-  // ── SNS / SES Notifications ───────────────────────────────────────────────
-  SNS_TOPIC_ARN: process.env.SNS_TOPIC_ARN || '',
-  SES_FROM_EMAIL: process.env.SES_FROM_EMAIL || 'alerts@rescuelink.org',
-  SES_ALERT_RECIPIENT: process.env.SES_ALERT_RECIPIENT || 'responders@rescuelink.org',
-  /** Comma-separated list of priority levels that trigger SNS/SES alerts. */
-  NOTIFICATION_PRIORITY_GATE: (process.env.NOTIFICATION_PRIORITY_GATE || 'critical,high')
-    .split(',')
-    .map((s) => s.trim()),
+  // Step Functions & Notifications
+  STATE_MACHINE_ARN: z.string().optional().default(''),
+  SNS_TOPIC_ARN: z.string().optional().default(''),
+  SES_FROM_EMAIL: z.string().default('alerts@rescuelink.org'),
+  SES_ALERT_RECIPIENT: z.string().default('responders@rescuelink.org'),
+  NOTIFICATION_PRIORITY_GATE: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => (typeof val === 'string' ? val.split(',').map((s) => s.trim()).filter(Boolean) : val))
+    .default(['critical', 'high']),
 
-  // ── Heuristic Triage Thresholds ───────────────────────────────────────────
-  /** People-affected count at or above which the incident becomes CRITICAL. */
-  TRIAGE_CRITICAL_PEOPLE_THRESHOLD: process.env.TRIAGE_CRITICAL_PEOPLE_THRESHOLD
-    ? parseInt(process.env.TRIAGE_CRITICAL_PEOPLE_THRESHOLD, 10)
-    : 5,
-  /** People-affected count at or above which the incident becomes HIGH. */
-  TRIAGE_HIGH_PEOPLE_THRESHOLD: process.env.TRIAGE_HIGH_PEOPLE_THRESHOLD
-    ? parseInt(process.env.TRIAGE_HIGH_PEOPLE_THRESHOLD, 10)
-    : 3,
-  /** Comma-separated urgent-need keywords that escalate to CRITICAL. */
-  TRIAGE_CRITICAL_NEEDS: (process.env.TRIAGE_CRITICAL_NEEDS || 'medical,boat')
-    .split(',')
-    .map((s) => s.trim()),
-  /** Comma-separated incident categories that escalate to CRITICAL. */
-  TRIAGE_CRITICAL_CATEGORIES: (process.env.TRIAGE_CRITICAL_CATEGORIES || 'fire')
-    .split(',')
-    .map((s) => s.trim()),
-  /** Comma-separated urgent-need keywords that escalate to HIGH. */
-  TRIAGE_HIGH_NEEDS: (process.env.TRIAGE_HIGH_NEEDS || 'clean_water,food')
-    .split(',')
-    .map((s) => s.trim()),
-  /** Comma-separated incident categories that escalate to HIGH. */
-  TRIAGE_HIGH_CATEGORIES: (process.env.TRIAGE_HIGH_CATEGORIES || 'landslide')
-    .split(',')
-    .map((s) => s.trim()),
-  /** Confidence score assigned to heuristic (non-AI) triage results. */
-  TRIAGE_HEURISTIC_CONFIDENCE: process.env.TRIAGE_HEURISTIC_CONFIDENCE
-    ? parseFloat(process.env.TRIAGE_HEURISTIC_CONFIDENCE)
-    : 0.92,
+  // Heuristic Triage Thresholds
+  TRIAGE_CRITICAL_PEOPLE_THRESHOLD: z.coerce.number().int().positive().default(5),
+  TRIAGE_HIGH_PEOPLE_THRESHOLD: z.coerce.number().int().positive().default(3),
+  TRIAGE_CRITICAL_NEEDS: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => (typeof val === 'string' ? val.split(',').map((s) => s.trim()).filter(Boolean) : val))
+    .default(['medical', 'boat']),
+  TRIAGE_CRITICAL_CATEGORIES: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => (typeof val === 'string' ? val.split(',').map((s) => s.trim()).filter(Boolean) : val))
+    .default(['fire']),
+  TRIAGE_HIGH_NEEDS: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => (typeof val === 'string' ? val.split(',').map((s) => s.trim()).filter(Boolean) : val))
+    .default(['clean_water', 'food']),
+  TRIAGE_HIGH_CATEGORIES: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => (typeof val === 'string' ? val.split(',').map((s) => s.trim()).filter(Boolean) : val))
+    .default(['landslide']),
+  TRIAGE_HEURISTIC_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.92),
 
-  // ── Broadcast & Security ──────────────────────────────────────────────────
-  /** Default communication channel for survivor broadcasts. */
-  DEFAULT_BROADCAST_CHANNEL: process.env.DEFAULT_BROADCAST_CHANNEL || 'wifi',
-  /** Comma-separated list of allowed CORS origins for production. */
-  ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
+  // Broadcast & Security
+  DEFAULT_BROADCAST_CHANNEL: z.string().default('wifi'),
+  ALLOWED_ORIGINS: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => (typeof val === 'string' ? val.split(',').map((s) => s.trim()).filter(Boolean) : val))
+    .default([]),
 
-  // ── Authentication & Rate Limiting ─────────────────────────────────────────
-  /** Secret API Key for responder/admin management routes. */
-  API_KEY: process.env.API_KEY || 'rescuelink-responder-key-2026',
-  /** Rate limit window in milliseconds (default: 15 minutes). */
-  RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS
-    ? parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10)
-    : 15 * 60 * 1000,
-  /** Maximum public SOS submissions per IP per window. */
-  RATE_LIMIT_MAX_SOS: process.env.RATE_LIMIT_MAX_SOS
-    ? parseInt(process.env.RATE_LIMIT_MAX_SOS, 10)
-    : 20,
-};
+  // Authentication & Rate Limiting
+  API_KEY: z.string().default('rescuelink-responder-key-2026'),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  RATE_LIMIT_MAX_SOS: z.coerce.number().int().positive().default(20),
+});
+
+export type ApiEnv = z.infer<typeof ApiEnvSchema>;
+
+/**
+ * Shared Zod Schema for Web Client Environment Variables.
+ */
+export const ClientEnvSchema = z.object({
+  RESCUE_LINK_API_ORIGIN: z.string().default('http://localhost:3001'),
+  NEXT_PUBLIC_API_KEY: z.string().default('rescuelink-responder-key-2026'),
+  NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN: z.string().optional(),
+});
+
+export type ClientEnv = z.infer<typeof ClientEnvSchema>;
+
+/**
+ * Validates process.env against ApiEnvSchema and returns strongly-typed config.
+ * Throws a descriptive error at startup if environment variables are invalid.
+ */
+export function validateApiEnv(rawEnv: Record<string, unknown> = process.env): ApiEnv {
+  const result = ApiEnvSchema.safeParse(rawEnv);
+  if (!result.success) {
+    const formatted = JSON.stringify(result.error.format(), null, 2);
+    console.error('🚨 [CONFIG ERROR] Invalid API Environment Configuration:\n', formatted);
+    throw new Error(`Invalid API Environment Configuration:\n${formatted}`);
+  }
+
+  const parsed = result.data;
+
+  const effectiveUseMock =
+    parsed.USE_LOCAL_MOCK_STORE !== undefined
+      ? parsed.USE_LOCAL_MOCK_STORE
+      : parsed.NODE_ENV !== 'production';
+
+  return {
+    ...parsed,
+    USE_LOCAL_MOCK_STORE: effectiveUseMock,
+  };
+}
+
+/**
+ * Validates client environment variables at Next.js build/startup time.
+ */
+export function validateClientEnv(rawEnv: Record<string, unknown> = process.env): ClientEnv {
+  const result = ClientEnvSchema.safeParse(rawEnv);
+  if (!result.success) {
+    const formatted = JSON.stringify(result.error.format(), null, 2);
+    console.error('🚨 [CONFIG ERROR] Invalid Web Client Environment Configuration:\n', formatted);
+    throw new Error(`Invalid Web Client Environment Configuration:\n${formatted}`);
+  }
+  return result.data;
+}
+
+/**
+ * Master validated environment config object.
+ */
+export const CONFIG = validateApiEnv(process.env);
