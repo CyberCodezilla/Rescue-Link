@@ -13,44 +13,133 @@ const FALLBACK_CENTER: [number, number] = [20.5937, 78.9629];
 const FALLBACK_ZOOM = 5;
 const FOCUSED_ZOOM = 13;
 
-// Per the task spec: critical=red, high=orange, medium=yellow, low=green.
-// pending_triage isn't in the spec's four-color scheme; given a neutral
-// slate so it's visibly distinct from a triaged "low" incident.
 const PRIORITY_COLOR: Record<Priority, string> = {
-  critical: '#DC2626',
-  high: '#EA580C',
-  medium: '#CA8A04',
-  low: '#16A34A',
-  pending_triage: '#64748B',
+  critical: '#EF4444',
+  high: '#F97316',
+  medium: '#EAB308',
+  low: '#22C55E',
+  pending_triage: '#94A3B8',
 };
 
 const SENSOR_STATUS_COLOR: Record<SensorReading['status'], string> = {
-  normal: '#16A34A',
-  watch: '#CA8A04',
-  critical: '#DC2626',
+  normal: '#22C55E',
+  watch: '#EAB308',
+  critical: '#EF4444',
 };
 
 const HAZARD_SEVERITY_COLOR: Record<HazardZone['severity'], string> = {
-  watch: '#CA8A04',
-  warning: '#EA580C',
-  critical: '#DC2626',
+  watch: '#EAB308',
+  warning: '#F97316',
+  critical: '#EF4444',
 };
 
 function markerIcon(priority: Priority, isSelected: boolean) {
-  const size = isSelected ? 18 : 14;
+  const color = PRIORITY_COLOR[priority] || '#94A3B8';
+  const shadow = isSelected ? `box-shadow: 0 0 15px ${color}; transform: scale(1.25);` : '';
+
+  if (priority === 'critical') {
+    // Critical: Pulsing Diamond ◆
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        display:flex;align-items:center;justify-content:center;
+        width:20px;height:20px;
+        ${shadow}
+      ">
+        <div style="
+          width:13px;height:13px;
+          background:${color};
+          border:2px solid #FFFFFF;
+          transform:rotate(45deg);
+          box-shadow: 0 0 10px ${color};
+        "></div>
+      </div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+  }
+
+  if (priority === 'high') {
+    // High: Triangle-Up ▲
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        display:flex;align-items:center;justify-content:center;
+        width:20px;height:20px;
+        ${shadow}
+      ">
+        <div style="
+          width: 0; height: 0;
+          border-left: 7px solid transparent;
+          border-right: 7px solid transparent;
+          border-bottom: 14px solid ${color};
+          filter: drop-shadow(0 0 4px ${color});
+        "></div>
+      </div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+  }
+
+  if (priority === 'pending_triage') {
+    // Pending: Hollow Circle ○
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        display:flex;align-items:center;justify-content:center;
+        width:18px;height:18px;
+        ${shadow}
+      ">
+        <div style="
+          width:12px;height:12px;
+          border-radius:50%;
+          border:2px solid ${color};
+          background:#0B0F19;
+        "></div>
+      </div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+  }
+
+  if (priority === 'low') {
+    // Low: Small Circle
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        display:flex;align-items:center;justify-content:center;
+        width:16px;height:16px;
+        ${shadow}
+      ">
+        <div style="
+          width:8px;height:8px;
+          border-radius:50%;
+          background:${color};
+          border:1.5px solid #FFFFFF;
+        "></div>
+      </div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+  }
+
+  // Medium: Circle ●
   return L.divIcon({
     className: '',
-    html: `<span style="
-      display:block;
-      width:${size}px;
-      height:${size}px;
-      border-radius:9999px;
-      background:${PRIORITY_COLOR[priority]};
-      border:2px solid #FFFFFF;
-      box-shadow:0 0 0 1px rgba(18,22,31,0.15);
-    "></span>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    html: `<div style="
+      display:flex;align-items:center;justify-content:center;
+      width:18px;height:18px;
+      ${shadow}
+    ">
+      <div style="
+        width:12px;height:12px;
+        border-radius:50%;
+        background:${color};
+        border:2px solid #FFFFFF;
+      "></div>
+    </div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
   });
 }
 
@@ -59,14 +148,14 @@ function sensorIcon(status: SensorReading['status']) {
     className: '',
     html: `<span style="
       display:flex;align-items:center;justify-content:center;
-      width:16px;height:16px;border-radius:4px;
+      width:18px;height:18px;border-radius:4px;
       background:${SENSOR_STATUS_COLOR[status]};
-      border:2px solid #FFFFFF;
-      box-shadow:0 0 0 1px rgba(18,22,31,0.15);
-      color:#fff;font-size:10px;font-weight:700;line-height:1;
+      border:2px solid #0B0F19;
+      box-shadow:0 0 8px ${SENSOR_STATUS_COLOR[status]};
+      color:#fff;font-size:10px;font-weight:800;line-height:1;font-family:monospace;
     ">S</span>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
   });
 }
 
@@ -75,15 +164,15 @@ function unitIcon() {
     className: '',
     html: `<span style="
       display:flex;align-items:center;justify-content:center;
-      width:18px;height:18px;border-radius:4px;
-      background:#1D4ED8;
+      width:20px;height:20px;border-radius:4px;
+      background:#3B82F6;
       border:2px solid #FFFFFF;
-      box-shadow:0 0 0 1px rgba(18,22,31,0.15);
-      color:#fff;font-size:10px;font-weight:700;line-height:1;
+      box-shadow:0 0 10px rgba(59,130,246,0.6);
+      color:#fff;font-size:11px;font-weight:800;line-height:1;font-family:monospace;
       transform:rotate(45deg);
     "><span style="transform:rotate(-45deg);">U</span></span>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
   });
 }
 
@@ -95,14 +184,12 @@ export interface IncidentMapProps {
   incidents: IncidentResponse[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  /** Phase 2 layers — all optional so existing callers keep working untouched. */
   sensors?: SensorReading[];
   hazardZones?: HazardZone[];
   unitPositions?: UnitPosition[];
   showSensors?: boolean;
   showHazardZones?: boolean;
   showUnits?: boolean;
-  /** Enables the leaflet-draw geofence toolbar; fires whenever the drawn shape changes or is cleared (null). */
   geofenceEnabled?: boolean;
   onGeofenceChange?: (shape: GeofenceShape | null) => void;
 }
@@ -131,8 +218,6 @@ export function IncidentMap({
   const onGeofenceChangeRef = useRef(onGeofenceChange);
   onGeofenceChangeRef.current = onGeofenceChange;
 
-  // Location is a required field in the schema, so every incident is
-  // plottable once it exists at all.
   const plottable = incidents;
 
   const unitsByName = useMemo(() => {
@@ -151,8 +236,10 @@ export function IncidentMap({
       zoomControl: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
+    // Dark tactical CartoDB Dark Matter tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
       maxZoom: 19,
     }).addTo(map);
 
@@ -190,11 +277,11 @@ export function IncidentMap({
       const locationLabel = label ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
       marker.bindPopup(
-        `<div style="font-family:Inter,sans-serif;font-size:13px;min-width:160px;">
-           <strong>${incident.id}</strong><br/>
-           ${category} · ${incident.priority.toUpperCase()}<br/>
-           ${locationLabel}<br/>
-           <a href="/incidents/${incident.id}" style="color:#1D4ED8;">View details</a>
+        `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:170px;background:#131A2B;color:#F8FAFC;padding:4px;border-radius:4px;">
+           <strong style="color:#3B82F6;">${incident.id}</strong><br/>
+           <span style="color:#CBD5E1;">${category} // ${incident.priority.toUpperCase()}</span><br/>
+           <span style="color:#8A93A3;font-size:11px;">${locationLabel}</span><br/>
+           <div style="margin-top:6px;"><a href="/incidents/${incident.id}" style="color:#60A5FA;text-decoration:none;font-weight:bold;">TACTICAL DETAILS &rarr;</a></div>
          </div>`
       );
 
@@ -210,7 +297,6 @@ export function IncidentMap({
     } else {
       map.setView(FALLBACK_CENTER, FALLBACK_ZOOM);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plottable]);
 
   useEffect(() => {
@@ -237,10 +323,10 @@ export function IncidentMap({
         icon: sensorIcon(sensor.status),
       });
       marker.bindPopup(
-        `<div style="font-family:Inter,sans-serif;font-size:13px;min-width:170px;">
-           <strong>${sensor.label}</strong><br/>
-           ${sensor.value}${sensor.unit} · ${pct}% of threshold<br/>
-           Status: ${statusStr.toUpperCase()}
+        `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:170px;background:#131A2B;color:#F8FAFC;padding:4px;border-radius:4px;">
+           <strong style="color:#EAB308;">${sensor.label}</strong><br/>
+           ${sensor.value}${sensor.unit} // ${pct}% threshold<br/>
+           STATUS: <strong style="color:${SENSOR_STATUS_COLOR[sensor.status]}">${statusStr.toUpperCase()}</strong>
          </div>`
       );
       layer.addLayer(marker);
@@ -258,26 +344,27 @@ export function IncidentMap({
       const label = zone.label || (zone as any).name || 'Hazard Zone';
       const kind = (zone.kind || (zone as any).hazardType || 'hazard').toString();
       const severity = (zone.severity || 'warning').toString();
-      const color = HAZARD_SEVERITY_COLOR[zone.severity] || '#f59e0b';
+      const color = HAZARD_SEVERITY_COLOR[zone.severity] || '#F59E0B';
 
       const circle = L.circle([zone.center.lat, zone.center.lng], {
         radius: zone.radiusMeters,
         color,
         fillColor: color,
-        fillOpacity: 0.12,
+        fillOpacity: 0.15,
         weight: 2,
       });
       circle.bindPopup(
-        `<div style="font-family:Inter,sans-serif;font-size:13px;">
-           <strong>${label}</strong><br/>
-           ${kind.toUpperCase()} · ${severity.toUpperCase()}
+        `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;background:#131A2B;color:#F8FAFC;padding:4px;border-radius:4px;">
+           <strong style="color:${color}">${label}</strong><br/>
+           TYPE: ${kind.toUpperCase()}<br/>
+           SEVERITY: ${severity.toUpperCase()}
          </div>`
       );
       layer.addLayer(circle);
     });
   }, [hazardZones, showHazardZones]);
 
-  // Field unit layer, with distance/ETA to the incident they're assigned to
+  // Field unit layer
   useEffect(() => {
     const layer = unitLayerRef.current;
     if (!layer) return;
@@ -295,10 +382,10 @@ export function IncidentMap({
         const eta = estimateEtaMinutes(distance);
 
         marker.bindPopup(
-          `<div style="font-family:Inter,sans-serif;font-size:13px;min-width:180px;">
-             <strong>${unitName}</strong><br/>
-             ${formatDistance(distance)} from incident ${incident.id}<br/>
-             ~${eta} min ETA (straight-line estimate)
+          `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:180px;background:#131A2B;color:#F8FAFC;padding:4px;border-radius:4px;">
+             <strong style="color:#60A5FA;">${unitName}</strong><br/>
+             DISTANCE: ${formatDistance(distance)}<br/>
+             EST. ETA: ~<strong style="color:#34D399">${eta} MIN</strong>
            </div>`
         );
         layer.addLayer(marker);
@@ -306,7 +393,7 @@ export function IncidentMap({
     });
   }, [plottable, unitsByName, showUnits]);
 
-  // Geofence drawing (leaflet-draw)
+  // Geofence drawing
   useEffect(() => {
     const map = mapRef.current;
     const drawnItems = drawnItemsRef.current;
@@ -351,33 +438,37 @@ export function IncidentMap({
           center: { lat: center.lat, lng: center.lng },
           radiusMeters: first.getRadius(),
         });
-      } else if (first instanceof L.Polygon) {
-        const latlngs = (first.getLatLngs()[0] as L.LatLng[]) ?? [];
+        return;
+      }
+      if (first instanceof L.Polygon) {
+        const latLngs = (first.getLatLngs() as any)[0] as L.LatLng[];
         onGeofenceChangeRef.current?.({
           kind: 'polygon',
-          points: latlngs.map((p) => ({ lat: p.lat, lng: p.lng })),
+          points: latLngs.map((ll) => ({ lat: ll.lat, lng: ll.lng })),
         });
       }
     }
 
-    function handleCreated(e: L.LeafletEvent) {
-      drawnItems!.clearLayers(); // one geofence at a time
-      drawnItems!.addLayer((e as any).layer);
+    const onCreated = (e: any) => {
+      drawnItems.clearLayers();
+      drawnItems.addLayer(e.layer);
       emitShape();
-    }
-    function handleEditedOrDeleted() {
-      emitShape();
-    }
+    };
 
-    const drawEvents = (L as any).Draw?.Event || {};
-    map.on(drawEvents.CREATED || 'draw:created', handleCreated as L.LeafletEventHandlerFn);
-    map.on(drawEvents.EDITED || 'draw:edited', handleEditedOrDeleted);
-    map.on(drawEvents.DELETED || 'draw:deleted', handleEditedOrDeleted);
+    const onEdited = () => emitShape();
+    const onDeleted = () => {
+      drawnItems.clearLayers();
+      emitShape();
+    };
+
+    map.on((L as any).Draw.Event.CREATED, onCreated);
+    map.on((L as any).Draw.Event.EDITED, onEdited);
+    map.on((L as any).Draw.Event.DELETED, onDeleted);
 
     return () => {
-      map.off(drawEvents.CREATED || 'draw:created', handleCreated as L.LeafletEventHandlerFn);
-      map.off(drawEvents.EDITED || 'draw:edited', handleEditedOrDeleted);
-      map.off(drawEvents.DELETED || 'draw:deleted', handleEditedOrDeleted);
+      map.off((L as any).Draw.Event.CREATED, onCreated);
+      map.off((L as any).Draw.Event.EDITED, onEdited);
+      map.off((L as any).Draw.Event.DELETED, onDeleted);
       if (drawControlRef.current) {
         map.removeControl(drawControlRef.current);
         drawControlRef.current = null;
@@ -388,9 +479,9 @@ export function IncidentMap({
   return (
     <div
       ref={containerRef}
-      role="img"
-      aria-label="Map of active incidents"
-      className="h-full min-h-[320px] w-full rounded-md border border-line"
+      className="h-full w-full bg-canvas relative z-0"
+      tabIndex={0}
+      aria-label="Tactical incident map"
     />
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Layers, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { batchUpdateStatus } from '@/lib/api';
 import { isPointInCircle, isPointInPolygon } from '@/lib/geo';
 import type { GeofenceShape } from '@/components/map/IncidentMap';
@@ -10,14 +11,13 @@ interface GeofencePanelProps {
   shape: GeofenceShape | null;
   incidents: IncidentResponse[];
   onClear: () => void;
-  /** Called after a batch action so the caller can refresh its incident list. */
   onBatchComplete: () => void;
 }
 
 const BULK_ACTIONS: { label: string; status: IncidentStatus }[] = [
-  { label: 'Acknowledge all', status: 'acknowledged' },
-  { label: 'Start Rescue for all', status: 'in_progress' },
-  { label: 'Resolve all', status: 'resolved' },
+  { label: 'ACKNOWLEDGE ALL', status: 'acknowledged' },
+  { label: 'DISPATCH ALL', status: 'in_progress' },
+  { label: 'RESOLVE ALL', status: 'resolved' },
 ];
 
 export function GeofencePanel({ shape, incidents, onClear, onBatchComplete }: GeofencePanelProps) {
@@ -52,40 +52,50 @@ export function GeofencePanel({ shape, incidents, onClear, onBatchComplete }: Ge
   }
 
   return (
-    <div className="absolute bottom-3 left-3 right-3 z-[1000] rounded-lg border border-line bg-surface/95 p-3 shadow-panel backdrop-blur-sm sm:right-auto sm:max-w-sm">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-ink-900">
-          {matched.length} incident{matched.length === 1 ? '' : 's'} in zone
-        </p>
-        <button type="button" onClick={onClear} className="text-xs text-ink-500 hover:text-ink-700">
-          Clear zone
+    <div className="hud-panel absolute bottom-4 left-4 right-4 z-[1000] border-line-2 bg-surface/95 p-3.5 shadow-panel backdrop-blur-md sm:right-auto sm:max-w-md">
+      <div className="flex items-center justify-between gap-2 border-b border-line pb-2">
+        <div className="flex items-center gap-2">
+          <Layers size={14} className="text-action" />
+          <p className="font-mono text-xs font-bold uppercase tracking-wider text-ink-900">
+            {matched.length} INCIDENT{matched.length === 1 ? '' : 'S'} IN TACTICAL GEOFENCE
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClear}
+          className="flex items-center gap-1 font-mono text-[11px] text-ink-500 hover:text-ink-900"
+        >
+          <X size={12} />
+          CLEAR
         </button>
       </div>
 
       {matched.length === 0 ? (
-        <p className="mt-1 text-xs text-ink-500">Draw a circle or polygon over the map to select incidents.</p>
+        <p className="mt-2 font-mono text-xs text-ink-500">
+          Draw a circle or polygon over the tactical grid to capture incidents.
+        </p>
       ) : (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {BULK_ACTIONS.map((action) => (
             <button
               key={action.status}
               type="button"
               onClick={() => runBatch(action.status)}
               disabled={isPending}
-              className="rounded border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs font-bold text-ink-700 hover:bg-surface-3 hover:text-ink-900 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending ? 'Working…' : action.label}
+              {isPending ? 'DEPLOYING...' : action.label}
             </button>
           ))}
         </div>
       )}
 
-      {result ? <p className="mt-2 text-xs text-ink-500">{result}</p> : null}
-
-      <p className="mt-2 text-[11px] text-ink-300">
-        No batch endpoint exists on the backend yet — this sends the real per-incident PATCH
-        request once for each incident in the zone.
-      </p>
+      {result ? (
+        <div className="mt-2.5 flex items-center gap-1.5 text-xs font-mono text-emerald-400">
+          <CheckCircle2 size={12} />
+          <span>{result}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
