@@ -2,10 +2,17 @@ import { Incident, IncidentStatus, Priority } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 import { DynamoIncidentStore } from './dynamoStore';
 
+export interface IncidentFilterOptions {
+  status?: IncidentStatus | IncidentStatus[];
+  priority?: Priority | Priority[];
+  q?: string;
+  since?: number;
+}
+
 export interface IIncidentStore {
   create(incident: Incident): Promise<Incident>;
   getById(id: string): Promise<Incident | null>;
-  list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]>;
+  list(filter?: IncidentFilterOptions): Promise<Incident[]>;
   update(id: string, updates: Partial<Incident>): Promise<Incident | null>;
   clear(): Promise<void>;
 }
@@ -22,18 +29,35 @@ export class InMemoryIncidentStore implements IIncidentStore {
     return this.incidents.get(id) || null;
   }
 
-  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
-    const hasStatus = Boolean(filter?.status);
-    const hasPriority = Boolean(filter?.priority);
-
+  async list(filter?: IncidentFilterOptions): Promise<Incident[]> {
     let result = Array.from(this.incidents.values());
 
-    if (hasStatus || hasPriority) {
-      result = result.filter(
-        (i) =>
-          (!hasStatus || i.status === filter!.status) &&
-          (!hasPriority || i.priority === filter!.priority)
-      );
+    if (filter) {
+      const statuses = filter.status
+        ? Array.isArray(filter.status)
+          ? filter.status
+          : [filter.status]
+        : undefined;
+
+      const priorities = filter.priority
+        ? Array.isArray(filter.priority)
+          ? filter.priority
+          : [filter.priority]
+        : undefined;
+
+      const searchQuery = filter.q?.toLowerCase();
+      const sinceTime = filter.since;
+
+      result = result.filter((i) => {
+        if (statuses && !statuses.includes(i.status)) return false;
+        if (priorities && !priorities.includes(i.priority)) return false;
+        if (sinceTime !== undefined && i.createdAt < sinceTime) return false;
+        if (searchQuery) {
+          const text = `${i.category} ${i.description} ${i.triage?.suggestedAction || ''}`.toLowerCase();
+          if (!text.includes(searchQuery)) return false;
+        }
+        return true;
+      });
     }
 
     return result.sort((a, b) => b.createdAt - a.createdAt);
@@ -143,7 +167,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
     }
   }
 
-  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
+  async list(filter?: IncidentFilterOptions): Promise<Incident[]> {
     if (this.isMock()) {
       return this.memoryStore.list(filter);
     }

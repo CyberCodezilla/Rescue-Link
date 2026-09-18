@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   SOSSubmissionSchema,
   Incident,
+  IncidentStatus,
+  Priority,
   IncidentStatusEnum,
   PriorityEnum,
   IncidentTriageSchema,
@@ -69,24 +71,60 @@ incidentsRouter.post('/', sosRateLimiter, async (req: Request, res: Response): P
   res.status(201).json(created);
 });
 
-// GET /api/incidents - List Incidents
+// GET /api/incidents - List Incidents with Multi-filtering, Search & Pagination
 incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
-  const { status, priority } = req.query;
+  const { status, priority, q, since, page, limit, paginated } = req.query;
 
-  const validStatus =
-    typeof status === 'string' && IncidentStatusEnum.safeParse(status).success
-      ? (status as any)
-      : undefined;
+  // Process comma-separated status filters
+  const parseStatuses = (val: unknown): IncidentStatus[] | undefined => {
+    if (typeof val !== 'string') return undefined;
+    const parts = val.split(',').map((s) => s.trim()).filter(Boolean);
+    const valid = parts.filter((p) => IncidentStatusEnum.safeParse(p).success) as IncidentStatus[];
+    return valid.length > 0 ? valid : undefined;
+  };
 
-  const validPriority =
-    typeof priority === 'string' && PriorityEnum.safeParse(priority).success
-      ? (priority as any)
-      : undefined;
+  // Process comma-separated priority filters
+  const parsePriorities = (val: unknown): Priority[] | undefined => {
+    if (typeof val !== 'string') return undefined;
+    const parts = val.split(',').map((s) => s.trim()).filter(Boolean);
+    const valid = parts.filter((p) => PriorityEnum.safeParse(p).success) as Priority[];
+    return valid.length > 0 ? valid : undefined;
+  };
+
+  const parsedStatus = parseStatuses(status);
+  const parsedPriority = parsePriorities(priority);
+  const searchQuery = typeof q === 'string' ? q : undefined;
+  const sinceTime = typeof since === 'string' && !isNaN(parseInt(since, 10)) ? parseInt(since, 10) : undefined;
 
   const list = await incidentStore.list({
-    status: validStatus,
-    priority: validPriority,
+    status: parsedStatus,
+    priority: parsedPriority,
+    q: searchQuery,
+    since: sinceTime,
   });
+
+  const shouldPaginate = Boolean(page || limit || paginated === 'true');
+
+  if (shouldPaginate) {
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const pageSize = Math.min(200, Math.max(1, parseInt(limit as string, 10) || 50));
+    const totalCount = list.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const startIndex = (pageNum - 1) * pageSize;
+    const paginatedItems = list.slice(startIndex, startIndex + pageSize);
+
+    res.status(200).json({
+      incidents: paginatedItems,
+      pagination: {
+        totalCount,
+        page: pageNum,
+        limit: pageSize,
+        totalPages,
+        hasMore: pageNum < totalPages,
+      },
+    });
+    return;
+  }
 
   res.status(200).json(list);
 });

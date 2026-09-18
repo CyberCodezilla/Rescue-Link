@@ -2,13 +2,13 @@ import { Incident } from '@rescue-link/schema';
 import { bedrockService } from './bedrockService';
 import { incidentStore } from '../store/incidentStore';
 import { eventStreamManager } from './eventStream';
-import { notificationService } from './notificationService';
+import { notificationQueue } from './notificationQueue';
 
 export class TriageWorkflowOrchestrator {
   /**
    * Asynchronously triages an incoming incident using Bedrock AI (or fallback engine),
    * updates the store, broadcasts an SSE update to all connected responders,
-   * and triggers Amazon SNS SMS / SES Email notifications for critical/high incidents.
+   * and enqueues Amazon SNS SMS / SES Email notifications for critical/high incidents.
    */
   async runTriage(incident: Incident): Promise<Incident> {
     try {
@@ -31,10 +31,8 @@ export class TriageWorkflowOrchestrator {
         timestamp: Date.now(),
       });
 
-      // Dispatch emergency notifications (SNS/SES) if priority is critical or high
-      notificationService.sendCriticalAlert(finalIncident).catch((err) => {
-        console.error(`[TriageWorkflow] Notification trigger failed for ${finalIncident.id}:`, err);
-      });
+      // Decoupled background notification queue (non-blocking)
+      notificationQueue.enqueue(finalIncident);
 
       return finalIncident;
     } catch (error) {

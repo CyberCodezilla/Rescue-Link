@@ -1,5 +1,6 @@
 import { Incident, IncidentStatus, Priority } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
+import type { IncidentFilterOptions } from './incidentStore';
 
 export class DynamoIncidentStore {
   private tableName = CONFIG.DYNAMODB_TABLE_INCIDENTS;
@@ -46,7 +47,7 @@ export class DynamoIncidentStore {
     return (res.Item as Incident) || null;
   }
 
-  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
+  async list(filter?: IncidentFilterOptions): Promise<Incident[]> {
     const { docClient, ScanCommand } = await this.getDocClient();
 
     let items: Incident[] = [];
@@ -65,15 +66,32 @@ export class DynamoIncidentStore {
       lastEvaluatedKey = res.LastEvaluatedKey;
     } while (lastEvaluatedKey);
 
-    const hasStatus = Boolean(filter?.status);
-    const hasPriority = Boolean(filter?.priority);
+    if (filter) {
+      const statuses = filter.status
+        ? Array.isArray(filter.status)
+          ? filter.status
+          : [filter.status]
+        : undefined;
 
-    if (hasStatus || hasPriority) {
-      items = items.filter(
-        (i) =>
-          (!hasStatus || i.status === filter!.status) &&
-          (!hasPriority || i.priority === filter!.priority)
-      );
+      const priorities = filter.priority
+        ? Array.isArray(filter.priority)
+          ? filter.priority
+          : [filter.priority]
+        : undefined;
+
+      const searchQuery = filter.q?.toLowerCase();
+      const sinceTime = filter.since;
+
+      items = items.filter((i) => {
+        if (statuses && !statuses.includes(i.status)) return false;
+        if (priorities && !priorities.includes(i.priority)) return false;
+        if (sinceTime !== undefined && i.createdAt < sinceTime) return false;
+        if (searchQuery) {
+          const text = `${i.category} ${i.description} ${i.triage?.suggestedAction || ''}`.toLowerCase();
+          if (!text.includes(searchQuery)) return false;
+        }
+        return true;
+      });
     }
 
     return items.sort((a, b) => b.createdAt - a.createdAt);
