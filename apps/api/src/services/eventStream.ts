@@ -1,4 +1,4 @@
-import { Response } from 'express';
+﻿import { Response } from 'express';
 import { Incident } from '@rescue-link/schema';
 
 export interface SSEEvent {
@@ -8,8 +8,22 @@ export interface SSEEvent {
   timestamp: number;
 }
 
+export interface BroadcastAdapter {
+  broadcast?: (event: SSEEvent) => void | Promise<void>;
+  publish?: (event: SSEEvent) => void | Promise<void>;
+}
+
 export class EventStreamManager {
+  private adapter: BroadcastAdapter | null = null;
   private clients: Set<Response> = new Set();
+
+  constructor(adapter: BroadcastAdapter | null = null) {
+    this.adapter = adapter;
+  }
+
+  setAdapter(adapter: BroadcastAdapter | null): void {
+    this.adapter = adapter;
+  }
 
   addClient(res: Response): void {
     this.clients.add(res);
@@ -20,11 +34,18 @@ export class EventStreamManager {
   }
 
   broadcast(event: SSEEvent): void {
+    if (this.adapter?.broadcast) {
+      void this.adapter.broadcast(event);
+    } else if (this.adapter?.publish) {
+      void this.adapter.publish(event);
+    }
+
     const payload = `event: incident\ndata: ${JSON.stringify(event)}\n\n`;
+
     for (const client of this.clients) {
       try {
         client.write(payload);
-      } catch (err) {
+      } catch {
         this.clients.delete(client);
       }
     }
@@ -36,3 +57,13 @@ export class EventStreamManager {
 }
 
 export const eventStreamManager = new EventStreamManager();
+
+/**
+ * Local in-process broadcast adapter.
+ * Used for single-node operation and tests.
+ */
+export class LocalBroadcastAdapter implements BroadcastAdapter {
+  broadcast(event: SSEEvent): void {
+    void event;
+  }
+}

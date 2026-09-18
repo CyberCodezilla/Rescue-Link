@@ -1,5 +1,6 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+﻿import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { healthRouter } from './routes/health';
 import { incidentsRouter } from './routes/incidents';
 import { eventsRouter } from './routes/events';
@@ -10,10 +11,11 @@ import { workflowCallbackRouter } from './routes/workflowCallback';
 export const createApp = (): Express => {
   const app = express();
 
+  app.use(helmet());
   app.use(cors());
   app.use(express.json());
 
-  app.get('/', (req: Request, res: Response) => {
+  app.get('/', (_req: Request, res: Response) => {
     res.json({
       status: 'ok',
       service: 'RescueLink API',
@@ -33,13 +35,11 @@ export const createApp = (): Express => {
   app.use('/api/workflows', workflowCallbackRouter);
   app.use('/api', telemetryRouter);
 
-  // Fallback 404 handler
   app.use((req: Request, res: Response) => {
     res.status(404).json({ error: 'Route not found' });
   });
 
-  // Global error handler
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('Unhandled API Error:', err);
     res.status(500).json({ error: 'Internal Server Error', message: err.message });
   });
@@ -48,3 +48,4 @@ export const createApp = (): Express => {
 };
 
 export const app = createApp();
+

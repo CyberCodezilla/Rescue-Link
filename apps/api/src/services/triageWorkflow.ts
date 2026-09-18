@@ -1,4 +1,4 @@
-import { Incident } from '@rescue-link/schema';
+﻿import { Incident } from '@rescue-link/schema';
 import { bedrockService } from './bedrockService';
 import { incidentStore } from '../store/incidentStore';
 import { eventStreamManager } from './eventStream';
@@ -95,9 +95,35 @@ export class TriageWorkflowOrchestrator {
       return finalIncident;
     } catch (error) {
       console.error(`[TriageWorkflow] Failed async triage for incident ${incident.id}:`, error);
-      return incident;
+
+      const fallback = bedrockService.generateHeuristicTriage(incident);
+      const recovered = await incidentStore.update(incident.id, {
+        priority: fallback.priority,
+        triage: {
+          ...(incident.triage || {}),
+          ...fallback.triage,
+        },
+      });
+
+      const finalIncident = recovered || {
+        ...incident,
+        priority: fallback.priority,
+        triage: {
+          ...(incident.triage || {}),
+          ...fallback.triage,
+        },
+      };
+
+      eventStreamManager.broadcast({
+        type: 'incident:updated',
+        incident: finalIncident,
+        timestamp: Date.now(),
+      });
+
+      return finalIncident;
     }
   }
 }
 
 export const triageWorkflow = new TriageWorkflowOrchestrator();
+

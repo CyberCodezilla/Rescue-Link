@@ -1,73 +1,185 @@
-/**
- * Centralized configuration for the RescueLink API.
- * Every key reads from process.env first, falling back to a sensible default.
- * Defaults match the original hardcoded values for backward compatibility.
- */
-export const CONFIG = {
-  // ── Server ────────────────────────────────────────────────────────────────
-  PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 3001,
-  NODE_ENV: process.env.NODE_ENV || 'development',
+﻿export interface ApiEnvironmentConfig {
+  PORT: number;
+  NODE_ENV: 'development' | 'test' | 'production';
+  AWS_REGION: string;
+  DYNAMODB_TABLE_INCIDENTS: string;
+  USE_LOCAL_MOCK_STORE: boolean;
+  BEDROCK_MODEL_ID: string;
+  BEDROCK_MAX_TOKENS: number;
+  BEDROCK_TIMEOUT_MS: number;
+  BEDROCK_TEMPERATURE: number;
+  STATE_MACHINE_ARN: string;
+  RESCUELINK_CALLBACK_URL: string;
+  LAMBDA_CALLBACK_SECRET: string;
+  SNS_TOPIC_ARN: string;
+  SES_FROM_EMAIL: string;
+  SES_ALERT_RECIPIENT: string;
+  NOTIFICATION_PRIORITY_GATE: string[];
+  TRIAGE_CRITICAL_PEOPLE_THRESHOLD: number;
+  TRIAGE_HIGH_PEOPLE_THRESHOLD: number;
+  TRIAGE_CRITICAL_NEEDS: string[];
+  TRIAGE_CRITICAL_CATEGORIES: string[];
+  TRIAGE_HIGH_NEEDS: string[];
+  TRIAGE_HIGH_CATEGORIES: string[];
+  TRIAGE_HEURISTIC_CONFIDENCE: number;
+  DEFAULT_BROADCAST_CHANNEL: string;
+  API_KEY: string;
+  RATE_LIMIT_WINDOW_MS: number;
+  RATE_LIMIT_MAX_SOS: number;
+}
 
-  // ── AWS Core ──────────────────────────────────────────────────────────────
-  AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-  DYNAMODB_TABLE_INCIDENTS: process.env.DYNAMODB_TABLE_INCIDENTS || 'rescue-incidents',
-  /** Set to 'true' explicitly to use the in-memory mock store (dev only). */
-  USE_LOCAL_MOCK_STORE: process.env.USE_LOCAL_MOCK_STORE === 'true',
+export interface ClientEnvironmentConfig {
+  RESCUE_LINK_API_ORIGIN: string;
+  NEXT_PUBLIC_API_KEY: string;
+}
 
-  // ── Bedrock / LLM ────────────────────────────────────────────────────────
-  BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0',
-  BEDROCK_MAX_TOKENS: process.env.BEDROCK_MAX_TOKENS
-    ? parseInt(process.env.BEDROCK_MAX_TOKENS, 10)
-    : 300,
-  BEDROCK_TEMPERATURE: process.env.BEDROCK_TEMPERATURE
-    ? parseFloat(process.env.BEDROCK_TEMPERATURE)
-    : 0.2,
+type Env = Record<string, string | undefined>;
 
-  // ── Step Functions ────────────────────────────────────────────────────────
-  STATE_MACHINE_ARN: process.env.STATE_MACHINE_ARN || '',
-  RESCUELINK_CALLBACK_URL: process.env.RESCUELINK_CALLBACK_URL || '',
-  LAMBDA_CALLBACK_SECRET: process.env.LAMBDA_CALLBACK_SECRET || '',
-
-  // ── SNS / SES Notifications ───────────────────────────────────────────────
-  SNS_TOPIC_ARN: process.env.SNS_TOPIC_ARN || '',
-  SES_FROM_EMAIL: process.env.SES_FROM_EMAIL || 'alerts@rescuelink.org',
-  SES_ALERT_RECIPIENT: process.env.SES_ALERT_RECIPIENT || 'responders@rescuelink.org',
-  /** Comma-separated list of priority levels that trigger SNS/SES alerts. */
-  NOTIFICATION_PRIORITY_GATE: (process.env.NOTIFICATION_PRIORITY_GATE || 'critical,high')
-    .split(',')
-    .map((s) => s.trim()),
-
-  // ── Heuristic Triage Thresholds ───────────────────────────────────────────
-  /** People-affected count at or above which the incident becomes CRITICAL. */
-  TRIAGE_CRITICAL_PEOPLE_THRESHOLD: process.env.TRIAGE_CRITICAL_PEOPLE_THRESHOLD
-    ? parseInt(process.env.TRIAGE_CRITICAL_PEOPLE_THRESHOLD, 10)
-    : 5,
-  /** People-affected count at or above which the incident becomes HIGH. */
-  TRIAGE_HIGH_PEOPLE_THRESHOLD: process.env.TRIAGE_HIGH_PEOPLE_THRESHOLD
-    ? parseInt(process.env.TRIAGE_HIGH_PEOPLE_THRESHOLD, 10)
-    : 3,
-  /** Comma-separated urgent-need keywords that escalate to CRITICAL. */
-  TRIAGE_CRITICAL_NEEDS: (process.env.TRIAGE_CRITICAL_NEEDS || 'medical,boat')
-    .split(',')
-    .map((s) => s.trim()),
-  /** Comma-separated incident categories that escalate to CRITICAL. */
-  TRIAGE_CRITICAL_CATEGORIES: (process.env.TRIAGE_CRITICAL_CATEGORIES || 'fire')
-    .split(',')
-    .map((s) => s.trim()),
-  /** Comma-separated urgent-need keywords that escalate to HIGH. */
-  TRIAGE_HIGH_NEEDS: (process.env.TRIAGE_HIGH_NEEDS || 'clean_water,food')
-    .split(',')
-    .map((s) => s.trim()),
-  /** Comma-separated incident categories that escalate to HIGH. */
-  TRIAGE_HIGH_CATEGORIES: (process.env.TRIAGE_HIGH_CATEGORIES || 'landslide')
-    .split(',')
-    .map((s) => s.trim()),
-  /** Confidence score assigned to heuristic (non-AI) triage results. */
-  TRIAGE_HEURISTIC_CONFIDENCE: process.env.TRIAGE_HEURISTIC_CONFIDENCE
-    ? parseFloat(process.env.TRIAGE_HEURISTIC_CONFIDENCE)
-    : 0.92,
-
-  // ── Broadcast ─────────────────────────────────────────────────────────────
-  /** Default communication channel for survivor broadcasts. */
-  DEFAULT_BROADCAST_CHANNEL: process.env.DEFAULT_BROADCAST_CHANNEL || 'wifi',
+const numberValue = (
+  env: Env,
+  key: string,
+  fallback: number,
+  min?: number,
+  max?: number
+): number => {
+  const raw = env[key];
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) throw new Error(`${key} must be a valid number`);
+  if (min !== undefined && value < min) throw new Error(`${key} is below minimum`);
+  if (max !== undefined && value > max) throw new Error(`${key} is above maximum`);
+  return value;
 };
+
+const integerValue = (
+  env: Env,
+  key: string,
+  fallback: number,
+  min?: number,
+  max?: number
+): number => {
+  const value = numberValue(env, key, fallback, min, max);
+  if (!Number.isInteger(value)) throw new Error(`${key} must be an integer`);
+  return value;
+};
+
+const listValue = (env: Env, key: string, fallback: string): string[] =>
+  (env[key] || fallback)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
+  const nodeEnv = env.NODE_ENV || 'development';
+  if (!['development', 'test', 'production'].includes(nodeEnv)) {
+    throw new Error('NODE_ENV must be development, test, or production');
+  }
+
+  const apiKey = env.API_KEY ?? 'rescuelink-responder-key-2026';
+
+  return {
+    PORT: integerValue(env, 'PORT', 3001, 1, 65535),
+    NODE_ENV: nodeEnv as ApiEnvironmentConfig['NODE_ENV'],
+    AWS_REGION: env.AWS_REGION || 'us-east-1',
+    DYNAMODB_TABLE_INCIDENTS: env.DYNAMODB_TABLE_INCIDENTS || 'rescue-incidents',
+    USE_LOCAL_MOCK_STORE: env.USE_LOCAL_MOCK_STORE === 'true',
+
+    BEDROCK_MODEL_ID:
+      env.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0',
+    BEDROCK_MAX_TOKENS: integerValue(env, 'BEDROCK_MAX_TOKENS', 300, 1, 100000),
+    BEDROCK_TIMEOUT_MS: integerValue(env, 'BEDROCK_TIMEOUT_MS', 3500, 100, 120000),
+    BEDROCK_TEMPERATURE: numberValue(env, 'BEDROCK_TEMPERATURE', 0.2, 0, 2),
+
+    STATE_MACHINE_ARN: env.STATE_MACHINE_ARN || '',
+    RESCUELINK_CALLBACK_URL: env.RESCUELINK_CALLBACK_URL || '',
+    LAMBDA_CALLBACK_SECRET: env.LAMBDA_CALLBACK_SECRET || '',
+
+    SNS_TOPIC_ARN: env.SNS_TOPIC_ARN || '',
+    SES_FROM_EMAIL: env.SES_FROM_EMAIL || 'alerts@rescuelink.org',
+    SES_ALERT_RECIPIENT: env.SES_ALERT_RECIPIENT || 'responders@rescuelink.org',
+    NOTIFICATION_PRIORITY_GATE: listValue(
+      env,
+      'NOTIFICATION_PRIORITY_GATE',
+      'critical,high'
+    ),
+
+    TRIAGE_CRITICAL_PEOPLE_THRESHOLD: integerValue(
+      env,
+      'TRIAGE_CRITICAL_PEOPLE_THRESHOLD',
+      5,
+      1
+    ),
+    TRIAGE_HIGH_PEOPLE_THRESHOLD: integerValue(
+      env,
+      'TRIAGE_HIGH_PEOPLE_THRESHOLD',
+      3,
+      1
+    ),
+    TRIAGE_CRITICAL_NEEDS: listValue(
+      env,
+      'TRIAGE_CRITICAL_NEEDS',
+      'medical,boat'
+    ),
+    TRIAGE_CRITICAL_CATEGORIES: listValue(
+      env,
+      'TRIAGE_CRITICAL_CATEGORIES',
+      'fire'
+    ),
+    TRIAGE_HIGH_NEEDS: listValue(
+      env,
+      'TRIAGE_HIGH_NEEDS',
+      'clean_water,food'
+    ),
+    TRIAGE_HIGH_CATEGORIES: listValue(
+      env,
+      'TRIAGE_HIGH_CATEGORIES',
+      'landslide'
+    ),
+    TRIAGE_HEURISTIC_CONFIDENCE: numberValue(
+      env,
+      'TRIAGE_HEURISTIC_CONFIDENCE',
+      0.92,
+      0,
+      1
+    ),
+
+    DEFAULT_BROADCAST_CHANNEL:
+      env.DEFAULT_BROADCAST_CHANNEL || 'wifi',
+
+    API_KEY: apiKey,
+    RATE_LIMIT_WINDOW_MS: integerValue(
+      env,
+      'RATE_LIMIT_WINDOW_MS',
+      60000,
+      1000
+    ),
+    RATE_LIMIT_MAX_SOS: integerValue(
+      env,
+      'RATE_LIMIT_MAX_SOS',
+      30,
+      1
+    ),
+  };
+}
+
+export function validateClientEnv(
+  env: Env = process.env
+): ClientEnvironmentConfig {
+  const origin =
+    env.RESCUE_LINK_API_ORIGIN ||
+    env.NEXT_PUBLIC_API_ORIGIN ||
+    'http://localhost:3001';
+
+  try {
+    new URL(origin);
+  } catch {
+    throw new Error('RESCUE_LINK_API_ORIGIN must be a valid URL');
+  }
+
+  return {
+    RESCUE_LINK_API_ORIGIN: origin,
+    NEXT_PUBLIC_API_KEY: env.NEXT_PUBLIC_API_KEY || 'rescuelink-responder-key-2026',
+  };
+}
+
+export const CONFIG = validateApiEnv(process.env);

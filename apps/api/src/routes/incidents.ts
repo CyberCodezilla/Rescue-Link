@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import {
   SOSSubmissionSchema,
@@ -11,6 +11,7 @@ import { incidentStore } from '../store/incidentStore';
 import { triageWorkflow } from '../services/triageWorkflow';
 import { eventStreamManager } from '../services/eventStream';
 import { CONFIG } from '@rescue-link/config';
+import { requireApiKey } from '../middleware/auth';
 
 export const incidentsRouter = Router();
 
@@ -69,26 +70,73 @@ incidentsRouter.post('/', async (req: Request, res: Response): Promise<void> => 
 
 // GET /api/incidents - List Incidents
 incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
-  const { status, priority } = req.query;
+  const statusQuery =
+    typeof req.query.status === 'string' ? req.query.status : undefined;
+  const priorityQuery =
+    typeof req.query.priority === 'string' ? req.query.priority : undefined;
 
-  const validStatus =
-    typeof status === 'string' && IncidentStatusEnum.safeParse(status).success
-      ? (status as any)
-      : undefined;
+  const statusValues = statusQuery
+    ? statusQuery.split(',').map((value) => value.trim()).filter(Boolean)
+    : [];
+  const priorityValues = priorityQuery
+    ? priorityQuery.split(',').map((value) => value.trim()).filter(Boolean)
+    : [];
 
-  const validPriority =
-    typeof priority === 'string' && PriorityEnum.safeParse(priority).success
-      ? (priority as any)
-      : undefined;
+  const statusFilters = statusValues.filter(
+    (value) => IncidentStatusEnum.safeParse(value).success
+  );
+  const priorityFilters = priorityValues.filter(
+    (value) => PriorityEnum.safeParse(value).success
+  );
 
-  const list = await incidentStore.list({
-    status: validStatus,
-    priority: validPriority,
+  let incidents = await incidentStore.list();
+
+  if (statusFilters.length > 0) {
+    incidents = incidents.filter((incident) =>
+      statusFilters.includes(incident.status)
+    );
+  }
+
+  if (priorityFilters.length > 0) {
+    incidents = incidents.filter((incident) =>
+      priorityFilters.includes(incident.priority)
+    );
+  }
+
+  const pageRaw = Number(req.query.page);
+  const limitRaw = Number(req.query.limit);
+  const hasPagination =
+    Number.isInteger(pageRaw) ||
+    Number.isInteger(limitRaw) ||
+    req.query.page !== undefined ||
+    req.query.limit !== undefined;
+
+  if (!hasPagination) {
+    res.status(200).json(incidents);
+    return;
+  }
+
+  const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  const limit =
+    Number.isInteger(limitRaw) && limitRaw > 0
+      ? Math.min(limitRaw, 100)
+      : 20;
+
+  const total = incidents.length;
+  const startIndex = (page - 1) * limit;
+  const paged = incidents.slice(startIndex, startIndex + limit);
+
+  res.status(200).json({
+    incidents: paged,
+    pagination: {
+      page,
+      limit,
+      totalCount: total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: startIndex + paged.length < total,
+    },
   });
-
-  res.status(200).json(list);
 });
-
 // GET /api/incidents/:id - Get Single Incident
 incidentsRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
@@ -103,7 +151,7 @@ incidentsRouter.get('/:id', async (req: Request, res: Response): Promise<void> =
 });
 
 // PATCH /api/incidents/:id - Update status / assignment / triage
-incidentsRouter.patch('/:id', async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.patch('/:id', requireApiKey, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
@@ -215,3 +263,6 @@ incidentsRouter.post('/:id/broadcast', async (req: Request, res: Response): Prom
     incident: updated,
   });
 });
+
+
+

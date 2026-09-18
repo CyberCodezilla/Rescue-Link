@@ -1,11 +1,12 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import { notificationService } from '../services/notificationService';
 import { Incident } from '@rescue-link/schema';
+import { requireApiKey } from '../middleware/auth';
 
 export const notificationsRouter = Router();
 
 // POST /api/notifications/test - Trigger manual test dispatch of Amazon SNS/SES alerts
-notificationsRouter.post('/test', async (req: Request, res: Response): Promise<void> => {
+notificationsRouter.post('/test', requireApiKey, async (req: Request, res: Response): Promise<void> => {
   const { priority, category, description, peopleAffected, location } = req.body;
 
   const mockIncident: Incident = {
@@ -33,3 +34,5 @@ notificationsRouter.post('/test', async (req: Request, res: Response): Promise<v
     incident: mockIncident,
   });
 });
+
+
