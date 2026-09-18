@@ -65,7 +65,7 @@ export function DashboardHeader({
           <div className="hidden border border-line bg-surface-2/60 px-3 py-1 text-xs text-ink-500 md:flex md:items-center md:gap-2">
             <Activity className="h-3.5 w-3.5 text-action animate-pulse" />
             <span>LAST SYNC:</span>
-            <span className="font-bold text-white" aria-live="polite">
+            <span className="font-bold text-white" aria-live="polite" suppressHydrationWarning>
               {lastRefreshedAt
                 ? lastRefreshedAt.toLocaleTimeString(undefined, {
                     hour: '2-digit',
