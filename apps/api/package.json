@@ -21,20 +21,20 @@
     "@rescue-link/schema": "*",
     "@smithy/signature-v4": "^5.6.12",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "uuid": "^11.1.0",
-    "zod": "^3.24.2"
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "uuid": "^14.0.2",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/node": "^22.13.9",
-    "@types/supertest": "^6.0.2",
-    "@types/uuid": "^10.0.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.0",
+    "@types/supertest": "^7.2.1",
+    "@types/uuid": "^11.0.0",
     "supertest": "^7.0.0",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2",
-    "vitest": "^3.0.7"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
   }
 }

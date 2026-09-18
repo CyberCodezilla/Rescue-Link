@@ -18,8 +18,8 @@
     "@rescue-link/schema": "*"
   },
   "devDependencies": {
-    "@types/node": "^22.13.9",
-    "typescript": "^5.8.2",
-    "vitest": "^3.0.7"
+    "@types/node": "^26.6.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
   }
 }
