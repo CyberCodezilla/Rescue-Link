@@ -1,0 +1,9 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "rescue-link"
+resolve_s3 = true
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+region = "us-east-1"
+parameter_overrides = "IncidentTableName=rescue-incidents SesFromEmail=alerts@example.com SesAlertRecipient=responders@example.com RescueLinkCallbackUrl=https://YOUR_PUBLIC_API_DOMAIN/api/workflows/triage LambdaCallbackSecret=REPLACE_ME"

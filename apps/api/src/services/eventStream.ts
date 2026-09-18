@@ -9,35 +9,20 @@ export interface SSEEvent {
 }
 
 export interface BroadcastAdapter {
-  publish(event: SSEEvent): Promise<void>;
-  onMessage(handler: (event: SSEEvent) => void): void;
-}
-
-export class LocalBroadcastAdapter implements BroadcastAdapter {
-  private handler?: (event: SSEEvent) => void;
-
-  async publish(event: SSEEvent): Promise<void> {
-    if (this.handler) {
-      this.handler(event);
-    }
-  }
-
-  onMessage(handler: (event: SSEEvent) => void): void {
-    this.handler = handler;
-  }
+  broadcast?: (event: SSEEvent) => void | Promise<void>;
+  publish?: (event: SSEEvent) => void | Promise<void>;
 }
 
 export class EventStreamManager {
+  private adapter: BroadcastAdapter | null = null;
   private clients: Set<Response> = new Set();
-  private adapter: BroadcastAdapter = new LocalBroadcastAdapter();
 
-  constructor() {
-    this.adapter.onMessage((event) => this.writeToClients(event));
+  constructor(adapter: BroadcastAdapter | null = null) {
+    this.adapter = adapter;
   }
 
-  setAdapter(adapter: BroadcastAdapter): void {
+  setAdapter(adapter: BroadcastAdapter | null): void {
     this.adapter = adapter;
-    this.adapter.onMessage((event) => this.writeToClients(event));
   }
 
   addClient(res: Response): void {
@@ -49,18 +34,18 @@ export class EventStreamManager {
   }
 
   broadcast(event: SSEEvent): void {
-    this.adapter.publish(event).catch((err) => {
-      console.error('[EventStreamManager] Pub/Sub publish error:', err);
-      this.writeToClients(event);
-    });
-  }
+    if (this.adapter?.broadcast) {
+      void this.adapter.broadcast(event);
+    } else if (this.adapter?.publish) {
+      void this.adapter.publish(event);
+    }
 
-  private writeToClients(event: SSEEvent): void {
     const payload = `event: incident\ndata: ${JSON.stringify(event)}\n\n`;
+
     for (const client of this.clients) {
       try {
         client.write(payload);
-      } catch (err) {
+      } catch {
         this.clients.delete(client);
       }
     }
@@ -72,3 +57,13 @@ export class EventStreamManager {
 }
 
 export const eventStreamManager = new EventStreamManager();
+
+/**
+ * Local in-process broadcast adapter.
+ * Used for single-node operation and tests.
+ */
+export class LocalBroadcastAdapter implements BroadcastAdapter {
+  broadcast(event: SSEEvent): void {
+    void event;
+  }
+}

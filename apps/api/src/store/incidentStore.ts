@@ -1,19 +1,11 @@
-import { z } from 'zod';
-import { Incident, IncidentStatus, Priority, IncidentSchema } from '@rescue-link/schema';
+﻿import { Incident, IncidentSchema, IncidentStatus, Priority } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 import { DynamoIncidentStore } from './dynamoStore';
-
-export interface IncidentFilterOptions {
-  status?: IncidentStatus | IncidentStatus[];
-  priority?: Priority | Priority[];
-  q?: string;
-  since?: number;
-}
 
 export interface IIncidentStore {
   create(incident: Incident): Promise<Incident>;
   getById(id: string): Promise<Incident | null>;
-  list(filter?: IncidentFilterOptions): Promise<Incident[]>;
+  list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]>;
   update(id: string, updates: Partial<Incident>): Promise<Incident | null>;
   clear(): Promise<void>;
 }
@@ -21,45 +13,28 @@ export interface IIncidentStore {
 export class InMemoryIncidentStore implements IIncidentStore {
   private incidents: Map<string, Incident> = new Map();
 
+  getStoreTelemetry(): { activeStore: 'memory'; fallbackCount: number } {
+    return { activeStore: 'memory', fallbackCount: 0 };
+  }
+
   async create(incident: Incident): Promise<Incident> {
-    const validIncident = IncidentSchema.parse(incident);
-    this.incidents.set(validIncident.id, validIncident);
-    return validIncident;
+    const validated = IncidentSchema.parse(incident);
+    this.incidents.set(validated.id, validated);
+    return validated;
   }
 
   async getById(id: string): Promise<Incident | null> {
     return this.incidents.get(id) || null;
   }
 
-  async list(filter?: IncidentFilterOptions): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
     let result = Array.from(this.incidents.values());
 
-    if (filter) {
-      const statuses = filter.status
-        ? Array.isArray(filter.status)
-          ? filter.status
-          : [filter.status]
-        : undefined;
-
-      const priorities = filter.priority
-        ? Array.isArray(filter.priority)
-          ? filter.priority
-          : [filter.priority]
-        : undefined;
-
-      const searchQuery = filter.q?.toLowerCase();
-      const sinceTime = filter.since;
-
-      result = result.filter((i) => {
-        if (statuses && !statuses.includes(i.status)) return false;
-        if (priorities && !priorities.includes(i.priority)) return false;
-        if (sinceTime !== undefined && i.createdAt < sinceTime) return false;
-        if (searchQuery) {
-          const text = `${i.category} ${i.description} ${i.triage?.suggestedAction || ''}`.toLowerCase();
-          if (!text.includes(searchQuery)) return false;
-        }
-        return true;
-      });
+    if (filter?.status) {
+      result = result.filter((incident) => incident.status === filter.status);
+    }
+    if (filter?.priority) {
+      result = result.filter((incident) => incident.priority === filter.priority);
     }
 
     return result.sort((a, b) => b.createdAt - a.createdAt);
@@ -69,15 +44,14 @@ export class InMemoryIncidentStore implements IIncidentStore {
     const existing = this.incidents.get(id);
     if (!existing) return null;
 
-    const updated: Incident = {
+    const updated = IncidentSchema.parse({
       ...existing,
       ...updates,
       updatedAt: Date.now(),
-    };
+    });
 
-    const validUpdated = IncidentSchema.parse(updated);
-    this.incidents.set(id, validUpdated);
-    return validUpdated;
+    this.incidents.set(id, updated);
+    return updated;
   }
 
   async clear(): Promise<void> {
@@ -86,76 +60,35 @@ export class InMemoryIncidentStore implements IIncidentStore {
 }
 
 export class DelegatingIncidentStore implements IIncidentStore {
+  private fallbackCount = 0;
   private memoryStore = new InMemoryIncidentStore();
   private dynamoStore = new DynamoIncidentStore();
-  private fallbackCount = 0;
-  private lastFallbackTime: number | null = null;
 
-  constructor() {
-    this.checkHealthOnStartup();
+  getStoreTelemetry(): { activeStore: 'memory' | 'dynamo'; fallbackCount: number } {
+    return {
+      activeStore: this.isMock() ? 'memory' : 'dynamo',
+      fallbackCount: this.fallbackCount,
+    };
   }
 
   private isMock(): boolean {
     return CONFIG.USE_LOCAL_MOCK_STORE || !process.env.AWS_ACCESS_KEY_ID;
   }
 
-  public checkHealthOnStartup(): void {
-    const isMockMode = this.isMock();
-    const isProd = CONFIG.NODE_ENV === 'production';
-
-    console.log(`[IncidentStore] Initialized active store: ${isMockMode ? 'InMemoryIncidentStore (mock mode)' : 'DynamoDB Dual-Adapter Store'}`);
-
-    if (isProd && isMockMode) {
-      console.error(
-        '🚨 [DATA PERSISTENCE ALERT] PRODUCTION WARNING: Server is using InMemoryIncidentStore. Data WILL NOT persist across server restarts! Verify AWS_ACCESS_KEY_ID and USE_LOCAL_MOCK_STORE settings.'
-      );
-    }
-  }
-
-  public getStoreTelemetry() {
-    const isMockMode = this.isMock();
-    const isProd = CONFIG.NODE_ENV === 'production';
-
-    return {
-      activeStore: isMockMode ? ('memory' as const) : ('dynamodb' as const),
-      isMock: isMockMode,
-      fallbackCount: this.fallbackCount,
-      lastFallbackTime: this.lastFallbackTime,
-      isProductionFallbackAlert: isProd && isMockMode,
-    };
-  }
-
-  private recordFallback(operation: string, err: unknown) {
-    this.fallbackCount++;
-    this.lastFallbackTime = Date.now();
-    const isProd = CONFIG.NODE_ENV === 'production';
-
-    if (isProd) {
-      console.error(
-        `🚨 [DATA PERSISTENCE ALERT] Production DynamoDB operation '${operation}' failed! Falling back to volatile InMemoryIncidentStore. Error:`,
-        err
-      );
-    } else {
-      console.warn(`[IncidentStore] DynamoDB operation '${operation}' failed, falling back to memory store:`, err);
-    }
-  }
-
   async create(incident: Incident): Promise<Incident> {
-    // Upfront schema enforcement at the persistence entry point
     const validated = IncidentSchema.parse(incident);
 
     if (this.isMock()) {
       return this.memoryStore.create(validated);
     }
+
     try {
       const created = await this.dynamoStore.create(validated);
       await this.memoryStore.create(created);
       return created;
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw err;
-      }
-      this.recordFallback('create', err);
+      this.fallbackCount++;
+      console.warn('[IncidentStore] DynamoDB create failed, falling back to memory store:', err);
       return this.memoryStore.create(validated);
     }
   }
@@ -164,46 +97,54 @@ export class DelegatingIncidentStore implements IIncidentStore {
     if (this.isMock()) {
       return this.memoryStore.getById(id);
     }
+
     try {
       const item = await this.dynamoStore.getById(id);
-      if (item) {
-        await this.memoryStore.create(item);
-      }
+      if (item) await this.memoryStore.create(item);
       return item ?? this.memoryStore.getById(id);
     } catch (err) {
-      this.recordFallback('getById', err);
+      this.fallbackCount++;
+      console.warn('[IncidentStore] DynamoDB getById failed, falling back to memory store:', err);
       return this.memoryStore.getById(id);
     }
   }
 
-  async list(filter?: IncidentFilterOptions): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
     if (this.isMock()) {
       return this.memoryStore.list(filter);
     }
+
     try {
       return await this.dynamoStore.list(filter);
     } catch (err) {
-      this.recordFallback('list', err);
+      this.fallbackCount++;
+      console.warn('[IncidentStore] DynamoDB list failed, falling back to memory store:', err);
       return this.memoryStore.list(filter);
     }
   }
 
   async update(id: string, updates: Partial<Incident>): Promise<Incident | null> {
+    const existing = await this.getById(id);
+    if (!existing) return null;
+
+    const validated = IncidentSchema.parse({
+      ...existing,
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
     if (this.isMock()) {
-      return this.memoryStore.update(id, updates);
+      return this.memoryStore.update(id, validated);
     }
+
     try {
-      const updated = await this.dynamoStore.update(id, updates);
-      if (updated) {
-        await this.memoryStore.create(updated);
-      }
-      return updated ?? this.memoryStore.update(id, updates);
+      const updated = await this.dynamoStore.update(id, validated);
+      if (updated) await this.memoryStore.create(updated);
+      return updated ?? this.memoryStore.update(id, validated);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        throw err;
-      }
-      this.recordFallback('update', err);
-      return this.memoryStore.update(id, updates);
+      this.fallbackCount++;
+      console.warn('[IncidentStore] DynamoDB update failed, falling back to memory store:', err);
+      return this.memoryStore.update(id, validated);
     }
   }
 
