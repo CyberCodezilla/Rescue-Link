@@ -39,7 +39,7 @@ export function useSurvivorStream({
       const apiOrigin =
         process.env.NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN ||
         process.env.RESCUE_LINK_API_ORIGIN ||
-        'http://13.218.236.205:3001';
+        'https://pfqm76wx1g.execute-api.us-east-1.amazonaws.com';
       const baseUrl = apiOrigin.trim().replace(/\/$/, '');
       source = new EventSource(`${baseUrl}/api/events`);
     } catch {
