@@ -1,4 +1,4 @@
-﻿import { Response } from 'express';
+import { Response } from 'express';
 import { Incident } from '@rescue-link/schema';
 
 export interface SSEEvent {
