@@ -4,7 +4,7 @@ import React from 'react';
 import { Flame, Waves, Mountain, HelpCircle, Crosshair } from 'lucide-react';
 import type { IncidentResponse } from '@responder/lib/schema';
 import { CATEGORY_LABELS, getCategory } from '@responder/lib/schema';
-import { formatLocation, formatTimestamp, hasAssignedUnits } from '@responder/lib/format';
+import { formatLocation, formatTimestamp, formatCompactTimestamp, hasAssignedUnits } from '@responder/lib/format';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
 
@@ -51,7 +51,7 @@ export function IncidentTableRow({ incident, isSelected, isHovered, onSelect, on
           : 'hover:bg-surface-2/60 text-ink-700'
       }`}
     >
-      <td className="relative px-3 py-2.5 font-mono text-xs">
+      <td className="relative px-2.5 py-2 font-mono text-xs whitespace-nowrap">
         <span
           className="absolute left-0 top-1 bottom-1 w-1"
           style={{ backgroundColor: barColor, boxShadow: `0 0 6px ${barColor}` }}
@@ -61,25 +61,31 @@ export function IncidentTableRow({ incident, isSelected, isHovered, onSelect, on
           <span className="font-semibold text-white">{incident.id.slice(0, 8)}</span>
         </div>
       </td>
-      <td className="px-3 py-2.5">
-        <div className="flex items-center gap-2 text-xs font-semibold text-white">
-          <Icon className="h-3.5 w-3.5 text-ink-500 group-hover:text-action transition-colors" />
+      <td className="px-2.5 py-2 whitespace-nowrap">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
+          <Icon className="h-3.5 w-3.5 text-ink-500 group-hover:text-action transition-colors shrink-0" />
           <span>{CATEGORY_LABELS[category]}</span>
         </div>
       </td>
-      <td className="px-3 py-2.5">
+      <td className="px-2.5 py-2 whitespace-nowrap">
         <PriorityBadge priority={incident.priority} />
       </td>
-      <td className="px-3 py-2.5 text-xs truncate max-w-[140px] text-ink-500 group-hover:text-ink-700">
+      <td
+        className="px-2.5 py-2 text-xs truncate max-w-[130px] text-ink-500 group-hover:text-ink-700 whitespace-nowrap"
+        title={formatLocation(incident.location)}
+      >
         {formatLocation(incident.location)}
       </td>
-      <td className="px-3 py-2.5 font-mono text-xs text-ink-500">
-        {formatTimestamp(incident.createdAt)}
+      <td
+        className="px-2.5 py-2 font-mono text-[11px] text-ink-500 whitespace-nowrap"
+        title={formatTimestamp(incident.createdAt)}
+      >
+        {formatCompactTimestamp(incident.createdAt)}
       </td>
-      <td className="px-3 py-2.5">
+      <td className="px-2.5 py-2 whitespace-nowrap">
         <StatusBadge status={incident.status} />
       </td>
-      <td className="px-3 py-2.5 text-xs font-mono">
+      <td className="px-2.5 py-2 text-xs font-mono whitespace-nowrap">
         {hasAssignedUnits(units) ? (
           <span className="text-action font-semibold">{units!.join(', ')}</span>
         ) : (

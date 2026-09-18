@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [geofenceEnabled, setGeofenceEnabled] = useState(false);
   const [geofenceShape, setGeofenceShape] = useState<GeofenceShape | null>(null);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'split' | 'table-focus' | 'map-focus'>('split');
 
   const streamStatus = useIncidentStream({ onIncident: applyIncidentUpdate });
   const { isActive, latestIncident, dismiss } = useCriticalAlert(incidents);
@@ -163,9 +164,74 @@ export default function DashboardPage() {
             visible={showTelemetry}
           />
 
+          {/* Tactical Layout Mode Selector */}
+          <div className="hud-panel-topcut flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-xs font-mono">
+            <div className="flex items-center gap-2 text-ink-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-action animate-pulse" />
+              <span className="font-bold text-white uppercase tracking-wider text-[11px]">
+                TACTICAL CAD WORKSPACE // DUAL SYNCHRONIZED DISPLAY
+              </span>
+            </div>
+            <div className="flex items-center border border-line bg-surface-3/80 p-0.5 rounded">
+              <button
+                type="button"
+                onClick={() => setLayoutMode('split')}
+                title="Split Display: Map and Incident Feed Side-by-Side"
+                className={`px-2.5 py-1 text-[10px] font-bold transition-all ${
+                  layoutMode === 'split'
+                    ? 'bg-action text-white shadow-sm'
+                    : 'text-ink-500 hover:text-white'
+                }`}
+                style={{ clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)' }}
+              >
+                ⊞ SPLIT VIEW (MAP + DATA)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('table-focus')}
+                title="Table Focus: Full-width Table with Map Below"
+                className={`px-2.5 py-1 text-[10px] font-bold transition-all ${
+                  layoutMode === 'table-focus'
+                    ? 'bg-action text-white shadow-sm'
+                    : 'text-ink-500 hover:text-white'
+                }`}
+                style={{ clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)' }}
+              >
+                ≡ EXPAND TABLE (FULL WIDTH)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('map-focus')}
+                title="Map Focus: Full-width Tactical Map"
+                className={`px-2.5 py-1 text-[10px] font-bold transition-all ${
+                  layoutMode === 'map-focus'
+                    ? 'bg-action text-white shadow-sm'
+                    : 'text-ink-500 hover:text-white'
+                }`}
+                style={{ clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%)' }}
+              >
+                ⛶ EXPAND MAP
+              </button>
+            </div>
+          </div>
+
           {/* Main Tactical Map & Incident Feed */}
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-            <section className="flex flex-1 flex-col gap-3.5 lg:max-w-xl">
+          <div
+            className={`flex flex-col gap-4 ${
+              layoutMode === 'split'
+                ? 'lg:flex-row lg:items-start'
+                : layoutMode === 'table-focus'
+                ? 'flex-col'
+                : 'flex-col-reverse'
+            }`}
+          >
+            <section
+              className={`flex flex-col gap-3.5 min-w-0 ${
+                layoutMode === 'split'
+                  ? 'flex-1 lg:flex-[1.25] xl:flex-[1.3]'
+                  : 'w-full'
+              }`}
+            >
               {/* Tactical Segmented Filters */}
               <IncidentFilters
                 filters={filters}
@@ -201,7 +267,15 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="relative h-[460px] flex-1 lg:sticky lg:top-3 lg:h-[calc(100vh-160px)]">
+            <section
+              className={`relative min-w-0 ${
+                layoutMode === 'split'
+                  ? 'flex-1 h-[480px] lg:sticky lg:top-3 lg:h-[calc(100vh-160px)] lg:flex-[1]'
+                  : layoutMode === 'table-focus'
+                  ? 'w-full h-[460px]'
+                  : 'w-full h-[calc(100vh-160px)]'
+              }`}
+            >
               {incidents ? (
                 <IncidentMapClient
                   incidents={incidents}

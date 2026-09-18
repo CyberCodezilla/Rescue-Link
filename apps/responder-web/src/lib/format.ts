@@ -23,3 +23,17 @@ export function formatLocation(location: Location): string {
 export function hasAssignedUnits(units: string[] | undefined): boolean {
   return Boolean(units && units.length > 0);
 }
+
+export function formatCompactTimestamp(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return 'Unknown';
+
+  const date = typeof value === 'number' ? new Date(value) : new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown';
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
