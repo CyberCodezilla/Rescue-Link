@@ -79,17 +79,19 @@ export default function DashboardPage() {
       />
 
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 py-2">
-          <p className="text-xs text-ink-500">
-            {audioUnlocked ? 'Critical alert sound enabled.' : 'Critical alerts are visual until alert sound is enabled.'}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-line-2 bg-surface-2/80 px-3.5 py-2 font-mono text-xs shadow-sm">
+          <p className="text-ink-500">
+            {audioUnlocked
+              ? 'TACTICAL AUDIO ALERT RELAY: ARMED & ACTIVE'
+              : 'TACTICAL AUDIO ALERT RELAY: VISUAL-ONLY (DISARMED)'}
           </p>
           <button
             type="button"
             onClick={handleUnlockAudio}
             disabled={audioUnlocked}
-            className="rounded border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded border border-action/40 bg-action/15 px-3 py-1 font-mono text-xs font-bold text-action hover:bg-action/25 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
           >
-            {audioUnlocked ? 'Alert sound enabled' : 'Enable alert sound'}
+            {audioUnlocked ? 'AUDIO RELAY ARMED' : 'ARM AUDIO ALERTS'}
           </button>
         </div>
 
