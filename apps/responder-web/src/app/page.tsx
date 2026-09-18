@@ -38,6 +38,7 @@ export default function DashboardPage() {
   } = useIncidents();
   const [filters, setFilters] = useState<IncidentFiltersState>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [showSensors, setShowSensors] = useState(false);
   const [showHazardZones, setShowHazardZones] = useState(false);
   const [showUnits, setShowUnits] = useState(false);
@@ -117,8 +118,8 @@ export default function DashboardPage() {
           visible={showTelemetry}
         />
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          <section className="flex flex-1 flex-col gap-4 lg:max-w-xl">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+          <section className="flex flex-col gap-4 xl:col-span-7">
             <IncidentFilters filters={filters} onChange={setFilters} />
 
             {isInitialLoading ? (
@@ -136,7 +137,7 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="relative h-[420px] flex-1 lg:sticky lg:top-4 lg:h-[calc(100vh-220px)]">
+          <section className="relative h-[480px] xl:col-span-5 xl:sticky xl:top-4 xl:h-[calc(100vh-220px)]">
             {incidents ? (
               <IncidentMapClient
                 incidents={incidents}

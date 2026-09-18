@@ -183,6 +183,7 @@ export type GeofenceShape =
 export interface IncidentMapProps {
   incidents: IncidentResponse[];
   selectedId: string | null;
+  hoveredId?: string | null;
   onSelect: (id: string) => void;
   sensors?: SensorReading[];
   hazardZones?: HazardZone[];
@@ -197,6 +198,7 @@ export interface IncidentMapProps {
 export function IncidentMap({
   incidents,
   selectedId,
+  hoveredId,
   onSelect,
   sensors = [],
   hazardZones = [],
@@ -298,6 +300,22 @@ export function IncidentMap({
       map.setView(FALLBACK_CENTER, FALLBACK_ZOOM);
     }
   }, [plottable]);
+
+
+  // Hover zoom (zooms in 60% at the respective incident location on hover)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !hoveredId) return;
+    const marker = markersRef.current.get(hoveredId);
+    if (marker) {
+      const targetLatLng = marker.getLatLng();
+      map.flyTo(targetLatLng, 13, {
+        animate: true,
+        duration: 0.5,
+      });
+      marker.openPopup();
+    }
+  }, [hoveredId]);
 
   useEffect(() => {
     const map = mapRef.current;

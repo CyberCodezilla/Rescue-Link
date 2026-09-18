@@ -22,6 +22,7 @@ import { PriorityBadge } from '@responder/components/incidents/PriorityBadge';
 import { StatusBadge } from '@responder/components/incidents/StatusBadge';
 import { TriageCard } from '@responder/components/incidents/TriageCard';
 import { UnitPositionPanel } from '@responder/components/incidents/UnitPositionPanel';
+import { IncidentFocusMapClient } from '@responder/components/map/IncidentFocusMapClient';
 import { DetailSkeleton } from '@responder/components/ui/LoadingState';
 import { ErrorState } from '@responder/components/ui/ErrorState';
 import { useIncident } from '@responder/hooks/useIncident';
@@ -136,20 +137,29 @@ export default function IncidentDetailPage() {
               {/* Distress Audio Player */}
               <DistressAudioPlayer incident={incident} />
 
-              {/* Location Coordinates Readout */}
-              <section className="hud-panel p-5 border border-line bg-surface">
-                <div className="flex items-center justify-between border-b border-line pb-2.5 mb-3">
+              {/* Location Coordinates & Zoomed Tactical Recon Map */}
+              <section className="hud-panel p-5 border border-line bg-surface space-y-3">
+                <div className="flex items-center justify-between border-b border-line pb-2.5">
                   <div className="flex items-center gap-2">
                     <MapPin size={15} className="text-action" />
                     <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900">
-                      GEOLOCATION & RECON FIX
+                      GEOLOCATION & TACTICAL RECON MAP (ZOOMED FIX)
                     </h2>
                   </div>
                   <span className="font-mono text-xs text-status-resolved flex items-center gap-1">
-                    <ShieldCheck size={12} /> VERIFIED FIX
+                    <ShieldCheck size={12} /> TARGET ACQUIRED
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                {/* High-Resolution Tactical Focused Location Map */}
+                <IncidentFocusMapClient
+                  location={incident.location}
+                  priority={incident.priority}
+                  category={getCategory(incident)}
+                  incidentId={incident.id}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="p-3 rounded border border-line-2 bg-surface-2/50 font-mono text-xs">
                     <span className="text-ink-500 uppercase block mb-1">STREET / DISTRICT FIX:</span>
                     <span className="font-bold text-ink-900 text-sm">{formatLocation(incident.location)}</span>

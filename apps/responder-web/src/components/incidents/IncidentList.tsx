@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import type { IncidentFilters as IncidentFiltersState, IncidentResponse } from '@responder/lib/schema';
 import { filterIncidents, sortIncidents } from '@responder/lib/sortIncidents';
 import { EmptyState } from '@responder/components/ui/EmptyState';
@@ -9,10 +9,11 @@ interface IncidentListProps {
   filters: IncidentFiltersState;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onHover?: (id: string | null) => void;
   onClearFilters: () => void;
 }
 
-export function IncidentList({ incidents, filters, selectedId, onSelect, onClearFilters }: IncidentListProps) {
+export function IncidentList({ incidents, filters, selectedId, onSelect, onHover, onClearFilters }: IncidentListProps) {
   const visible = useMemo(
     () => sortIncidents(filterIncidents(incidents, filters)),
     [incidents, filters]
@@ -34,17 +35,17 @@ export function IncidentList({ incidents, filters, selectedId, onSelect, onClear
 
   return (
     <>
-      <div className="hidden overflow-hidden rounded-md border border-line bg-surface/90 backdrop-blur-sm md:block shadow-panel">
-        <table className="w-full border-collapse text-left">
+      <div className="hidden overflow-x-auto rounded-md border border-line bg-surface/90 backdrop-blur-sm md:block shadow-panel">
+        <table className="w-full min-w-[720px] border-collapse text-left">
           <thead>
             <tr className="border-b border-line bg-surface-2/80 font-mono text-[10px] font-bold uppercase tracking-wider text-ink-500">
-              <th className="px-3 py-2.5">ID</th>
-              <th className="px-3 py-2.5">CATEGORY</th>
-              <th className="px-3 py-2.5">PRIORITY</th>
-              <th className="px-3 py-2.5">COORDINATES</th>
-              <th className="px-3 py-2.5">LOGGED</th>
-              <th className="px-3 py-2.5">STATUS</th>
-              <th className="px-3 py-2.5">DEPLOYED UNITS</th>
+              <th className="px-3 py-2.5 whitespace-nowrap">ID</th>
+              <th className="px-3 py-2.5 whitespace-nowrap">CATEGORY</th>
+              <th className="px-3 py-2.5 whitespace-nowrap">PRIORITY</th>
+              <th className="px-3 py-2.5 whitespace-nowrap">COORDINATES</th>
+              <th className="px-3 py-2.5 whitespace-nowrap">LOGGED</th>
+              <th className="px-3 py-2.5 whitespace-nowrap">STATUS</th>
+              <th className="px-3 py-2.5 whitespace-nowrap">DEPLOYED UNITS</th>
             </tr>
           </thead>
           <tbody>
@@ -54,6 +55,7 @@ export function IncidentList({ incidents, filters, selectedId, onSelect, onClear
                 incident={incident}
                 isSelected={incident.id === selectedId}
                 onSelect={onSelect}
+                onHover={onHover}
               />
             ))}
           </tbody>
@@ -67,6 +69,7 @@ export function IncidentList({ incidents, filters, selectedId, onSelect, onClear
             incident={incident}
             isSelected={incident.id === selectedId}
             onSelect={onSelect}
+            onHover={onHover}
           />
         ))}
       </div>
