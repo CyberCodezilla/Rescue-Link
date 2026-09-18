@@ -2,16 +2,161 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ================================================================
+   RESCUELINK RESPONDER - "Command Confidence" Dark Tactical HUD
+   Optimized for low-light control rooms, multi-panel incident
+   monitoring, high information density, and rapid tactical dispatch.
+   ================================================================ */
+
 :root {
-  color-scheme: light;
+  color-scheme: dark;
+
+  --hud-bg: #0B0F19;
+  --hud-surface: #131A2B;
+  --hud-surface-2: #1A2338;
+  --hud-surface-3: #1E293B;
+  --hud-border: #2A364F;
+  --hud-border-bright: #3B82F6;
+
+  --hud-text: #F8FAFC;
+  --hud-text-muted: #8A93A3;
+  --hud-text-dim: #475569;
+
+  --hud-blue: #3B82F6;
+  --hud-orange: #F97316;
+  --hud-red: #EF4444;
+  --hud-green: #22C55E;
+  --hud-cyan: #06B6D4;
 }
 
 body {
-  background-color: #f5f6f8;
-  color: #12161f;
+  background-color: var(--hud-bg);
+  color: var(--hud-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Tactical Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0F19;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A364F;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3B82F6;
 }
 
 *:focus-visible {
-  outline: 2px solid #1d4ed8;
+  outline: 2px solid #3B82F6;
   outline-offset: 2px;
+}
+
+/* HUD Panels & Containers */
+.hud-panel {
+  background-color: var(--hud-surface);
+  border: 1px solid var(--hud-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.hud-panel-raised {
+  background-color: var(--hud-surface-2);
+  border: 1px solid #334155;
+  border-radius: 6px;
+}
+
+/* Tactical Corner Brackets */
+.hud-bracket {
+  position: relative;
+}
+.hud-bracket::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--hud-border-bright);
+  border-left: 2px solid var(--hud-border-bright);
+  pointer-events: none;
+}
+.hud-bracket::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid var(--hud-border-bright);
+  border-right: 2px solid var(--hud-border-bright);
+  pointer-events: none;
+}
+
+/* Tactical Tag / Callout */
+.hud-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Glowing Highlights */
+.hud-glow-blue {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+}
+.hud-glow-red {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.35);
+}
+.hud-glow-orange {
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
+}
+
+/* Tactical Scanline Keyframes (Responder HUD only) */
+@keyframes scanline-sweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+.hud-scanline {
+  position: relative;
+  overflow: hidden;
+}
+.hud-scanline::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent);
+  animation: scanline-sweep 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Pulsing indicators */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 0.3; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.hud-pulse {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
