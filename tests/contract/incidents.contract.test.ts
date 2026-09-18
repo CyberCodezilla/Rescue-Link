@@ -147,6 +147,7 @@ describe('API Contract Tests - /api/incidents', () => {
       const incidentId = postRes.body.id;
       const ackRes = await request(app)
         .post(`/api/incidents/${incidentId}/acknowledge`)
+        .set('x-api-key', 'rescuelink-responder-key-2026')
         .send({ assignedTo: 'responder-unit-42' });
 
       expect(ackRes.status).toBe(200);
@@ -168,6 +169,7 @@ describe('API Contract Tests - /api/incidents', () => {
       const incidentId = postRes.body.id;
       const bcastRes = await request(app)
         .post(`/api/incidents/${incidentId}/broadcast`)
+        .set('x-api-key', 'rescuelink-responder-key-2026')
         .send({
           message: 'EVACUATE TO ROOF IMMEDIATELY',
           channel: 'wifi',

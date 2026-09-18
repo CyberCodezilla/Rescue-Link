@@ -30,4 +30,24 @@ describe('API Security & Authentication Tests', () => {
 
     expect(res.status).toBe(401);
   });
+
+  it('rejects unauthenticated POST /api/incidents/:id/acknowledge request', async () => {
+    const res = await request(app)
+      .post('/api/incidents/test-id-123/acknowledge')
+      .set('NODE_ENV', 'production')
+      .send({ assignedTo: 'unit-1' });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Unauthorized access');
+  });
+
+  it('rejects unauthenticated POST /api/incidents/:id/broadcast request', async () => {
+    const res = await request(app)
+      .post('/api/incidents/test-id-123/broadcast')
+      .set('NODE_ENV', 'production')
+      .send({ message: 'Emergency alert' });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Unauthorized access');
+  });
 });

@@ -178,7 +178,7 @@ incidentsRouter.patch('/:id', requireApiKey, async (req: Request, res: Response)
 });
 
 // POST /api/incidents/:id/acknowledge - Convenience endpoint
-incidentsRouter.post('/:id/acknowledge', async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.post('/:id/acknowledge', requireApiKey, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
@@ -204,7 +204,7 @@ incidentsRouter.post('/:id/acknowledge', async (req: Request, res: Response): Pr
 });
 
 // POST /api/incidents/:id/broadcast - Send tactical directive broadcast to survivor / zone
-incidentsRouter.post('/:id/broadcast', async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.post('/:id/broadcast', requireApiKey, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
