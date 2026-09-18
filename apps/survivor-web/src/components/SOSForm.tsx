@@ -145,7 +145,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       category,
       description: finalDescription,
       location: currentLocation,
-      peopleAffected: Number(peopleAffected),
+      peopleAffected: Math.max(1, Number(peopleAffected) || 1),
       urgentNeeds,
       audioBlob: voice.audioBase64 || undefined,
       reporter: {
@@ -596,10 +596,11 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             <span style={{ fontSize: '15px' }}>Total Individuals with you:</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               type="button"
-              onClick={() => setPeopleAffected((prev) => Math.max(1, prev - 1))}
+              onClick={() => setPeopleAffected((prev) => Math.max(1, (prev || 1) - 1))}
+              disabled={peopleAffected <= 1}
               aria-label="Decrease people affected"
               style={{
                 width: '44px',
@@ -607,23 +608,74 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 borderRadius: '8px',
                 border: '1px solid #334155',
                 backgroundColor: '#1e293b',
-                color: '#ffffff',
-                cursor: 'pointer',
+                color: peopleAffected <= 1 ? '#64748b' : '#ffffff',
+                cursor: peopleAffected <= 1 ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                transition: 'all 0.15s ease',
               }}
             >
               <Minus size={18} />
             </button>
 
-            <span style={{ fontSize: '20px', fontWeight: 800, minWidth: '32px', textAlign: 'center' }}>
-              {peopleAffected}
-            </span>
+            <input
+              id="peopleAffectedInput"
+              type="number"
+              min={1}
+              max={9999}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={peopleAffected === 0 ? '' : peopleAffected}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') {
+                  setPeopleAffected(0);
+                } else {
+                  const parsed = parseInt(val, 10);
+                  if (!isNaN(parsed)) {
+                    setPeopleAffected(Math.max(1, Math.min(9999, parsed)));
+                  }
+                }
+              }}
+              onBlur={() => {
+                if (!peopleAffected || peopleAffected < 1) {
+                  setPeopleAffected(1);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setPeopleAffected((prev) => (prev || 0) + 1);
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setPeopleAffected((prev) => Math.max(1, (prev || 1) - 1));
+                }
+              }}
+              aria-label="Total individuals with you"
+              className="no-spinners"
+              style={{
+                width: '64px',
+                height: '44px',
+                borderRadius: '8px',
+                border: '1px solid #334155',
+                backgroundColor: '#0a0d14',
+                color: '#ffffff',
+                fontSize: '20px',
+                fontWeight: 800,
+                textAlign: 'center',
+                fontFamily: 'inherit',
+                outline: 'none',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)',
+                transition: 'border-color 0.15s ease',
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = '#38bdf8')}
+              onBlurCapture={(e) => (e.currentTarget.style.borderColor = '#334155')}
+            />
 
             <button
               type="button"
-              onClick={() => setPeopleAffected((prev) => prev + 1)}
+              onClick={() => setPeopleAffected((prev) => (prev || 0) + 1)}
               aria-label="Increase people affected"
               style={{
                 width: '44px',
@@ -636,6 +688,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                transition: 'all 0.15s ease',
               }}
             >
               <Plus size={18} />
