@@ -237,10 +237,10 @@ export function IncidentMap({
     });
 
     // Dark tactical CartoDB Dark Matter tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 19,
+    // Tactical dark canvas tile layer (high-contrast, zero watermarks)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '&copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+      maxZoom: 16,
     }).addTo(map);
 
     sensorLayerRef.current = L.layerGroup().addTo(map);

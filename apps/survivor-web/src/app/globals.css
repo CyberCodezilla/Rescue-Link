@@ -65,8 +65,8 @@
 }
 
 /* --- OLED Dark Mode (system preference — battery saver) --- */
-@media (prefers-color-scheme: dark) {
-  :root {
+/* OLED mode explicitly toggled */
+[data-theme="dark"], .oled-mode {
     --rl-bg: #070B14;
     --rl-surface: #0F1729;
     --rl-surface-raised: #162036;
@@ -97,7 +97,6 @@
     --rl-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
 
     color-scheme: dark;
-  }
 }
 
 /* --- Base Resets --- */
