@@ -3,36 +3,47 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════
-   RESCUELINK COMMAND CENTER — Design Token System
+   RESCUELINK TACTICAL COMMAND CONSOLE — BESPOKE HUD DESIGN SYSTEM
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
   color-scheme: dark;
 
   /* ── Core Surfaces ─────────────────────────────────────────── */
-  --cmd-bg:        #0B0F19;
-  --cmd-surface:   #111827;
-  --cmd-surface-2: #1F2937;
-  --cmd-glass:     rgba(17, 24, 39, 0.72);
-  --cmd-border:    rgba(255, 255, 255, 0.06);
-  --cmd-border-2:  rgba(255, 255, 255, 0.10);
+  --cmd-bg:        #070A12;
+  --cmd-surface:   #0D1322;
+  --cmd-surface-2: #141D33;
+  --cmd-surface-3: #1E2B4B;
+  --cmd-glass:     rgba(13, 19, 34, 0.85);
+  --cmd-border:    rgba(59, 130, 246, 0.18);
+  --cmd-border-2:  rgba(255, 255, 255, 0.12);
 
   /* ── Disaster-Contextual Accent (dynamic via JS) ───────────── */
   --ctx-accent:    #3B82F6;
-  --ctx-glow:      rgba(59, 130, 246, 0.12);
+  --ctx-glow:      rgba(59, 130, 246, 0.20);
 
   /* ── Priority Glow ─────────────────────────────────────────── */
-  --pri-critical-glow: rgba(239, 68, 68, 0.20);
-  --pri-high-glow:     rgba(249, 115, 22, 0.18);
-  --pri-medium-glow:   rgba(234, 179, 8, 0.15);
-  --pri-low-glow:      rgba(22, 163, 74, 0.12);
+  --pri-critical:      #EF4444;
+  --pri-critical-glow: rgba(239, 68, 68, 0.30);
+  --pri-high:          #F97316;
+  --pri-high-glow:     rgba(249, 115, 22, 0.25);
+  --pri-medium:        #EAB308;
+  --pri-medium-glow:   rgba(234, 179, 8, 0.20);
+  --pri-low:           #10B981;
+  --pri-low-glow:      rgba(16, 185, 129, 0.18);
 }
 
-/* ── Base ─────────────────────────────────────────────────────── */
+/* ── Base Dot-Matrix Tactical Grid Canvas ────────────────────── */
 body {
   background-color: var(--cmd-bg);
-  color: #E5E7EB;
+  background-image: 
+    radial-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px, 12px 12px;
+  background-position: 0 0, 6px 6px;
+  color: #E2E8F0;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  min-height: 100vh;
 }
 
 *:focus-visible {
@@ -41,55 +52,169 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GLASSMORPHISM UTILITIES
+   BESPOKE TACTICAL HUD ARCHITECTURE (NON-ROUNDED, ANGLED GEOMETRY)
    ═══════════════════════════════════════════════════════════════ */
 
 @layer utilities {
-  .glass {
+  /* 45-Degree Chamfered Tactical Panel with Tech Border */
+  .hud-panel {
     background: var(--cmd-glass);
-    backdrop-filter: blur(16px) saturate(1.4);
-    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--cmd-border);
+    clip-path: polygon(
+      0 0, 
+      calc(100% - 14px) 0, 
+      100% 14px, 
+      100% 100%, 
+      14px 100%, 
+      0 calc(100% - 14px)
+    );
+    position: relative;
   }
 
-  .glass-surface {
-    background: rgba(17, 24, 39, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--cmd-border-2);
+  .hud-panel-topcut {
+    background: var(--cmd-glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--cmd-border);
+    clip-path: polygon(
+      0 0, 
+      calc(100% - 12px) 0, 
+      100% 12px, 
+      100% 100%, 
+      0 100%
+    );
+    position: relative;
   }
 
+  /* Technical Corner Crosshair Brackets: ┌ ┐ └ ┘ */
+  .hud-bracket {
+    position: relative;
+  }
+  .hud-bracket::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    width: 10px;
+    height: 10px;
+    border-top: 2px solid var(--ctx-accent);
+    border-left: 2px solid var(--ctx-accent);
+    pointer-events: none;
+    z-index: 10;
+  }
+  .hud-bracket::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-bottom: 2px solid var(--ctx-accent);
+    border-right: 2px solid var(--ctx-accent);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .hud-bracket-alt::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-top: 2px solid var(--ctx-accent);
+    border-right: 2px solid var(--ctx-accent);
+    pointer-events: none;
+    z-index: 10;
+  }
+  .hud-bracket-alt::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: -2px;
+    width: 10px;
+    height: 10px;
+    border-bottom: 2px solid var(--ctx-accent);
+    border-left: 2px solid var(--ctx-accent);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Technical telemetry classification stamp */
+  .hud-tag {
+    font-family: var(--font-mono), monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ctx-accent);
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  /* Glow Effects */
   .glow-critical {
-    box-shadow: 0 0 24px var(--pri-critical-glow), 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 0 24px var(--pri-critical-glow), inset 0 0 12px rgba(239, 68, 68, 0.1);
   }
   .glow-high {
-    box-shadow: 0 0 20px var(--pri-high-glow), 0 1px 3px rgba(0,0,0,0.3);
-  }
-  .glow-medium {
-    box-shadow: 0 0 16px var(--pri-medium-glow), 0 1px 3px rgba(0,0,0,0.3);
-  }
-  .glow-low {
-    box-shadow: 0 0 12px var(--pri-low-glow), 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 0 20px var(--pri-high-glow), inset 0 0 10px rgba(249, 115, 22, 0.08);
   }
   .glow-accent {
-    box-shadow: 0 0 20px var(--ctx-glow), 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 0 24px var(--ctx-glow), inset 0 0 10px rgba(59, 130, 246, 0.08);
   }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ANIMATION KEYFRAMES
+   MAP RADAR TARGET CROSSHAIR & HOVER RETICLE KEYFRAMES
    ═══════════════════════════════════════════════════════════════ */
 
-/* Gentle pulse for live status indicator */
+@keyframes radar-reticle-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0.15;
+  }
+  100% {
+    transform: scale(2.0);
+    opacity: 0;
+  }
+}
+
+@keyframes reticle-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-reticle-ping {
+  animation: radar-reticle-ping 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.animate-reticle-spin {
+  animation: reticle-rotate 8s linear infinite;
+}
+
+/* Leaflet Radar Reticle Overlay Marker */
+.radar-target-reticle {
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATIONS & SCROLLBAR
+   ═══════════════════════════════════════════════════════════════ */
+
 @keyframes live-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.35; }
 }
 .animate-live-pulse {
   animation: live-pulse 2s ease-in-out infinite;
 }
 
-/* Count-up fade for stat numbers */
 @keyframes fade-up {
   from {
     opacity: 0;
@@ -101,107 +226,29 @@ body {
   }
 }
 .animate-fade-up {
-  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Stagger entrance for cards */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.10s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.20s; }
-.stagger-5 { animation-delay: 0.25s; }
-
-/* Critical alert gradient border */
-@keyframes alert-gradient {
-  0%, 100% { border-color: #EF4444; }
-  50% { border-color: #F97316; }
-}
-.animate-alert-border {
-  animation: alert-gradient 2s ease-in-out infinite;
-}
-
-/* Subtle ambient glow on header */
-@keyframes ambient-glow {
-  0%, 100% { box-shadow: 0 1px 20px var(--ctx-glow); }
-  50% { box-shadow: 0 1px 30px var(--ctx-glow); }
-}
-.animate-ambient {
-  animation: ambient-glow 4s ease-in-out infinite;
-}
-
-/* Ring progress animation for SVG circles */
-@keyframes ring-fill {
-  from { stroke-dashoffset: var(--ring-circumference, 283); }
-}
-.animate-ring {
-  animation: ring-fill 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Donut segment animation */
-@keyframes donut-fill {
-  from { stroke-dasharray: 0 283; }
-}
-.animate-donut {
-  animation: donut-fill 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Slide in from right for timeline entries */
-@keyframes slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-.animate-slide-in {
-  animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Bar grow for priority/sparkline bars */
-@keyframes bar-grow {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-.animate-bar {
-  animation: bar-grow 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transform-origin: left;
-}
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .animate-live-pulse,
-  .animate-fade-up,
-  .animate-alert-border,
-  .animate-ambient,
-  .animate-ring,
-  .animate-donut,
-  .animate-slide-in,
-  .animate-bar,
-  .animate-ping {
-    animation: none !important;
-  }
-  * {
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SCROLLBAR STYLING (Webkit)
-   ═══════════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(13, 19, 34, 0.5);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--ctx-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-reticle-ping,
+  .animate-reticle-spin,
+  .animate-live-pulse,
+  .animate-fade-up {
+    animation: none !important;
+  }
 }

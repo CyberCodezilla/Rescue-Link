@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Keyboard } from 'lucide-react';
 import { DashboardHeader } from '@responder/components/dashboard/DashboardHeader';
 import { CriticalAlertBanner } from '@responder/components/dashboard/CriticalAlertBanner';
 import { SensorTelemetryPanel } from '@responder/components/dashboard/SensorTelemetryPanel';
@@ -24,6 +24,7 @@ import { useHazardLayer } from '@responder/hooks/useHazardLayer';
 import { useIncidentStream } from '@responder/hooks/useIncidentStream';
 import { useIncidents } from '@responder/hooks/useIncidents';
 import { useUnitPositions } from '@responder/hooks/useUnitPositions';
+import { useKeyboardNavigation } from '@responder/hooks/useKeyboardNavigation';
 import { unlockCriticalAlertAudio } from '@responder/lib/alertSound';
 import { buildDashboardMapLayerData } from '@responder/lib/dashboardIntegration';
 import { DEFAULT_FILTERS } from '@responder/lib/schema';
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   } = useIncidents();
   const [filters, setFilters] = useState<IncidentFiltersState>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [showSensors, setShowSensors] = useState(false);
   const [showHazardZones, setShowHazardZones] = useState(false);
   const [showUnits, setShowUnits] = useState(false);
@@ -57,10 +59,24 @@ export default function DashboardPage() {
   const mapLayerData = buildDashboardMapLayerData(sensors, hazardZones, unitPositions);
   const showTelemetry = showSensors || showHazardZones;
 
-  function handleSelect(id: string) {
+  const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
-    router.push(`/incidents/${id}`);
-  }
+    // Double click or keyboard space navigates, single click focuses map
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedId(null);
+    setHoveredId(null);
+  }, []);
+
+  // Keyboard navigation: [J/K] cycle incidents, [R] refresh, [Esc] clear
+  useKeyboardNavigation({
+    incidents,
+    selectedId,
+    onSelect: handleSelect,
+    onClear: handleClearSelection,
+    onRefresh: refresh,
+  });
 
   async function handleUnlockAudio() {
     const unlocked = await unlockCriticalAlertAudio();
@@ -81,42 +97,49 @@ export default function DashboardPage() {
           isActive={isActive}
           incident={latestIncident}
           onDismiss={dismiss}
-          onView={handleSelect}
+          onView={(id) => router.push(`/incidents/${id}`)}
         />
 
-        <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
-          {/* Tactical status bar */}
-          <div className="glass flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line px-4 py-2 text-xs">
+        <main className="flex flex-1 flex-col gap-4 p-3.5 sm:p-5">
+          {/* Tactical Status & Audio Arming Bar */}
+          <div className="hud-panel-topcut flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 text-xs font-mono">
             <div className="flex items-center gap-2 text-ink-500">
               {audioUnlocked ? (
-                <Volume2 className="h-4 w-4 text-emerald-400" />
+                <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
               ) : (
-                <VolumeX className="h-4 w-4 text-ink-500" />
+                <VolumeX className="h-3.5 w-3.5 text-ink-500" />
               )}
               <span>
                 {audioUnlocked
-                  ? 'Acoustic alert beacon armed (audible priority tone enabled).'
-                  : 'Acoustic alerts muted. Click arm audio for sound warnings.'}
+                  ? 'ACOUSTIC ALERT BEACON ARMED // AUDIBLE CRITICAL CHIME ACTIVE'
+                  : 'ACOUSTIC ALERTS MUTED // CLICK TO ARM SOUND WARNINGS'}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={handleUnlockAudio}
-              disabled={audioUnlocked}
-              className="rounded-lg border border-line bg-surface-2 px-3 py-1 font-semibold text-ink-700 transition-all hover:bg-surface-3 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {audioUnlocked ? 'Acoustic Armed' : 'Arm Audio Beacon'}
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="hidden lg:flex items-center gap-2 text-[10px] text-ink-500">
+                <Keyboard className="h-3 w-3 text-action" />
+                <span>HOTKEYS: [J/K] NEXT/PREV | [R] SYNC | [ESC] RESET</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleUnlockAudio}
+                disabled={audioUnlocked}
+                className="border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-ink-700 transition-all hover:bg-surface-3 hover:text-white disabled:opacity-50"
+                style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}
+              >
+                {audioUnlocked ? 'BEACON ARMED' : 'ARM AUDIO'}
+              </button>
+            </div>
           </div>
 
-          {/* Stat Pods */}
+          {/* Telemetry Pods */}
           {isInitialLoading ? (
             <SummarySkeleton />
           ) : incidents ? (
             <SummaryCards incidents={incidents} />
           ) : null}
 
-          {/* Visual Intelligence Grid: Threat Distribution & Priority Spectrum */}
+          {/* Threat Distribution & Priority Spectrum */}
           {incidents && incidents.length > 0 && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <DonutChart incidents={incidents} />
@@ -127,9 +150,9 @@ export default function DashboardPage() {
           {refreshError && incidents ? (
             <div
               role="alert"
-              className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 backdrop-blur-sm"
+              className="border border-red-500/40 bg-red-500/10 p-3 text-xs font-mono text-red-300"
             >
-              CAD Sync Alert: {refreshError}. Preserving latest cached telemetry.
+              CAD SYNC WARNING: {refreshError}. Preserving cached operational state.
             </div>
           ) : null}
 
@@ -142,12 +165,23 @@ export default function DashboardPage() {
 
           {/* Main Tactical Map & Incident Feed */}
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-            <section className="flex flex-1 flex-col gap-4 lg:max-w-xl">
-              <IncidentFilters filters={filters} onChange={setFilters} />
+            <section className="flex flex-1 flex-col gap-3.5 lg:max-w-xl">
+              {/* Tactical Segmented Filters */}
+              <IncidentFilters
+                filters={filters}
+                onChange={setFilters}
+                incidents={incidents ?? []}
+              />
 
-              {/* Live activity timeline component */}
+              {/* Live activity timeline with hover-to-locate */}
               {incidents && incidents.length > 0 && (
-                <ActivityTimeline incidents={incidents} onSelectIncident={handleSelect} />
+                <ActivityTimeline
+                  incidents={incidents}
+                  selectedId={selectedId}
+                  hoveredId={hoveredId}
+                  onSelectIncident={handleSelect}
+                  onHoverIncident={setHoveredId}
+                />
               )}
 
               {isInitialLoading ? (
@@ -159,18 +193,22 @@ export default function DashboardPage() {
                   incidents={incidents}
                   filters={filters}
                   selectedId={selectedId}
+                  hoveredId={hoveredId}
                   onSelect={handleSelect}
+                  onHover={setHoveredId}
                   onClearFilters={() => setFilters(DEFAULT_FILTERS)}
                 />
               )}
             </section>
 
-            <section className="relative h-[440px] flex-1 lg:sticky lg:top-4 lg:h-[calc(100vh-200px)]">
+            <section className="relative h-[460px] flex-1 lg:sticky lg:top-3 lg:h-[calc(100vh-160px)]">
               {incidents ? (
                 <IncidentMapClient
                   incidents={incidents}
                   selectedId={selectedId}
+                  hoveredId={hoveredId}
                   onSelect={handleSelect}
+                  onHover={setHoveredId}
                   sensors={mapLayerData.sensors}
                   hazardZones={mapLayerData.hazardZones}
                   unitPositions={mapLayerData.unitPositions}

@@ -11,44 +11,48 @@ import { haversineDistanceMeters, estimateEtaMinutes, formatDistance } from '@re
 
 const FALLBACK_CENTER: [number, number] = [20.5937, 78.9629];
 const FALLBACK_ZOOM = 5;
-const FOCUSED_ZOOM = 13;
+const FOCUSED_ZOOM = 15;
+const HOVER_ZOOM = 9;
 
-// Per the task spec: critical=red, high=orange, medium=yellow, low=green.
-// pending_triage isn't in the spec's four-color scheme; given a neutral
-// slate so it's visibly distinct from a triaged "low" incident.
 const PRIORITY_COLOR: Record<Priority, string> = {
-  critical: '#DC2626',
-  high: '#EA580C',
-  medium: '#CA8A04',
-  low: '#16A34A',
+  critical: '#EF4444',
+  high: '#F97316',
+  medium: '#EAB308',
+  low: '#10B981',
   pending_triage: '#64748B',
 };
 
 const SENSOR_STATUS_COLOR: Record<SensorReading['status'], string> = {
-  normal: '#16A34A',
-  watch: '#CA8A04',
-  critical: '#DC2626',
+  normal: '#10B981',
+  watch: '#EAB308',
+  critical: '#EF4444',
 };
 
 const HAZARD_SEVERITY_COLOR: Record<HazardZone['severity'], string> = {
-  watch: '#CA8A04',
-  warning: '#EA580C',
-  critical: '#DC2626',
+  watch: '#EAB308',
+  warning: '#F97316',
+  critical: '#EF4444',
 };
 
 function markerIcon(priority: Priority, isSelected: boolean) {
-  const size = isSelected ? 18 : 14;
+  const size = isSelected ? 22 : 16;
+  const color = PRIORITY_COLOR[priority] || '#3B82F6';
   return L.divIcon({
-    className: '',
-    html: `<span style="
-      display:block;
-      width:${size}px;
-      height:${size}px;
-      border-radius:9999px;
-      background:${PRIORITY_COLOR[priority]};
-      border:2px solid #FFFFFF;
-      box-shadow:0 0 0 1px rgba(18,22,31,0.15);
-    "></span>`,
+    className: 'incident-marker-icon',
+    html: `
+      <div style="position:relative;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;">
+        ${isSelected ? `<span class="animate-ping" style="position:absolute;width:100%;height:100%;border-radius:50%;background:${color};opacity:0.6;"></span>` : ''}
+        <span style="
+          display:block;
+          width:${size}px;
+          height:${size}px;
+          border-radius:50%;
+          background:${color};
+          border:2px solid #FFFFFF;
+          box-shadow:0 0 10px ${color}, 0 2px 4px rgba(0,0,0,0.6);
+        "></span>
+      </div>
+    `,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -59,14 +63,14 @@ function sensorIcon(status: SensorReading['status']) {
     className: '',
     html: `<span style="
       display:flex;align-items:center;justify-content:center;
-      width:16px;height:16px;border-radius:4px;
+      width:18px;height:18px;border-radius:3px;
       background:${SENSOR_STATUS_COLOR[status]};
       border:2px solid #FFFFFF;
-      box-shadow:0 0 0 1px rgba(18,22,31,0.15);
-      color:#fff;font-size:10px;font-weight:700;line-height:1;
+      box-shadow:0 0 8px ${SENSOR_STATUS_COLOR[status]};
+      color:#fff;font-size:10px;font-weight:800;line-height:1;font-family:monospace;
     ">S</span>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
   });
 }
 
@@ -75,15 +79,15 @@ function unitIcon() {
     className: '',
     html: `<span style="
       display:flex;align-items:center;justify-content:center;
-      width:18px;height:18px;border-radius:4px;
-      background:#1D4ED8;
+      width:20px;height:20px;border-radius:3px;
+      background:#3B82F6;
       border:2px solid #FFFFFF;
-      box-shadow:0 0 0 1px rgba(18,22,31,0.15);
-      color:#fff;font-size:10px;font-weight:700;line-height:1;
-      transform:rotate(45deg);
+      box-shadow:0 0 10px #3B82F6;
+      color:#fff;font-size:10px;font-weight:800;line-height:1;
+      transform:rotate(45deg);font-family:monospace;
     "><span style="transform:rotate(-45deg);">U</span></span>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
   });
 }
 
@@ -94,15 +98,15 @@ export type GeofenceShape =
 export interface IncidentMapProps {
   incidents: IncidentResponse[];
   selectedId: string | null;
+  hoveredId?: string | null;
   onSelect: (id: string) => void;
-  /** Phase 2 layers — all optional so existing callers keep working untouched. */
+  onHover?: (id: string | null) => void;
   sensors?: SensorReading[];
   hazardZones?: HazardZone[];
   unitPositions?: UnitPosition[];
   showSensors?: boolean;
   showHazardZones?: boolean;
   showUnits?: boolean;
-  /** Enables the leaflet-draw geofence toolbar; fires whenever the drawn shape changes or is cleared (null). */
   geofenceEnabled?: boolean;
   onGeofenceChange?: (shape: GeofenceShape | null) => void;
 }
@@ -110,7 +114,9 @@ export interface IncidentMapProps {
 export function IncidentMap({
   incidents,
   selectedId,
+  hoveredId,
   onSelect,
+  onHover,
   sensors = [],
   hazardZones = [],
   unitPositions = [],
@@ -123,17 +129,23 @@ export function IncidentMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const reticleLayerRef = useRef<L.LayerGroup | null>(null);
   const sensorLayerRef = useRef<L.LayerGroup | null>(null);
   const hazardLayerRef = useRef<L.LayerGroup | null>(null);
   const unitLayerRef = useRef<L.LayerGroup | null>(null);
   const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
   const drawControlRef = useRef<any | null>(null);
-  const onGeofenceChangeRef = useRef(onGeofenceChange);
-  onGeofenceChangeRef.current = onGeofenceChange;
 
-  // Location is a required field in the schema, so every incident is
-  // plottable once it exists at all.
-  const plottable = incidents;
+  const plottable = useMemo(() => {
+    return incidents.filter(
+      (incident) =>
+        incident.location &&
+        typeof incident.location.lat === 'number' &&
+        typeof incident.location.lng === 'number' &&
+        !Number.isNaN(incident.location.lat) &&
+        !Number.isNaN(incident.location.lng)
+    );
+  }, [incidents]);
 
   const unitsByName = useMemo(() => {
     const map = new Map<string, UnitPosition>();
@@ -141,7 +153,7 @@ export function IncidentMap({
     return map;
   }, [unitPositions]);
 
-  // Map init (once)
+  // Map Init
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -152,7 +164,7 @@ export function IncidentMap({
     });
 
     const tileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    const tileAttr = process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION || '© OpenStreetMap contributors';
+    const tileAttr = process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION || '&copy; OpenStreetMap &copy; CARTO';
 
     L.tileLayer(tileUrl, {
       attribution: tileAttr,
@@ -162,6 +174,7 @@ export function IncidentMap({
     sensorLayerRef.current = L.layerGroup().addTo(map);
     hazardLayerRef.current = L.layerGroup().addTo(map);
     unitLayerRef.current = L.layerGroup().addTo(map);
+    reticleLayerRef.current = L.layerGroup().addTo(map);
 
     const drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
@@ -175,7 +188,7 @@ export function IncidentMap({
     };
   }, []);
 
-  // Incident markers
+  // Incident Markers
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -188,45 +201,124 @@ export function IncidentMap({
       const isSelected = incident.id === selectedId;
 
       const marker = L.marker([lat, lng], { icon: markerIcon(incident.priority, isSelected) }).addTo(map);
-
       const category = CATEGORY_LABELS[getCategory(incident)];
       const locationLabel = label ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      const priColor = PRIORITY_COLOR[incident.priority] || '#3B82F6';
 
       marker.bindPopup(
-        `<div style="font-family:Inter,sans-serif;font-size:13px;min-width:160px;">
-           <strong>${incident.id}</strong><br/>
-           ${category} · ${incident.priority.toUpperCase()}<br/>
-           ${locationLabel}<br/>
-           <a href="/incidents/${incident.id}" style="color:#1D4ED8;">View details</a>
-         </div>`
+        `<div style="
+          background:#0D1322;
+          color:#E2E8F0;
+          font-family:Inter,-apple-system,sans-serif;
+          padding:10px 12px;
+          min-width:200px;
+          border-left:3px solid ${priColor};
+          box-shadow:0 4px 14px rgba(0,0,0,0.7);
+        ">
+          <div style="font-family:monospace;font-size:10px;color:#94A3B8;letter-spacing:0.05em;text-transform:uppercase;">
+            INCIDENT // ${incident.id.slice(0, 8)}
+          </div>
+          <div style="font-size:14px;font-weight:700;color:#FFFFFF;margin-top:2px;">
+            ${category}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;">
+            <span style="background:${priColor}30;color:${priColor};border:1px solid ${priColor}50;padding:1px 6px;border-radius:2px;font-weight:700;text-transform:uppercase;font-size:10px;">
+              ${incident.priority}
+            </span>
+            <span style="color:#94A3B8;">${locationLabel}</span>
+          </div>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
+            <a href="/incidents/${incident.id}" style="color:#38BDF8;font-size:11px;font-weight:700;text-decoration:none;">
+              Full Tactical Dossier &rarr;
+            </a>
+          </div>
+        </div>`,
+        { className: 'hud-tactical-popup', offset: [0, -6] }
       );
 
       marker.on('click', () => onSelect(incident.id));
+      if (onHover) {
+        marker.on('mouseover', () => onHover(incident.id));
+        marker.on('mouseout', () => onHover(null));
+      }
       markersRef.current.set(incident.id, marker);
     });
 
-    if (plottable.length > 0) {
+    if (plottable.length > 0 && !selectedId && !hoveredId) {
       const bounds = L.latLngBounds(
         plottable.map((incident) => [incident.location.lat, incident.location.lng] as [number, number])
       );
       map.fitBounds(bounds, { padding: [32, 32], maxZoom: 12 });
-    } else {
-      map.setView(FALLBACK_CENTER, FALLBACK_ZOOM);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plottable]);
+  }, [plottable, onSelect, onHover]);
 
+  // HOVER-TO-LOCATE: Smooth Pan + 50% Zoom + Target Reticle
+  useEffect(() => {
+    const map = mapRef.current;
+    const reticleLayer = reticleLayerRef.current;
+    if (!map || !reticleLayer) return;
+
+    reticleLayer.clearLayers();
+    if (!hoveredId) return;
+
+    const incident = plottable.find((i) => i.id === hoveredId);
+    if (!incident) return;
+
+    const { lat, lng } = incident.location;
+    const priColor = PRIORITY_COLOR[incident.priority] || '#3B82F6';
+
+    // Smoothly pan to target
+    map.panTo([lat, lng], { animate: true, duration: 0.5 });
+    
+    // Zoom 50% in if zoomed out
+    if (map.getZoom() < HOVER_ZOOM) {
+      map.setZoom(HOVER_ZOOM, { animate: true });
+    }
+
+    // Attach animated tactical radar crosshair
+    const reticleIcon = L.divIcon({
+      className: 'radar-target-reticle',
+      html: `
+        <div style="position:relative;width:64px;height:64px;margin-left:-32px;margin-top:-32px;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+          <span class="animate-reticle-ping" style="
+            position:absolute;width:44px;height:44px;border-radius:50%;
+            border:2px solid ${priColor};
+            box-shadow:0 0 16px ${priColor};
+          "></span>
+          <svg class="animate-reticle-spin" width="56" height="56" viewBox="0 0 56 56" style="position:absolute;">
+            <circle cx="28" cy="28" r="22" stroke="${priColor}" stroke-width="1.5" stroke-dasharray="4 4" fill="none" opacity="0.8"/>
+            <line x1="28" y1="2" x2="28" y2="10" stroke="${priColor}" stroke-width="2"/>
+            <line x1="28" y1="46" x2="28" y2="54" stroke="${priColor}" stroke-width="2"/>
+            <line x1="2" y1="28" x2="10" y2="28" stroke="${priColor}" stroke-width="2"/>
+            <line x1="46" y1="28" x2="54" y2="28" stroke="${priColor}" stroke-width="2"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [64, 64],
+      iconAnchor: [32, 32],
+    });
+
+    L.marker([lat, lng], { icon: reticleIcon, interactive: false }).addTo(reticleLayer);
+
+    const marker = markersRef.current.get(hoveredId);
+    if (marker && !marker.isPopupOpen()) {
+      marker.openPopup();
+    }
+  }, [hoveredId, plottable]);
+
+  // CLICK-TO-LOCK: Street-Level Zoom Lock (15)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedId) return;
+
     const marker = markersRef.current.get(selectedId);
     if (marker) {
-      map.setView(marker.getLatLng(), Math.max(map.getZoom(), FOCUSED_ZOOM));
+      map.flyTo(marker.getLatLng(), FOCUSED_ZOOM, { animate: true, duration: 0.8 });
       marker.openPopup();
     }
   }, [selectedId]);
 
-  // Sensor layer
+  // Sensors Layer
   useEffect(() => {
     const layer = sensorLayerRef.current;
     if (!layer) return;
@@ -234,8 +326,7 @@ export function IncidentMap({
     if (!showSensors) return;
 
     sensors.forEach((sensor) => {
-      const pct = sensor.thresholdPercent ?? (sensor as any).percentOfThreshold ?? 0;
-      const statusStr = (sensor.status || 'normal').toString();
+      const pct = sensor.thresholdPercent ?? Math.round((sensor.value / 100) * 100);
       const marker = L.marker([sensor.location.lat, sensor.location.lng], {
         icon: sensorIcon(sensor.status),
       });
@@ -243,14 +334,14 @@ export function IncidentMap({
         `<div style="font-family:Inter,sans-serif;font-size:13px;min-width:170px;">
            <strong>${sensor.label}</strong><br/>
            ${sensor.value}${sensor.unit} · ${pct}% of threshold<br/>
-           Status: ${statusStr.toUpperCase()}
+           Status: ${sensor.status.toUpperCase()}
          </div>`
       );
       layer.addLayer(marker);
     });
   }, [sensors, showSensors]);
 
-  // Hazard zone layer
+  // Hazard Zone Layer
   useEffect(() => {
     const layer = hazardLayerRef.current;
     if (!layer) return;
@@ -258,8 +349,8 @@ export function IncidentMap({
     if (!showHazardZones) return;
 
     hazardZones.forEach((zone) => {
-      const label = zone.label || (zone as any).name || 'Hazard Zone';
-      const kind = (zone.kind || (zone as any).hazardType || 'hazard').toString();
+      const label = zone.label || 'Hazard Zone';
+      const kind = (zone.kind || 'hazard').toString();
       const severity = (zone.severity || 'warning').toString();
       const color = HAZARD_SEVERITY_COLOR[zone.severity] || '#f59e0b';
 
@@ -280,7 +371,7 @@ export function IncidentMap({
     });
   }, [hazardZones, showHazardZones]);
 
-  // Field unit layer, with distance/ETA to the incident they're assigned to
+  // Field Unit Layer
   useEffect(() => {
     const layer = unitLayerRef.current;
     if (!layer) return;
@@ -309,11 +400,11 @@ export function IncidentMap({
     });
   }, [plottable, unitsByName, showUnits]);
 
-  // Geofence drawing (leaflet-draw)
+  // Geofence Drawing
   useEffect(() => {
     const map = mapRef.current;
-    const drawnItems = drawnItemsRef.current;
-    if (!map || !drawnItems) return;
+    const drawn = drawnItemsRef.current;
+    if (!map || !drawn) return;
 
     if (!geofenceEnabled) {
       if (drawControlRef.current) {
@@ -333,67 +424,40 @@ export function IncidentMap({
         polyline: false,
       },
       edit: {
-        featureGroup: drawnItems,
+        featureGroup: drawn,
         remove: true,
       },
     });
     map.addControl(drawControl);
     drawControlRef.current = drawControl;
 
-    function emitShape() {
-      const layers = drawnItems!.getLayers();
-      const first = layers[0];
-      if (!first) {
-        onGeofenceChangeRef.current?.(null);
-        return;
-      }
-      if (first instanceof L.Circle) {
-        const center = first.getLatLng();
-        onGeofenceChangeRef.current?.({
+    map.on((L as any).Draw.Event.CREATED, (e: any) => {
+      if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
+      const layer = e.layer;
+      drawn.addLayer(layer);
+
+      if (!onGeofenceChange) return;
+      if (e.layerType === 'circle') {
+        const center = layer.getLatLng();
+        onGeofenceChange({
           kind: 'circle',
           center: { lat: center.lat, lng: center.lng },
-          radiusMeters: first.getRadius(),
+          radiusMeters: layer.getRadius(),
         });
-      } else if (first instanceof L.Polygon) {
-        const latlngs = (first.getLatLngs()[0] as L.LatLng[]) ?? [];
-        onGeofenceChangeRef.current?.({
+      } else if (e.layerType === 'polygon') {
+        const latlngs = layer.getLatLngs()[0] as L.LatLng[];
+        onGeofenceChange({
           kind: 'polygon',
-          points: latlngs.map((p) => ({ lat: p.lat, lng: p.lng })),
+          points: latlngs.map((ll) => ({ lat: ll.lat, lng: ll.lng })),
         });
       }
-    }
-
-    function handleCreated(e: L.LeafletEvent) {
-      drawnItems!.clearLayers(); // one geofence at a time
-      drawnItems!.addLayer((e as any).layer);
-      emitShape();
-    }
-    function handleEditedOrDeleted() {
-      emitShape();
-    }
-
-    const drawEvents = (L as any).Draw?.Event || {};
-    map.on(drawEvents.CREATED || 'draw:created', handleCreated as L.LeafletEventHandlerFn);
-    map.on(drawEvents.EDITED || 'draw:edited', handleEditedOrDeleted);
-    map.on(drawEvents.DELETED || 'draw:deleted', handleEditedOrDeleted);
+    });
 
     return () => {
-      map.off(drawEvents.CREATED || 'draw:created', handleCreated as L.LeafletEventHandlerFn);
-      map.off(drawEvents.EDITED || 'draw:edited', handleEditedOrDeleted);
-      map.off(drawEvents.DELETED || 'draw:deleted', handleEditedOrDeleted);
-      if (drawControlRef.current) {
-        map.removeControl(drawControlRef.current);
-        drawControlRef.current = null;
-      }
+      map.removeControl(drawControl);
+      drawControlRef.current = null;
     };
-  }, [geofenceEnabled]);
+  }, [geofenceEnabled, onGeofenceChange]);
 
-  return (
-    <div
-      ref={containerRef}
-      role="img"
-      aria-label="Map of active incidents"
-      className="h-full min-h-[320px] w-full rounded-md border border-line"
-    />
-  );
+  return <div ref={containerRef} className="h-full w-full" />;
 }

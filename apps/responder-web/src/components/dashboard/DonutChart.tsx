@@ -36,33 +36,31 @@ export function DonutChart({ incidents }: DonutChartProps) {
     { id: 'other', label: 'Other Hazard', count: counts.other, color: '#8B5CF6', glow: 'rgba(139, 92, 246, 0.4)', icon: HelpCircle },
   ];
 
-  // SVG Donut calculation
-  const size = 160;
-  const strokeWidth = 18;
+  const size = 150;
+  const strokeWidth = 16;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
   let cumulativePercent = 0;
 
   return (
-    <div className="glass rounded-xl border border-line p-4 shadow-panel">
-      <div className="flex items-center justify-between pb-3 border-b border-line">
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-ink-500">
-            Threat Distribution
+    <div className="hud-panel hud-bracket p-4 shadow-panel">
+      <div className="flex items-center justify-between pb-2.5 border-b border-line">
+        <div className="flex items-center gap-2">
+          <span className="hud-tag">DIST.HAZARD</span>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+            Threat Breakdown
           </h3>
-          <p className="text-sm font-semibold text-white">Hazard Breakdown</p>
         </div>
-        <span className="rounded-full bg-white/5 px-2.5 py-0.5 font-mono text-xs font-medium text-ink-500">
-          {total} Active
+        <span className="font-mono text-xs text-ink-500">
+          [{total} ACTIVE]
         </span>
       </div>
 
-      <div className="mt-4 flex flex-col sm:flex-row items-center justify-around gap-4">
+      <div className="mt-3.5 flex flex-col sm:flex-row items-center justify-around gap-4">
         {/* SVG Donut */}
         <div className="relative flex items-center justify-center shrink-0">
           <svg width={size} height={size} className="-rotate-90 transform">
-            {/* Background circle */}
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -71,16 +69,7 @@ export function DonutChart({ incidents }: DonutChartProps) {
               strokeWidth={strokeWidth}
               fill="none"
             />
-            {total === 0 ? (
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                stroke="rgba(255, 255, 255, 0.1)"
-                strokeWidth={strokeWidth}
-                fill="none"
-              />
-            ) : (
+            {total > 0 &&
               slices.map((slice) => {
                 if (slice.count === 0) return null;
                 const slicePercent = slice.count / total;
@@ -105,43 +94,42 @@ export function DonutChart({ incidents }: DonutChartProps) {
                     }}
                   />
                 );
-              })
-            )}
+              })}
           </svg>
 
-          {/* Center stats */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
             <span className="text-2xl font-bold tracking-tight text-white font-mono">
               <AnimatedCounter value={total} />
             </span>
-            <span className="text-[10px] font-semibold tracking-wider text-ink-500 uppercase">
-              Incidents
+            <span className="text-[9px] font-bold tracking-wider text-ink-500 uppercase font-mono">
+              SIGNALS
             </span>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 w-full max-w-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-1 gap-1.5 w-full max-w-xs">
           {slices.map((slice) => {
             const Icon = slice.icon;
             const pct = total > 0 ? Math.round((slice.count / total) * 100) : 0;
             return (
               <div
                 key={slice.id}
-                className="flex items-center justify-between rounded-lg border border-line/60 bg-surface-2/40 px-2.5 py-1.5 transition-colors hover:bg-surface-2"
+                className="flex items-center justify-between border border-line/40 bg-surface-2/40 px-2.5 py-1.5 transition-colors hover:bg-surface-2"
+                style={{ clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)' }}
               >
                 <div className="flex items-center gap-2">
                   <div
-                    className="flex h-6 w-6 items-center justify-center rounded-md"
+                    className="flex h-5 w-5 items-center justify-center rounded-sm"
                     style={{ backgroundColor: `${slice.color}20` }}
                   >
-                    <Icon className="h-3.5 w-3.5" style={{ color: slice.color } as React.CSSProperties} />
+                    <Icon className="h-3 w-3" style={{ color: slice.color }} />
                   </div>
                   <span className="text-xs font-medium text-ink-700">{slice.label}</span>
                 </div>
-                <div className="flex items-center gap-2 font-mono text-xs">
+                <div className="flex items-center gap-1.5 font-mono text-xs">
                   <span className="font-bold text-white">{slice.count}</span>
-                  <span className="text-[11px] text-ink-500">({pct}%)</span>
+                  <span className="text-[10px] text-ink-500">({pct}%)</span>
                 </div>
               </div>
             );
