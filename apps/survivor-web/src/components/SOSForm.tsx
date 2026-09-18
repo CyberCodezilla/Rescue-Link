@@ -113,11 +113,30 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     e.preventDefault();
     setFormErrors([]);
 
-    const currentLocation = location || {
-      lat: parseFloat(manualLat) || 0,
-      lng: parseFloat(manualLng) || 0,
-      label: 'Unspecified Pin',
-    };
+    let currentLocation = location;
+    if (!currentLocation) {
+      const parsedLat = parseFloat(manualLat);
+      const parsedLng = parseFloat(manualLng);
+      if (
+        Number.isFinite(parsedLat) &&
+        Number.isFinite(parsedLng) &&
+        parsedLat >= -90 &&
+        parsedLat <= 90 &&
+        parsedLng >= -180 &&
+        parsedLng <= 180
+      ) {
+        currentLocation = {
+          lat: parsedLat,
+          lng: parsedLng,
+          label: 'Manual Coordinate Entry',
+        };
+      } else {
+        setFormErrors([
+          'Location required: Please acquire your GPS position or enter valid latitude (-90 to 90) and longitude (-180 to 180) coordinates.',
+        ]);
+        return;
+      }
+    }
 
     const finalDescription = description.trim() || (voice.audioBase64 ? 'Voice SOS Audio Message Recorded' : '');
 

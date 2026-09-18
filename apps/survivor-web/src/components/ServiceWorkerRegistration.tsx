@@ -7,8 +7,9 @@ export function ServiceWorkerRegistration() {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js')
-        .catch(() => {
-          // Gracefully ignore SW registration failures in dev/restricted environments
+        .catch((err) => {
+          // Gracefully log SW registration failures in dev/restricted environments
+          console.debug('[ServiceWorker] Registration failed:', err);
         });
     }
   }, []);

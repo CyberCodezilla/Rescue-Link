@@ -285,7 +285,7 @@ export function IncidentMap({
     if (!showUnits) return;
 
     plottable.forEach((incident) => {
-      const assignedUnits = (incident.assignedTo ? [incident.assignedTo] : []);
+      const assignedUnits = incident.triage?.assignedUnits || [];
       assignedUnits.forEach((unitName) => {
         const position = unitsByName.get(unitName);
         if (!position) return;

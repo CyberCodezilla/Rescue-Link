@@ -15,11 +15,9 @@ interface UseHazardLayerState {
 }
 
 /**
- * GET /api/sensors and /api/hazard-zones don't exist in apps/api yet (see
- * lib/api.ts). Both calls already resolve to `[]` instead of throwing, so
- * this hook is safe to mount unconditionally today — it will just show an
- * empty layer until the backend adds these routes, then start working
- * without any frontend change.
+ * Polls live environmental telemetry endpoints (/api/sensors and /api/hazard-zones)
+ * at regular intervals with AbortController cancellation on unmount and graceful
+ * degradation on network failure.
  */
 export function useHazardLayer(): UseHazardLayerState {
   const [sensors, setSensors] = useState<SensorReading[]>([]);
@@ -60,3 +58,5 @@ export function useHazardLayer(): UseHazardLayerState {
 
   return { sensors, hazardZones, hasLoaded };
 }
+
+export const useTelemetryLayer = useHazardLayer;

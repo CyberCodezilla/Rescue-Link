@@ -28,6 +28,9 @@ export function useBatteryOptimization() {
     if (typeof nav.getBattery !== 'function') return;
 
     let batteryInstance: BatteryManager | null = null;
+    let handleLevelChange: (() => void) | null = null;
+    let handleChargingChange: (() => void) | null = null;
+    let isMounted = true;
 
     const updateBatteryInfo = (battery: BatteryManager) => {
       setBatteryLevel(battery.level);
@@ -39,23 +42,33 @@ export function useBatteryOptimization() {
       }
     };
 
-    nav.getBattery().then((battery) => {
-      batteryInstance = battery;
-      updateBatteryInfo(battery);
+    nav.getBattery()
+      .then((battery) => {
+        if (!isMounted) return;
+        batteryInstance = battery;
+        updateBatteryInfo(battery);
 
-      const handleLevelChange = () => updateBatteryInfo(battery);
-      const handleChargingChange = () => updateBatteryInfo(battery);
+        handleLevelChange = () => updateBatteryInfo(battery);
+        handleChargingChange = () => updateBatteryInfo(battery);
 
-      battery.addEventListener('levelchange', handleLevelChange);
-      battery.addEventListener('chargingchange', handleChargingChange);
+        battery.addEventListener('levelchange', handleLevelChange);
+        battery.addEventListener('chargingchange', handleChargingChange);
+      })
+      .catch(() => {
+        // Battery API unsupported or restricted in browser context
+      });
 
-      return () => {
-        battery.removeEventListener('levelchange', handleLevelChange);
-        battery.removeEventListener('chargingchange', handleChargingChange);
-      };
-    }).catch(() => {
-      // Battery API unsupported or restricted in browser context
-    });
+    return () => {
+      isMounted = false;
+      if (batteryInstance) {
+        if (handleLevelChange) {
+          batteryInstance.removeEventListener('levelchange', handleLevelChange);
+        }
+        if (handleChargingChange) {
+          batteryInstance.removeEventListener('chargingchange', handleChargingChange);
+        }
+      }
+    };
   }, []);
 
   const toggleOledMode = useCallback(() => {

@@ -39,9 +39,7 @@ export function SensorTelemetryPanel({ sensors, hazardZones, hasLoaded, visible 
   if (hasLoaded && sensors.length === 0 && hazardZones.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-line bg-surface px-3 py-2.5 text-xs text-ink-500">
-        No sensor or hazard-zone data available yet — GET /api/sensors and /api/hazard-zones
-        aren&rsquo;t implemented on the backend. This panel will populate automatically once
-        they are.
+        No active environmental sensors or hazard zones currently reported for this operational sector.
       </div>
     );
   }

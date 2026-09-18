@@ -64,6 +64,7 @@ export default function SurvivorWebPage() {
       <div style={{ flex: 1, padding: '16px 8px' }}>
         {activeIncident ? (
           <IncidentStatus
+            key={activeIncident.id}
             incidentId={activeIncident.id}
             category={activeIncident.category}
             isLocal={activeIncident.isLocal}

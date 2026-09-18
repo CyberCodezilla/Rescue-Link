@@ -71,17 +71,27 @@ export function useVoiceRecorder(maxDurationSeconds: number = 15) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      // Prefer opus in webm, fallback to whatever browser supports
-      let mimeType = 'audio/webm';
+      // Cross-platform audio format detection (supporting iOS Safari, Android, Chrome, Firefox)
+      const candidateTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/aac',
+        'audio/ogg;codecs=opus',
+      ];
+      let selectedMimeType = '';
       if (typeof MediaRecorder.isTypeSupported === 'function') {
-        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-          mimeType = 'audio/webm;codecs=opus';
-        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/mp4';
+        for (const candidate of candidateTypes) {
+          if (MediaRecorder.isTypeSupported(candidate)) {
+            selectedMimeType = candidate;
+            break;
+          }
         }
       }
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
@@ -92,7 +102,8 @@ export function useVoiceRecorder(maxDurationSeconds: number = 15) {
       };
 
       recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const effectiveType = recorder.mimeType || selectedMimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: effectiveType });
         const url = URL.createObjectURL(audioBlob);
 
         // Convert to base64 Data URL for easy IndexedDB and JSON payload transport

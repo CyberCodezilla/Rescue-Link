@@ -29,11 +29,13 @@ import type {
   IncidentStatus as IncidentStatusType,
   IncidentResponse,
   SOSSubmission,
+  Priority,
 } from '@/lib/validation';
 import { isLocalIncidentId } from '@/lib/offlineQueue';
 import { useBatteryOptimization } from '@/hooks/useBatteryOptimization';
 import { useSurvivorStream } from '@/hooks/useSurvivorStream';
 import { useScreenBeacon } from '@/hooks/useScreenBeacon';
+import { playAlertChime } from '@/lib/audio';
 
 interface IncidentStatusProps {
   incidentId: string;
@@ -84,15 +86,25 @@ const STATIC_SAFETY_DIRECTIVES: Record<IncidentCategory, { title: string; bullet
 
 const STATUS_STEPS: IncidentStatusType[] = ['new', 'acknowledged', 'in_progress', 'resolved', 'closed'];
 
+const PRIORITY_BADGE_STYLES: Record<
+  Priority,
+  { bg: string; color: string; border: string; icon: string; label: string }
+> = {
+  critical: { bg: '#450a0a', color: '#fca5a5', border: '#ef4444', icon: '🔴', label: 'CRITICAL' },
+  high: { bg: '#431407', color: '#fdba74', border: '#f97316', icon: '🟠', label: 'HIGH' },
+  medium: { bg: '#422006', color: '#fde047', border: '#eab308', icon: '🟡', label: 'MEDIUM' },
+  low: { bg: '#052e16', color: '#86efac', border: '#22c55e', icon: '🟢', label: 'LOW' },
+  pending_triage: { bg: '#0f172a', color: '#94a3b8', border: '#334155', icon: '⏳', label: 'TRIAGE PENDING' },
+};
+
 export const IncidentStatus: React.FC<IncidentStatusProps> = ({
-  incidentId: initialIncidentId,
+  incidentId,
   category,
-  isLocal: initialIsLocal,
+  isLocal: propIsLocal,
   payload,
   onReset,
 }) => {
-  const [incidentId, setIncidentId] = useState<string>(initialIncidentId);
-  const [isLocal, setIsLocal] = useState<boolean>(initialIsLocal || isLocalIncidentId(initialIncidentId));
+  const isLocal = propIsLocal || isLocalIncidentId(incidentId);
   const [status, setStatus] = useState<IncidentStatusType>('new');
   const [incidentData, setIncidentData] = useState<IncidentResponse | null>(null);
   const [isPolling, setIsPolling] = useState<boolean>(false);
@@ -111,32 +123,6 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
   } = useBatteryOptimization();
 
   const { isBeaconActive, toggleBeacon, strobeColor } = useScreenBeacon();
-
-  // Update when prop changes
-  useEffect(() => {
-    setIncidentId(initialIncidentId);
-    setIsLocal(initialIsLocal || isLocalIncidentId(initialIncidentId));
-  }, [initialIncidentId, initialIsLocal]);
-
-  // Audio chime generator for flash evacuation alert
-  const playAlertChime = useCallback(() => {
-    try {
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.35);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
-    } catch {
-      // Audio context restricted or unavailable
-    }
-  }, []);
 
   const fetchIncidentDetails = useCallback(async () => {
     // OFFLINE ID GUARD: Never poll if the incident has a local queue ID
@@ -529,7 +515,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
             </span>
 
             {/* Phase 5: AI Triage Priority Badge */}
-            {!isLocal && incidentData?.priority && (
+            {!isLocal && incidentData?.priority && PRIORITY_BADGE_STYLES[incidentData.priority] && (
               <span
                 style={{
                   display: 'inline-flex',
@@ -540,36 +526,13 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
                   fontSize: '11px',
                   fontWeight: 800,
                   letterSpacing: '0.04em',
-                  backgroundColor:
-                    incidentData.priority === 'critical' ? '#450a0a'
-                    : incidentData.priority === 'high' ? '#431407'
-                    : incidentData.priority === 'medium' ? '#422006'
-                    : incidentData.priority === 'low' ? '#052e16'
-                    : '#0f172a',
-                  color:
-                    incidentData.priority === 'critical' ? '#fca5a5'
-                    : incidentData.priority === 'high' ? '#fdba74'
-                    : incidentData.priority === 'medium' ? '#fde047'
-                    : incidentData.priority === 'low' ? '#86efac'
-                    : '#94a3b8',
-                  border: `1px solid ${
-                    incidentData.priority === 'critical' ? '#ef4444'
-                    : incidentData.priority === 'high' ? '#f97316'
-                    : incidentData.priority === 'medium' ? '#eab308'
-                    : incidentData.priority === 'low' ? '#22c55e'
-                    : '#334155'
-                  }`,
+                  backgroundColor: PRIORITY_BADGE_STYLES[incidentData.priority].bg,
+                  color: PRIORITY_BADGE_STYLES[incidentData.priority].color,
+                  border: `1px solid ${PRIORITY_BADGE_STYLES[incidentData.priority].border}`,
                 }}
               >
-                {incidentData.priority === 'critical' && '🔴'}
-                {incidentData.priority === 'high' && '🟠'}
-                {incidentData.priority === 'medium' && '🟡'}
-                {incidentData.priority === 'low' && '🟢'}
-                {incidentData.priority === 'pending_triage' && '⏳'}
-                {' '}
-                {incidentData.priority === 'pending_triage'
-                  ? 'TRIAGE PENDING'
-                  : incidentData.priority.toUpperCase()}
+                {PRIORITY_BADGE_STYLES[incidentData.priority].icon}{' '}
+                {PRIORITY_BADGE_STYLES[incidentData.priority].label}
               </span>
             )}
           </div>
