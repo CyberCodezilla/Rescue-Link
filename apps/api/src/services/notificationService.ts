@@ -1,4 +1,10 @@
-import { Incident } from '@rescue-link/schema';
+import {
+  Incident,
+  formatSnsSmsMessage,
+  formatSnsSubject,
+  formatSesEmailSubject,
+  formatSesEmailHtml,
+} from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 
 export interface NotificationResult {
@@ -85,13 +91,11 @@ export class NotificationService {
     try {
       const { snsClient, PublishCommand } = await this.getSnsClient();
 
-      const smsText = `[RESCUELINK ${incident.priority.toUpperCase()} ALERT] ${incident.category.toUpperCase()} at Lat:${incident.location.lat}, Lng:${incident.location.lng}. ${incident.peopleAffected} affected. Directive: ${incident.triage?.suggestedAction || 'Awaiting dispatch'}`;
-
       const command = new PublishCommand({
         TopicArn: CONFIG.SNS_TOPIC_ARN || undefined,
         PhoneNumber: incident.reporter?.contactMethod === 'phone' ? incident.reporter.contactValue : undefined,
-        Message: smsText,
-        Subject: `RescueLink Emergency ${incident.priority.toUpperCase()} Alert`,
+        Message: formatSnsSmsMessage(incident),
+        Subject: formatSnsSubject(incident),
       });
 
       await snsClient.send(command);
@@ -110,23 +114,6 @@ export class NotificationService {
     try {
       const { sesClient, SendEmailCommand } = await this.getSesClient();
 
-      const htmlBody = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 2px solid #ef4444; border-radius: 8px;">
-          <h2 style="color: #ef4444;">≡ƒÜ¿ RESCUELINK EMERGENCY ${incident.priority.toUpperCase()} ALERT</h2>
-          <p><strong>Incident ID:</strong> ${incident.id}</p>
-          <p><strong>Category:</strong> ${incident.category}</p>
-          <p><strong>Description:</strong> ${incident.description}</p>
-          <p><strong>Casualties / Affected:</strong> ${incident.peopleAffected}</p>
-          <p><strong>Urgent Needs:</strong> ${incident.urgentNeeds.join(', ') || 'None'}</p>
-          <p><strong>Coordinates:</strong> Lat ${incident.location.lat}, Lng ${incident.location.lng}</p>
-          <hr />
-          <h3>≡ƒñû AI Triage Survival Directive</h3>
-          <p style="background: #fee2e2; padding: 12px; border-left: 4px solid #ef4444; font-weight: bold;">
-            ${incident.triage?.suggestedAction || 'Immediate tactical evaluation required.'}
-          </p>
-        </div>
-      `;
-
       const command = new SendEmailCommand({
         Source: CONFIG.SES_FROM_EMAIL,
         Destination: {
@@ -134,10 +121,10 @@ export class NotificationService {
         },
         Message: {
           Subject: {
-            Data: `[RESCUELINK DISASTER ALERT] ${incident.priority.toUpperCase()}: ${incident.category}`,
+            Data: formatSesEmailSubject(incident),
           },
           Body: {
-            Html: { Data: htmlBody },
+            Html: { Data: formatSesEmailHtml(incident) },
           },
         },
       });
@@ -157,12 +144,12 @@ export class NotificationService {
   private logMockNotification(incident: Incident): void {
     const divider = '=======================================================';
     console.log(`\n${divider}`);
-    console.log(`≡ƒô▒ [LOCAL MOCK SNS SMS ALERT] (${incident.priority.toUpperCase()})`);
+    console.log(`📱 [LOCAL MOCK SNS SMS ALERT] (${incident.priority.toUpperCase()})`);
     console.log(`   To: ${incident.reporter?.contactValue || 'All Response Units'}`);
-    console.log(`   Message: [RESCUELINK ${incident.priority.toUpperCase()}] ${incident.category.toUpperCase()} distress alert recorded at Lat:${incident.location.lat}, Lng:${incident.location.lng}. Directive: ${incident.triage?.suggestedAction || 'Stay safe.'}`);
-    console.log(`≡ƒôº [LOCAL MOCK SES EMAIL DISPATCH]`);
+    console.log(`   Message: ${formatSnsSmsMessage(incident)}`);
+    console.log(`📧 [LOCAL MOCK SES EMAIL DISPATCH]`);
     console.log(`   From: ${CONFIG.SES_FROM_EMAIL} -> To: ${CONFIG.SES_ALERT_RECIPIENT}`);
-    console.log(`   Subject: [RESCUELINK DISASTER ALERT] ${incident.priority.toUpperCase()}: ${incident.category}`);
+    console.log(`   Subject: ${formatSesEmailSubject(incident)}`);
     console.log(`${divider}\n`);
   }
 }

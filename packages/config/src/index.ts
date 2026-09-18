@@ -35,6 +35,23 @@ export interface ClientEnvironmentConfig {
 
 type Env = Record<string, string | undefined>;
 
+export const parseListEnv = (raw: string | undefined, fallback: string): string[] =>
+  (raw || fallback)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+export const parseNumberEnv = (raw: string | undefined, fallback: number): number => {
+  if (raw === undefined || raw === '') return fallback;
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+export const parseIntegerEnv = (raw: string | undefined, fallback: number): number => {
+  const num = parseNumberEnv(raw, fallback);
+  return Number.isInteger(num) ? num : Math.floor(fallback);
+};
+
 const numberValue = (
   env: Env,
   key: string,
@@ -64,10 +81,7 @@ const integerValue = (
 };
 
 const listValue = (env: Env, key: string, fallback: string): string[] =>
-  (env[key] || fallback)
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
+  parseListEnv(env[key], fallback);
 
 export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
   const nodeEnv = env.NODE_ENV || 'development';

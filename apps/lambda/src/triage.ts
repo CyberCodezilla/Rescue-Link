@@ -8,20 +8,21 @@ import {
   buildBedrockTriagePrompt,
   parseBedrockTriageOutput,
 } from '@rescue-link/schema';
+import { parseListEnv, parseNumberEnv, parseIntegerEnv } from '@rescue-link/config';
 
 const CONFIG = {
   AWS_REGION: process.env.AWS_REGION || 'us-east-1',
   TABLE: process.env.DYNAMODB_TABLE_INCIDENTS || 'rescue-incidents',
   MODEL_ID: process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
-  MAX_TOKENS: Number(process.env.BEDROCK_MAX_TOKENS || 300),
-  TEMPERATURE: Number(process.env.BEDROCK_TEMPERATURE || 0.2),
-  CRITICAL_PEOPLE: Number(process.env.TRIAGE_CRITICAL_PEOPLE_THRESHOLD || 5),
-  HIGH_PEOPLE: Number(process.env.TRIAGE_HIGH_PEOPLE_THRESHOLD || 3),
-  CRITICAL_NEEDS: (process.env.TRIAGE_CRITICAL_NEEDS || 'medical,boat').split(',').map((s) => s.trim()),
-  CRITICAL_CATEGORIES: (process.env.TRIAGE_CRITICAL_CATEGORIES || 'fire').split(',').map((s) => s.trim()),
-  HIGH_NEEDS: (process.env.TRIAGE_HIGH_NEEDS || 'clean_water,food').split(',').map((s) => s.trim()),
-  HIGH_CATEGORIES: (process.env.TRIAGE_HIGH_CATEGORIES || 'landslide').split(',').map((s) => s.trim()),
-  CONFIDENCE: Number(process.env.TRIAGE_HEURISTIC_CONFIDENCE || 0.92),
+  MAX_TOKENS: parseIntegerEnv(process.env.BEDROCK_MAX_TOKENS, 300),
+  TEMPERATURE: parseNumberEnv(process.env.BEDROCK_TEMPERATURE, 0.2),
+  CRITICAL_PEOPLE: parseIntegerEnv(process.env.TRIAGE_CRITICAL_PEOPLE_THRESHOLD, 5),
+  HIGH_PEOPLE: parseIntegerEnv(process.env.TRIAGE_HIGH_PEOPLE_THRESHOLD, 3),
+  CRITICAL_NEEDS: parseListEnv(process.env.TRIAGE_CRITICAL_NEEDS, 'medical,boat'),
+  CRITICAL_CATEGORIES: parseListEnv(process.env.TRIAGE_CRITICAL_CATEGORIES, 'fire'),
+  HIGH_NEEDS: parseListEnv(process.env.TRIAGE_HIGH_NEEDS, 'clean_water,food'),
+  HIGH_CATEGORIES: parseListEnv(process.env.TRIAGE_HIGH_CATEGORIES, 'landslide'),
+  CONFIDENCE: parseNumberEnv(process.env.TRIAGE_HEURISTIC_CONFIDENCE, 0.92),
 };
 
 const bedrock = new BedrockRuntimeClient({ region: CONFIG.AWS_REGION });
