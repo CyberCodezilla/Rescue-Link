@@ -9,6 +9,7 @@ import {
 import { incidentStore } from '../store/incidentStore';
 import { triageWorkflow } from '../services/triageWorkflow';
 import { eventStreamManager } from '../services/eventStream';
+import { CONFIG } from '@rescue-link/config';
 
 export const incidentsRouter = Router();
 
@@ -187,7 +188,7 @@ incidentsRouter.post('/:id/broadcast', async (req: Request, res: Response): Prom
   const updatedTriage = {
     ...(existing.triage || {}),
     suggestedAction: message,
-    notes: `Broadcast sent via ${channel || 'wifi'} to ${target || 'zone'}: ${message}`,
+    notes: `Broadcast sent via ${channel || CONFIG.DEFAULT_BROADCAST_CHANNEL} to ${target || 'zone'}: ${message}`,
   };
 
   const updated = await incidentStore.update(id, { triage: updatedTriage });
@@ -205,7 +206,7 @@ incidentsRouter.post('/:id/broadcast', async (req: Request, res: Response): Prom
     success: true,
     broadcastId: uuidv4(),
     incidentId: id,
-    channel: channel || 'wifi',
+    channel: channel || CONFIG.DEFAULT_BROADCAST_CHANNEL,
     deliveredAt: Date.now(),
     incident: updated,
   });

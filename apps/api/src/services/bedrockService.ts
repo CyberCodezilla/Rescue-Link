@@ -1,6 +1,10 @@
 import { Incident, IncidentTriage, Priority } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 
+/** Helper: checks if any element of `arr` is present in `keywords`. */
+const hasAny = (arr: string[], keywords: string[]): boolean =>
+  arr.some((item) => keywords.includes(item));
+
 export interface BedrockTriageResult {
   priority: Priority;
   triage: IncidentTriage;
@@ -53,8 +57,8 @@ Assistant:`;
       accept: 'application/json',
       body: JSON.stringify({
         prompt,
-        max_tokens_to_sample: 300,
-        temperature: 0.2,
+        max_tokens_to_sample: CONFIG.BEDROCK_MAX_TOKENS,
+        temperature: CONFIG.BEDROCK_TEMPERATURE,
       }),
     };
 
@@ -93,11 +97,15 @@ Assistant:`;
     const needs = incident.urgentNeeds || [];
     const count = incident.peopleAffected || 1;
 
+    const hasCriticalNeed = hasAny(needs, CONFIG.TRIAGE_CRITICAL_NEEDS);
+    const hasCriticalCategory = CONFIG.TRIAGE_CRITICAL_CATEGORIES.includes(incident.category);
+    const hasHighNeed = hasAny(needs, CONFIG.TRIAGE_HIGH_NEEDS);
+    const hasHighCategory = CONFIG.TRIAGE_HIGH_CATEGORIES.includes(incident.category);
+
     if (
-      needs.includes('medical') ||
-      needs.includes('boat') ||
-      count >= 5 ||
-      incident.category === 'fire'
+      hasCriticalNeed ||
+      count >= CONFIG.TRIAGE_CRITICAL_PEOPLE_THRESHOLD ||
+      hasCriticalCategory
     ) {
       priority = 'critical';
       suggestedAction =
@@ -109,10 +117,9 @@ Assistant:`;
       summary = `CRITICAL DISTRESS: ${count} people affected. High casualty risk.`;
       reasoning = `Assigned CRITICAL priority due to urgent needs [${needs.join(', ')}] and ${count} casualties reported.`;
     } else if (
-      needs.includes('clean_water') ||
-      needs.includes('food') ||
-      incident.category === 'landslide' ||
-      count >= 3
+      hasHighNeed ||
+      hasHighCategory ||
+      count >= CONFIG.TRIAGE_HIGH_PEOPLE_THRESHOLD
     ) {
       priority = 'high';
       suggestedAction =
@@ -134,7 +141,7 @@ Assistant:`;
         suggestedAction,
         summary,
         reasoning,
-        confidence: 0.92,
+        confidence: CONFIG.TRIAGE_HEURISTIC_CONFIDENCE,
       },
     };
   }

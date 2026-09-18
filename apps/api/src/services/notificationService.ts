@@ -13,7 +13,7 @@ export class NotificationService {
    * Main entry point to send critical/high priority disaster notifications via Amazon SNS and SES.
    */
   async sendCriticalAlert(incident: Incident): Promise<NotificationResult> {
-    if (incident.priority !== 'critical' && incident.priority !== 'high') {
+    if (!CONFIG.NOTIFICATION_PRIORITY_GATE.includes(incident.priority)) {
       return {
         snsSent: false,
         sesSent: false,
