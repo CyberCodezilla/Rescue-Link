@@ -14,7 +14,7 @@ export function DistressAudioPlayer({ incident }: { incident: IncidentResponse }
         <div className="flex items-center gap-2">
           <Mic size={16} className="text-indigo-400" />
           <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-indigo-300">
-            SURVIVOR DISTRESS AUDIO RECORDING
+            Distress Audio
           </h2>
         </div>
         <span className="hud-tag bg-indigo-950 text-indigo-400 border border-indigo-500/40 text-[10px]">
