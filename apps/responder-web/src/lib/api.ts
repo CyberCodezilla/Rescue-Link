@@ -56,8 +56,13 @@ async function request(
     }
 
     try {
+      const apiOrigin =
+        process.env.NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN ||
+        process.env.RESCUE_LINK_API_ORIGIN ||
+        'http://13.218.236.205:3001';
+      const baseUrl = apiOrigin.trim().replace(/\/$/, '');
       const apiKey = process.env.NEXT_PUBLIC_API_KEY || 'rescuelink-responder-key-2026';
-      response = await fetch(`/api${path}`, {
+      response = await fetch(`${baseUrl}/api${path}`, {
         ...init,
         headers: {
           Accept: 'application/json',

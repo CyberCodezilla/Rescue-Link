@@ -133,7 +133,12 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
 
     setIsPolling(true);
     try {
-      const res = await fetchWithRetry(`/api/incidents/${incidentId}`);
+      const apiOrigin =
+        process.env.NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN ||
+        process.env.RESCUE_LINK_API_ORIGIN ||
+        'http://13.218.236.205:3001';
+      const baseUrl = apiOrigin.trim().replace(/\/$/, '');
+      const res = await fetchWithRetry(`${baseUrl}/api/incidents/${incidentId}`);
       if (res.ok) {
         const data = (await res.json()) as IncidentResponse;
         setIncidentData(data);

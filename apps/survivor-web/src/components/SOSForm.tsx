@@ -188,7 +188,12 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     }
 
     try {
-      const response = await fetchWithRetry('/api/incidents', {
+      const apiOrigin =
+        process.env.NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN ||
+        process.env.RESCUE_LINK_API_ORIGIN ||
+        'http://13.218.236.205:3001';
+      const baseUrl = apiOrigin.trim().replace(/\/$/, '');
+      const response = await fetchWithRetry(`${baseUrl}/api/incidents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validPayload),

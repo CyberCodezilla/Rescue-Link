@@ -36,7 +36,12 @@ export function useSurvivorStream({
     let cancelled = false;
 
     try {
-      source = new EventSource('/api/events');
+      const apiOrigin =
+        process.env.NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN ||
+        process.env.RESCUE_LINK_API_ORIGIN ||
+        'http://13.218.236.205:3001';
+      const baseUrl = apiOrigin.trim().replace(/\/$/, '');
+      source = new EventSource(`${baseUrl}/api/events`);
     } catch {
       setStreamStatus('unavailable');
       return;
