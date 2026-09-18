@@ -29,6 +29,7 @@ import {
 } from '@/lib/validation';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { VoiceSOSPlayer } from '@/components/VoiceSOSPlayer';
 import { enqueueIncident } from '@/lib/offlineQueue';
 
 interface SOSFormProps {
@@ -107,7 +108,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     }
   };
 
-  const voice = useVoiceRecorder(15);
+  const voice = useVoiceRecorder(30);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -412,55 +413,21 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                     <span className="wave-bar-2" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
                     <span className="wave-bar-3" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
                   </div>
-                  <span>Recording Voice SOS ({voice.recordingDuration}s / 15s) — Click to Complete</span>
+                  <span>Recording Voice SOS ({voice.recordingDuration}s / 30s) — Click to Complete</span>
                 </>
               ) : (
                 <>
                   <Mic size={18} color="#60a5fa" />
-                  <span>1-Tap: Record Voice Distress (15s Max for Trapped Victims)</span>
+                  <span>1-Tap: Record Voice Distress (30s Max for Trapped Victims)</span>
                 </>
               )}
             </button>
           ) : (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '8px',
-                padding: '10px 14px',
-                backgroundColor: '#064e3b',
-                border: '1px solid #059669',
-                borderRadius: '8px',
-                color: '#ecfdf5',
-                fontSize: '13px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Check size={16} color="#34d399" />
-                <span>Voice SOS Ready ({voice.recordingDuration}s)</span>
-                <audio src={voice.audioUrl} controls style={{ height: '28px', maxWidth: '200px' }} />
-              </div>
-              <button
-                type="button"
-                onClick={voice.clearRecording}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#fca5a5',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                }}
-              >
-                <Trash2 size={14} />
-                Discard
-              </button>
-            </div>
+            <VoiceSOSPlayer
+              audioUrl={voice.audioUrl}
+              durationSeconds={voice.recordingDuration}
+              onDiscard={voice.clearRecording}
+            />
           )}
 
           {voice.error && (
