@@ -5,7 +5,7 @@ import { DynamoIncidentStore } from './dynamoStore';
 export interface IIncidentStore {
   create(incident: Incident): Promise<Incident>;
   getById(id: string): Promise<Incident | null>;
-  list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]>;
+  list(filter?: { status?: IncidentStatus; priority?: Priority; q?: string; since?: number }): Promise<Incident[]>;
   update(id: string, updates: Partial<Incident>): Promise<Incident | null>;
   clear(): Promise<void>;
 }
@@ -27,7 +27,7 @@ export class InMemoryIncidentStore implements IIncidentStore {
     return this.incidents.get(id) || null;
   }
 
-  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
     let result = Array.from(this.incidents.values());
 
     if (filter?.status) {
@@ -35,6 +35,27 @@ export class InMemoryIncidentStore implements IIncidentStore {
     }
     if (filter?.priority) {
       result = result.filter((incident) => incident.priority === filter.priority);
+    }
+    if (filter?.since !== undefined && !Number.isNaN(filter.since)) {
+      const sinceTime = filter.since;
+      result = result.filter((incident) => (incident.updatedAt || incident.createdAt) >= sinceTime);
+    }
+    if (filter?.q && filter.q.trim() !== '') {
+      const searchTerm = filter.q.trim().toLowerCase();
+      result = result.filter((incident) => {
+        const textToSearch = [
+          incident.category,
+          incident.description,
+          incident.location?.label,
+          incident.assignedTo,
+          incident.triage?.suggestedAction,
+          incident.triage?.notes,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return textToSearch.includes(searchTerm);
+      });
     }
 
     return result.sort((a, b) => b.createdAt - a.createdAt);
@@ -109,7 +130,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
     }
   }
 
-  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
     if (this.isMock()) {
       return this.memoryStore.list(filter);
     }

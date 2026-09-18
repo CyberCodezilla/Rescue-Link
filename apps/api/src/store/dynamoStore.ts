@@ -46,7 +46,7 @@ export class DynamoIncidentStore {
     return (res.Item as Incident) || null;
   }
 
-  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
     const { docClient, ScanCommand } = await this.getDocClient();
 
     let items: Incident[] = [];
@@ -67,13 +67,31 @@ export class DynamoIncidentStore {
 
     const hasStatus = Boolean(filter?.status);
     const hasPriority = Boolean(filter?.priority);
+    const hasSince = filter?.since !== undefined && !Number.isNaN(filter.since);
+    const hasQuery = Boolean(filter?.q && filter.q.trim() !== '');
+    const searchTerm = hasQuery ? filter!.q!.trim().toLowerCase() : '';
 
-    if (hasStatus || hasPriority) {
-      items = items.filter(
-        (i) =>
-          (!hasStatus || i.status === filter!.status) &&
-          (!hasPriority || i.priority === filter!.priority)
-      );
+    if (hasStatus || hasPriority || hasSince || hasQuery) {
+      items = items.filter((i) => {
+        if (hasStatus && i.status !== filter!.status) return false;
+        if (hasPriority && i.priority !== filter!.priority) return false;
+        if (hasSince && (i.updatedAt || i.createdAt) < filter!.since!) return false;
+        if (hasQuery) {
+          const textToSearch = [
+            i.category,
+            i.description,
+            i.location?.label,
+            i.assignedTo,
+            i.triage?.suggestedAction,
+            i.triage?.notes,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          if (!textToSearch.includes(searchTerm)) return false;
+        }
+        return true;
+      });
     }
 
     return items.sort((a, b) => b.createdAt - a.createdAt);
