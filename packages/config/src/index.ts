@@ -75,6 +75,10 @@ export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
     throw new Error('NODE_ENV must be development, test, or production');
   }
 
+  if (nodeEnv === 'production' && (!env.API_KEY || env.API_KEY === 'rescuelink-responder-key-2026')) {
+    throw new Error('API_KEY environment variable must be explicitly defined in production');
+  }
+
   const apiKey = env.API_KEY ?? 'rescuelink-responder-key-2026';
 
   return {
