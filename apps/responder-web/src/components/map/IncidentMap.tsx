@@ -34,113 +34,19 @@ const HAZARD_SEVERITY_COLOR: Record<HazardZone['severity'], string> = {
   critical: '#EF4444',
 };
 
-function markerIcon(priority: Priority, isSelected: boolean) {
-  const color = PRIORITY_COLOR[priority] || '#94A3B8';
-  const shadow = isSelected ? `box-shadow: 0 0 15px ${color}; transform: scale(1.25);` : '';
+function markerIcon(_priority: Priority, isSelected: boolean) {
+  const size = isSelected ? 16 : 12;
+  const border = isSelected ? '2.5px solid #FFFFFF' : '2px solid #FFFFFF';
+  const shadow = isSelected
+    ? 'box-shadow: 0 0 10px #EF4444, 0 2px 5px rgba(0,0,0,0.7); transform: scale(1.2);'
+    : 'box-shadow: 0 2px 4px rgba(0,0,0,0.6), 0 0 4px rgba(239,68,68,0.7);';
 
-  if (priority === 'critical') {
-    // Critical: Pulsing Diamond â—†
-    return L.divIcon({
-      className: '',
-      html: `<div style="
-        display:flex;align-items:center;justify-content:center;
-        width:20px;height:20px;
-        ${shadow}
-      ">
-        <div style="
-          width:13px;height:13px;
-          background:${color};
-          border:2px solid #FFFFFF;
-          transform:rotate(45deg);
-          box-shadow: 0 0 10px ${color};
-        "></div>
-      </div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10],
-    });
-  }
-
-  if (priority === 'high') {
-    // High: Triangle-Up â–²
-    return L.divIcon({
-      className: '',
-      html: `<div style="
-        display:flex;align-items:center;justify-content:center;
-        width:20px;height:20px;
-        ${shadow}
-      ">
-        <div style="
-          width: 0; height: 0;
-          border-left: 7px solid transparent;
-          border-right: 7px solid transparent;
-          border-bottom: 14px solid ${color};
-          filter: drop-shadow(0 0 4px ${color});
-        "></div>
-      </div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10],
-    });
-  }
-
-  if (priority === 'pending_triage') {
-    // Pending: Hollow Circle â—‹
-    return L.divIcon({
-      className: '',
-      html: `<div style="
-        display:flex;align-items:center;justify-content:center;
-        width:18px;height:18px;
-        ${shadow}
-      ">
-        <div style="
-          width:12px;height:12px;
-          border-radius:50%;
-          border:2px solid ${color};
-          background:#0B0F19;
-        "></div>
-      </div>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
-    });
-  }
-
-  if (priority === 'low') {
-    // Low: Small Circle
-    return L.divIcon({
-      className: '',
-      html: `<div style="
-        display:flex;align-items:center;justify-content:center;
-        width:16px;height:16px;
-        ${shadow}
-      ">
-        <div style="
-          width:8px;height:8px;
-          border-radius:50%;
-          background:${color};
-          border:1.5px solid #FFFFFF;
-        "></div>
-      </div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-    });
-  }
-
-  // Medium: Circle â—
   return L.divIcon({
     className: '',
-    html: `<div style="
-      display:flex;align-items:center;justify-content:center;
-      width:18px;height:18px;
-      ${shadow}
-    ">
-      <div style="
-        width:12px;height:12px;
-        border-radius:50%;
-        background:${color};
-        border:2px solid #FFFFFF;
-      "></div>
-    </div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `<div style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;background-color:#EF4444;border:${border};${shadow}"></div></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
   });
 }
 
@@ -311,41 +217,16 @@ export function IncidentMap({
     if (thermalLayer) {
       thermalLayer.clearLayers();
       if (activeMode === 'thermal') {
-        // Draw heat intensity zones around incidents
-        plottable.forEach((inc) => {
-          const { lat, lng } = inc.location;
-          const isCritical = inc.priority === 'critical';
-          const radius = isCritical ? 1800 : 1000;
-          const heatColor = isCritical ? '#EF4444' : inc.priority === 'high' ? '#F97316' : '#EAB308';
-
-          // Outer ambient thermal heat glow
-          L.circle([lat, lng], {
-            radius: radius * 1.5,
-            color: heatColor,
-            weight: 0,
-            fillColor: heatColor,
-            fillOpacity: 0.12,
-          }).addTo(thermalLayer);
-
-          // Core thermal intensity center
-          L.circle([lat, lng], {
-            radius: radius * 0.6,
-            color: heatColor,
-            weight: 1,
-            fillColor: heatColor,
-            fillOpacity: 0.28,
-          }).addTo(thermalLayer);
-        });
-
-        // Overlay sensor heat points
+        // Pure false-color thermal infrared satellite map without distracting incident circles
+        // Only sensor perimeters if active
         sensors.forEach((s) => {
-          if (s.kind === 'fire_perimeter' || s.status === 'critical') {
+          if (s.kind === 'fire_perimeter' && s.status === 'critical') {
             L.circle([s.location.lat, s.location.lng], {
-              radius: 600,
+              radius: 400,
               color: '#F43F5E',
               weight: 1,
               fillColor: '#F43F5E',
-              fillOpacity: 0.25,
+              fillOpacity: 0.2,
             }).addTo(thermalLayer);
           }
         });
@@ -597,4 +478,6 @@ export function IncidentMap({
     </div>
   );
 }
+
+
 

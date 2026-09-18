@@ -199,39 +199,28 @@ export function MapLegend({ currentMode, variant = 'panel', className = '' }: Ma
             </div>
           </div>
 
-          {/* Column 2: Incident Priority Marker Geometry */}
+          {/* Column 2: Incident Ground Target Dot */}
           <div className="rounded border border-line-2 bg-surface-2/60 p-2.5 space-y-2">
             <span className="text-[10px] font-bold uppercase text-ink-500 tracking-wider block mb-1">
-              PRIORITY MARKER GEOMETRY
+              INCIDENT GROUND TARGET
             </span>
             <div className="space-y-1.5 text-[11px]">
-              <div className="flex items-center justify-between p-1 rounded bg-surface/50 border border-line-2">
+              <div className="flex items-center justify-between p-1.5 rounded bg-surface/50 border border-line-2">
                 <div className="flex items-center gap-2">
-                  <span className="inline-block h-2.5 w-2.5 rotate-45 border border-white bg-red-500 shadow-[0_0_8px_#EF4444]" />
-                  <span className="text-red-400 font-bold">CRITICAL</span>
+                  <span className="inline-block h-3 w-3 rounded-full border-2 border-white bg-red-500 shadow-[0_0_6px_#EF4444]" />
+                  <span className="text-red-400 font-bold">EXACT INCIDENT POINT</span>
                 </div>
-                <span className="text-[10px] text-ink-500">Pulsing Diamond</span>
+                <span className="text-[10px] text-ink-500 font-mono">RED DOT</span>
               </div>
-              <div className="flex items-center justify-between p-1 rounded bg-surface/50 border border-line-2">
+              <div className="flex items-center justify-between p-1.5 rounded bg-surface/50 border border-line-2">
                 <div className="flex items-center gap-2">
-                  <span className="inline-block h-0 w-0 border-x-[5px] border-x-transparent border-b-[9px] border-b-orange-500" />
-                  <span className="text-orange-400 font-bold">HIGH</span>
+                  <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-white bg-red-500 shadow-[0_0_10px_#EF4444] scale-110" />
+                  <span className="text-action font-bold">FOCUSED INCIDENT TARGET</span>
                 </div>
-                <span className="text-[10px] text-ink-500">Upward Triangle</span>
+                <span className="text-[10px] text-action font-mono">15.0x ZOOM</span>
               </div>
-              <div className="flex items-center justify-between p-1 rounded bg-surface/50 border border-line-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-2.5 w-2.5 rotate-45 border border-amber-400 bg-amber-500" />
-                  <span className="text-amber-400 font-bold">MEDIUM</span>
-                </div>
-                <span className="text-[10px] text-ink-500">Solid Diamond</span>
-              </div>
-              <div className="flex items-center justify-between p-1 rounded bg-surface/50 border border-line-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full border border-slate-400 bg-slate-800" />
-                  <span className="text-slate-400 font-bold">PENDING / LOW</span>
-                </div>
-                <span className="text-[10px] text-ink-500">Circular Node</span>
+              <div className="p-1 text-[10px] text-ink-500 font-sans leading-tight">
+                Precise un-obscured coordinates for clear visual navigation and immediate tactical dispatch.
               </div>
             </div>
           </div>
@@ -274,3 +263,4 @@ export function MapLegend({ currentMode, variant = 'panel', className = '' }: Ma
     </div>
   );
 }
+

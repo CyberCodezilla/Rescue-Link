@@ -16,14 +16,6 @@ export interface IncidentFocusMapProps {
   unitPositions?: UnitPosition[];
 }
 
-const PRIORITY_COLOR: Record<Priority, string> = {
-  critical: '#EF4444',
-  high: '#F97316',
-  medium: '#EAB308',
-  low: '#22C55E',
-  pending_triage: '#94A3B8',
-};
-
 const MODE_CONFIG: Record<
   MapMode,
   { label: string; url: string; maxZoom: number; attribution: string; icon: React.ReactNode }
@@ -68,11 +60,9 @@ export function IncidentFocusMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const baseLayerRef = useRef<L.TileLayer | null>(null);
-  const thermalLayerRef = useRef<L.LayerGroup | null>(null);
   const [activeMode, setActiveMode] = useState<MapMode>('satellite');
 
   const { lat, lng } = location;
-  const color = PRIORITY_COLOR[priority] || '#EF4444';
 
   // 1. Map Initialization (once)
   useEffect(() => {
@@ -88,63 +78,28 @@ export function IncidentFocusMap({
     // Add zoom control at bottom-right so it never collides with ribbons or switchers
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    thermalLayerRef.current = L.layerGroup().addTo(map);
-
-    // 500m Hazard Exclusion Ring
-    L.circle([lat, lng], {
-      radius: 450,
-      color: color,
-      weight: 2,
-      opacity: 0.85,
-      dashArray: '6, 8',
-      fillColor: color,
-      fillOpacity: 0.08,
-    }).addTo(map);
-
-    // 150m Immediate Hazard Core
-    L.circle([lat, lng], {
-      radius: 150,
-      color: color,
-      weight: 2.5,
-      opacity: 0.95,
-      fillColor: color,
-      fillOpacity: 0.22,
-    }).addTo(map);
-
-    // Custom Tactical Beacon Target Marker
-    const targetIcon = L.divIcon({
+    // Exact Incident Point Marker: Precise Red Round Dot (no surrounding circles)
+    const targetDotIcon = L.divIcon({
       className: '',
       html: `<div style="
-        position:relative;
-        display:flex;align-items:center;justify-content:center;
-        width:40px;height:40px;
-      ">
-        <div style="
-          position:absolute;
-          width:40px;height:40px;
-          border-radius:50%;
-          border:2px solid ${color};
-          animation:ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-          opacity:0.8;
-        "></div>
-        <div style="
-          width:18px;height:18px;
-          background:${color};
-          border:2.5px solid #FFFFFF;
-          transform:rotate(45deg);
-          box-shadow: 0 0 18px ${color};
-        "></div>
-      </div>`,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
+        width: 14px;
+        height: 14px;
+        background-color: #EF4444;
+        border-radius: 50%;
+        border: 2px solid #FFFFFF;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.6), 0 0 8px rgba(239,68,68,0.8);
+      "></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+      popupAnchor: [0, -7],
     });
 
-    const marker = L.marker([lat, lng], { icon: targetIcon }).addTo(map);
+    const marker = L.marker([lat, lng], { icon: targetDotIcon }).addTo(map);
     const categoryLabel = (CATEGORY_LABELS as Record<string, string>)[category] || category;
 
     marker.bindPopup(
-      `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:180px;background:#0F172A;color:#F8FAFC;padding:6px;border-radius:4px;border:1px solid ${color};">
-         <div style="color:${color};font-weight:bold;font-size:11px;">TARGET FIX // ${priority.toUpperCase()}</div>
+      `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:180px;background:#0F172A;color:#F8FAFC;padding:6px;border-radius:4px;border:1px solid #EF4444;">
+         <div style="color:#EF4444;font-weight:bold;font-size:11px;">EXACT INCIDENT FIX // ${priority.toUpperCase()}</div>
          <strong style="color:#FFFFFF;font-size:13px;">${categoryLabel}</strong><br/>
          <span style="color:#94A3B8;font-size:11px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</span><br/>
          <span style="color:#38BDF8;font-size:10px;">ID: ${incidentId.slice(0, 8)}</span>
@@ -183,7 +138,7 @@ export function IncidentFocusMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [lat, lng, color, priority, category, incidentId, unitPositions]);
+  }, [lat, lng, priority, category, incidentId, unitPositions]);
 
   // 2. Base Tile & Thermal Mode Switching
   useEffect(() => {
@@ -210,36 +165,11 @@ export function IncidentFocusMap({
     });
     newBase.addTo(map);
     baseLayerRef.current = newBase;
-
-    // Thermal layer handling
-    const thermalLayer = thermalLayerRef.current;
-    if (thermalLayer) {
-      thermalLayer.clearLayers();
-      if (activeMode === 'thermal') {
-        // High-intensity thermal core
-        L.circle([lat, lng], {
-          radius: 600,
-          color: '#EF4444',
-          weight: 0,
-          fillColor: '#EF4444',
-          fillOpacity: 0.55,
-        }).addTo(thermalLayer);
-
-        // Radiant heat dispersal ring
-        L.circle([lat, lng], {
-          radius: 1200,
-          color: '#F97316',
-          weight: 0,
-          fillColor: '#F97316',
-          fillOpacity: 0.28,
-        }).addTo(thermalLayer);
-      }
-    }
-  }, [activeMode, lat, lng]);
+  }, [activeMode]);
 
   return (
     <div className="space-y-3 w-full">
-      {/* 100% Visible Map Viewport without any obscuring legend overlay */}
+      {/* 100% Visible Map Viewport with Exact Incident Red Dot - Zero Distracting Surrounding Circles */}
       <div className="relative h-80 sm:h-96 w-full rounded-lg border border-line-2 overflow-hidden bg-surface-2 shadow-panel">
         {/* Leaflet Map Canvas */}
         <div ref={containerRef} className="h-full w-full" />
@@ -267,20 +197,14 @@ export function IncidentFocusMap({
           })}
         </div>
 
-        {/* Tactical HUD Reticle Overlay */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-10 w-10 border border-action/40 rounded-full flex items-center justify-center">
-            <div className="h-1.5 w-1.5 bg-action rounded-full animate-ping" />
-          </div>
-        </div>
-
-        {/* Top HUD Telemetry Ribbon (Offset to prevent any collision) */}
+        {/* Top HUD Telemetry Ribbon */}
         <div className="pointer-events-none absolute top-2.5 left-2.5 flex items-center gap-2 font-mono text-[10px] uppercase font-bold tracking-wider z-[1000]">
           <span className="px-2.5 py-1 rounded bg-slate-950/85 border border-slate-700 text-action backdrop-blur-sm shadow">
             {MODE_CONFIG[activeMode].label} // 15.0x
           </span>
-          <span className="px-2.5 py-1 rounded bg-slate-950/85 border border-slate-700 text-status-resolved backdrop-blur-sm shadow hidden sm:inline">
-            500M PERIMETER
+          <span className="px-2.5 py-1 rounded bg-slate-950/85 border border-slate-700 text-red-400 backdrop-blur-sm shadow flex items-center gap-1.5 font-bold">
+            <span className="h-2 w-2 rounded-full bg-red-500 inline-block"></span>
+            EXACT INCIDENT FIX
           </span>
         </div>
       </div>
@@ -290,4 +214,3 @@ export function IncidentFocusMap({
     </div>
   );
 }
-
