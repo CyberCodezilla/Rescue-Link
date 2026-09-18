@@ -72,7 +72,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
   }
 
   private isMock(): boolean {
-    return CONFIG.USE_LOCAL_MOCK_STORE;
+    return CONFIG.USE_LOCAL_MOCK_STORE || process.env.NODE_ENV === 'test';
   }
 
   async create(incident: Incident): Promise<Incident> {
