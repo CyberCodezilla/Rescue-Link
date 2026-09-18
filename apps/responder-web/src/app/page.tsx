@@ -139,30 +139,12 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="relative xl:col-span-5 xl:sticky xl:top-4 flex flex-col gap-3">
-            <div className="relative h-[480px] xl:h-[calc(100vh-280px)] w-full">
-              {incidents ? (
-                <IncidentMapClient
-                  incidents={incidents}
-                  selectedId={selectedId}
-                  onSelect={handleSelect}
-                  currentMode={mapMode}
-                  onSelectMode={setMapMode}
-                  sensors={mapLayerData.sensors}
-                  hazardZones={mapLayerData.hazardZones}
-                  unitPositions={mapLayerData.unitPositions}
-                  showSensors={showSensors}
-                  showHazardZones={showHazardZones}
-                  showUnits={showUnits}
-                  geofenceEnabled={geofenceEnabled}
-                  onGeofenceChange={setGeofenceShape}
-                />
-              ) : !isInitialLoading ? (
-                <EmptyState title="Map unavailable" description="Incident data failed to load." />
-              ) : null}
-
-              {incidents ? (
-                <>
+          <section className="relative xl:col-span-5 xl:sticky xl:top-4 flex flex-col gap-2.5">
+            {/* Unified Tactical Map Panel with Dedicated Command Toolbar */}
+            <div className="flex flex-col rounded-xl border border-line-2 bg-surface-2 shadow-panel overflow-hidden">
+              {/* Tactical Controls Header Toolbar (100% Unobstructed Map Below) */}
+              {incidents && (
+                <div className="bg-[#0b1329] border-b border-[#1e293b] p-2">
                   <MapLayerControls
                     currentMode={mapMode}
                     onSelectMode={setMapMode}
@@ -175,14 +157,40 @@ export default function DashboardPage() {
                     geofenceEnabled={geofenceEnabled}
                     onToggleGeofence={() => setGeofenceEnabled((v) => !v)}
                   />
+                </div>
+              )}
+
+              {/* Map Canvas: 100% Free of Overlapping Buttons */}
+              <div className="relative h-[480px] xl:h-[calc(100vh-340px)] w-full">
+                {incidents ? (
+                  <IncidentMapClient
+                    incidents={incidents}
+                    selectedId={selectedId}
+                    onSelect={handleSelect}
+                    currentMode={mapMode}
+                    onSelectMode={setMapMode}
+                    sensors={mapLayerData.sensors}
+                    hazardZones={mapLayerData.hazardZones}
+                    unitPositions={mapLayerData.unitPositions}
+                    showSensors={showSensors}
+                    showHazardZones={showHazardZones}
+                    showUnits={showUnits}
+                    geofenceEnabled={geofenceEnabled}
+                    onGeofenceChange={setGeofenceShape}
+                  />
+                ) : !isInitialLoading ? (
+                  <EmptyState title="Map unavailable" description="Incident data failed to load." />
+                ) : null}
+
+                {incidents && (
                   <GeofencePanel
                     shape={geofenceShape}
                     incidents={incidents}
                     onClear={() => setGeofenceShape(null)}
                     onBatchComplete={refresh}
                   />
-                </>
-              ) : null}
+                )}
+              </div>
             </div>
 
             {/* OUTSIDE THE MAP: Dedicated Map Recon Legend in Dispatch Form */}
