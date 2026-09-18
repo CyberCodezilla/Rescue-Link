@@ -99,6 +99,12 @@ export class BedrockService {
   }
 
   private async invokeBedrockSDK(incident: Incident): Promise<BedrockTriageResult> {
+    if (CONFIG.USE_LOCAL_MOCK_STORE || process.env.NODE_ENV === 'test') {
+      if (!process.env.AWS_ACCESS_KEY_ID && !process.env.AWS_PROFILE && !process.env.AWS_EXECUTION_ENV) {
+        throw new Error('AWS Bedrock credentials not provided in test/mock mode');
+      }
+    }
+
     const { client, InvokeModelCommand } = await this.getBedrockClient();
     const prompt = buildBedrockTriagePrompt(incident);
 
