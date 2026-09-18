@@ -11,11 +11,13 @@ import { incidentStore } from '../store/incidentStore';
 import { triageWorkflow } from '../services/triageWorkflow';
 import { eventStreamManager } from '../services/eventStream';
 import { CONFIG } from '@rescue-link/config';
+import { sosRateLimiter } from '../middleware/rateLimit';
+import { requireAuth } from '../middleware/auth';
 
 export const incidentsRouter = Router();
 
-// POST /api/incidents - Create SOS Incident
-incidentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
+// POST /api/incidents - Create SOS Incident (Rate limited to prevent spam/cost exhaustion)
+incidentsRouter.post('/', sosRateLimiter, async (req: Request, res: Response): Promise<void> => {
   const parseResult = SOSSubmissionSchema.safeParse(req.body);
 
   if (!parseResult.success) {
@@ -102,8 +104,8 @@ incidentsRouter.get('/:id', async (req: Request, res: Response): Promise<void> =
   res.status(200).json(incident);
 });
 
-// PATCH /api/incidents/:id - Update status / assignment / triage
-incidentsRouter.patch('/:id', async (req: Request, res: Response): Promise<void> => {
+// PATCH /api/incidents/:id - Update status / assignment / triage (Protected)
+incidentsRouter.patch('/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
@@ -146,8 +148,8 @@ incidentsRouter.patch('/:id', async (req: Request, res: Response): Promise<void>
   res.status(200).json(updated);
 });
 
-// POST /api/incidents/:id/acknowledge - Convenience endpoint
-incidentsRouter.post('/:id/acknowledge', async (req: Request, res: Response): Promise<void> => {
+// POST /api/incidents/:id/acknowledge - Convenience endpoint (Protected)
+incidentsRouter.post('/:id/acknowledge', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
@@ -172,8 +174,8 @@ incidentsRouter.post('/:id/acknowledge', async (req: Request, res: Response): Pr
   res.status(200).json(updated);
 });
 
-// POST /api/incidents/:id/broadcast - Send tactical directive broadcast to survivor / zone
-incidentsRouter.post('/:id/broadcast', async (req: Request, res: Response): Promise<void> => {
+// POST /api/incidents/:id/broadcast - Send tactical directive broadcast to survivor / zone (Protected)
+incidentsRouter.post('/:id/broadcast', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 

@@ -36,10 +36,12 @@ async function request(path: string, init?: RequestInit & { signal?: AbortSignal
   let response: Response;
 
   try {
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY || 'rescuelink-responder-key-2026';
     response = await fetch(`/api${path}`, {
       ...init,
       headers: {
         Accept: 'application/json',
+        'x-api-key': apiKey,
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
         ...init?.headers,
       },

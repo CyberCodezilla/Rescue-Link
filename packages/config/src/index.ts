@@ -75,4 +75,16 @@ export const CONFIG = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+
+  // ── Authentication & Rate Limiting ─────────────────────────────────────────
+  /** Secret API Key for responder/admin management routes. */
+  API_KEY: process.env.API_KEY || 'rescuelink-responder-key-2026',
+  /** Rate limit window in milliseconds (default: 15 minutes). */
+  RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS
+    ? parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10)
+    : 15 * 60 * 1000,
+  /** Maximum public SOS submissions per IP per window. */
+  RATE_LIMIT_MAX_SOS: process.env.RATE_LIMIT_MAX_SOS
+    ? parseInt(process.env.RATE_LIMIT_MAX_SOS, 10)
+    : 20,
 };

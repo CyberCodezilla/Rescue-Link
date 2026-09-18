@@ -1,22 +1,35 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { healthRouter } from './routes/health';
 import { incidentsRouter } from './routes/incidents';
 import { eventsRouter } from './routes/events';
 import { telemetryRouter } from './routes/telemetry';
 import { notificationsRouter } from './routes/notifications';
+import { generalRateLimiter } from './middleware/rateLimit';
 
 import { CONFIG } from '@rescue-link/config';
 
 export const createApp = (): Express => {
   const app = express();
 
-  const corsOptions = CONFIG.ALLOWED_ORIGINS.length > 0
-    ? { origin: CONFIG.ALLOWED_ORIGINS }
-    : {};
+  // Security Headers via helmet
+  app.use(helmet());
 
-  app.use(cors(corsOptions));
+  // Strict CORS hardening
+  const defaultDevOrigins = ['http://localhost:3000', 'http://localhost:3002'];
+  const allowedOrigins = CONFIG.ALLOWED_ORIGINS.length > 0
+    ? CONFIG.ALLOWED_ORIGINS
+    : (CONFIG.NODE_ENV !== 'production' ? defaultDevOrigins : '*');
+
+  app.use(cors({
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  }));
+
   app.use(express.json());
+  app.use('/api', generalRateLimiter);
 
   app.get('/', (req: Request, res: Response) => {
     res.json({
