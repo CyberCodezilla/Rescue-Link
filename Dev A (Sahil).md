@@ -2,8 +2,7 @@
 
 **Developer:** Dev A (Sahil / `CyberCodezilla <sahil.s.rane13012007@gmail.com>`)
 **Module:** `apps/survivor-web`
-**Role:** Frontend Survivor Client (Edge Offline PWA & Disaster Distress SOS Tracker)
-**Status:** **Phase 1 (Completed)** | **Phase 2 (Completed)** | **Phase 3 (Completed & Verified)**
+**Status:** **Phase 1 (Completed)** | **Phase 2 (Completed)** | **Phase 3 (Completed & Verified)** | **Phase 4 (Completed & Verified)**
 **Date:** September 2026
 
 ---
@@ -126,57 +125,101 @@ Phase 3 achieves **complete cross-team synchronization** with **Dev B (`apps/res
 
 ---
 
-## 5. Cross-Developer Sync Matrix (Dev A, Dev B, Dev C)
+## 5. Phase 4: Full Incident Lifecycle Synchronization & Dispatcher Visibility (Completed & Verified)
 
-| Feature | Dev C (`apps/api`) | Dev B (`apps/responder-web`) | Dev A (`apps/survivor-web`) |
-| :--- | :--- | :--- | :--- |
-| **Tactical Broadcast** | Emits `broadcast:sent` via `GET /api/events` | Sends broadcast via `BroadcastModal.tsx` | Receives live in `useSurvivorStream.ts` & pops Flash Directive with siren |
-| **Voice Distress** | Forwards `audioBlob` in `newIncident` & DynamoDB | Renders `<audio controls />` in incident detail view | Records via `useVoiceRecorder.ts` & previews via `IncidentStatus.tsx` |
-| **Unit Tracking** | Stores `triage.assignedUnits` | Logs positions & calculates haversine distance/ETA | Displays callsigns in **Rescue Teams Deployed** card |
-| **Telemetry & Hazard** | `GET /api/sensors` & `GET /api/hazard-zones` | Renders sensor cards & Leaflet hazard layer | Displays LoRa packet weight & uplink channel badge |
+In Phase 4, the Survivor Web client achieved **complete end-to-end synchronization** with **Dev B's Responder Command Dashboard** (`apps/responder-web`) and **Dev C's Event Stream & Backend** (`apps/api`), leaving zero disconnected edges or missing state contracts:
+
+### 1. Terminal Incident Closure State & Stepper (`src/lib/validation.ts` & `IncidentStatus.tsx`)
+* **PRD Stage 3 & Phase 4 Requirement**: Full 5-stage lifecycle synchronization (`new` &rarr; `acknowledged` &rarr; `in_progress` &rarr; `resolved` &rarr; `closed`).
+* **Implementation Details**:
+  - Updated `IncidentStatusEnum` in `src/lib/validation.ts` to include `'closed'`, matching `packages/schema/src/incident.ts`.
+  - Upgraded the survivor dispatch stepper to a 5-column responsive grid (`repeat(5, 1fr)`) displaying all 5 stages.
+  - When an incident transitions to `closed`, all prior stages are verified as completed.
+
+### 2. Dedicated "Rescue Mission Concluded — Incident Closed" Hero Banner
+* **Implementation Details**:
+  - Automatically displays when `effectiveStatus === 'closed'`.
+  - Styled with emergency emerald tokens (`#064e3b`, `#34d399`) and prominent `CheckCircle2` icon.
+  - Informs the survivor: *"Rescue Mission Concluded — Incident Closed. Responders and emergency coordinators have completed all actions and officially marked this incident as resolved and closed."*
+  - Includes a direct **"Submit New SOS Beacon"** action button (`onReset`) allowing the terminal to be safely recycled for another emergency report if necessary.
+
+### 3. Lead Dispatch Officer Visibility (`assignedTo`)
+* **Implementation Details**:
+  - Dev B decoupled `assignedTo` (the responsible dispatch commander / officer) from `triage.assignedUnits` (physical field teams).
+  - Dev A's tracking view now displays both:
+    - **Lead Dispatch Officer**: Rendered with a dedicated `UserCheck` badge (`"Lead Dispatch Officer: [assignedTo]"`), giving victims immediate reassurance that an emergency coordinator is personally managing their case.
+    - **Assigned Field Units & Call Signs**: Displays tactical field team badges (e.g. `Boat Unit-4`, `Air Rescue`, `Medic-2`).
+
+### 4. Real-Time Closure Event Ingestion (`src/hooks/useSurvivorStream.ts`)
+* **Implementation Details**:
+  - Handles `incident:updated` SSE push payloads with `status: "closed"` with **0-second latency**.
+  - Immediately transitions the survivor UI to the concluded state without waiting for the next polling interval.
+
+### 5. Automated Phase 4 Survivor Regression Tests (`tests/phase4.test.ts`)
+* **Implementation Details**:
+  - Added dedicated test suite verifying:
+    1. `IncidentStatusEnum` validation accepting all 5 statuses including `'closed'` and rejecting invalid values.
+    2. `IncidentResponseSchema` parsing full payloads in `closed` status with both `assignedTo` and `triage.assignedUnits`.
+    3. Retaining `assignedTo` (lead officer) and `triage.assignedUnits` (field units) independently without collisions.
+    4. Simulating complete 5-stage lifecycle progression (`new` &rarr; `acknowledged` &rarr; `in_progress` &rarr; `resolved` &rarr; `closed`).
+    5. Parsing real-time `incident:updated` SSE event payloads transitioning an incident to `closed`.
 
 ---
 
-## 6. Verification & Testing Gate
+## 6. Cross-Developer Sync Matrix (Dev A, Dev B, Dev C)
 
-### 1. Vitest Test Suite (61/61 Tests Passing)
-All 9 test suites across the monorepo pass cleanly:
+| Feature | Dev C (`apps/api` / `schema`) | Dev B (`apps/responder-web`) | Dev A (`apps/survivor-web`) | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **5-Stage Lifecycle** | Stores & validates `new` &rarr; `acknowledged` &rarr; `in_progress` &rarr; `resolved` &rarr; `closed` | Drives transitions via `IncidentActions.tsx` (`NEXT_ACTION`) | Renders 5-stage stepper & displays "Rescue Mission Concluded" banner | **Synced & Verified** |
+| **Command Assignment** | Persists `assignedTo` via `PATCH /api/incidents/:id` | Dispatches assignment via `AssignmentControl.tsx` | Displays "Lead Dispatch Officer: [assignedTo]" badge | **Synced & Verified** |
+| **Field Unit Deployment** | Stores `triage.assignedUnits` | Deploys teams via `DispatchedUnitsControl.tsx` | Displays call signs in **Rescue Teams Deployed** card | **Synced & Verified** |
+| **Tactical Broadcast** | Emits `broadcast:sent` via `GET /api/events` | Sends broadcast via `BroadcastModal.tsx` | Receives live in `useSurvivorStream.ts` & pops Flash Directive with siren | **Synced & Verified** |
+| **Voice Distress** | Forwards `audioBlob` in `newIncident` & DynamoDB | Renders `<audio controls />` in incident detail view | Records via `useVoiceRecorder.ts` & previews via `IncidentStatus.tsx` | **Synced & Verified** |
+| **Telemetry & Hazard** | `GET /api/sensors` & `GET /api/hazard-zones` | Renders sensor cards & Leaflet hazard layer | Displays LoRa packet weight & uplink channel badge | **Synced & Verified** |
+
+---
+
+## 7. Verification & Testing Gate
+
+### 1. Vitest Test Suite (72/72 Tests Passing)
+All 11 test suites across the entire monorepo pass cleanly:
 ```bash
 $ npm run test
  RUN  v3.2.7 C:/Users/Win10/Desktop/Rescue-Link
 
- ✓ apps/survivor-web/tests/phase3.test.ts (8 tests)
- ✓ apps/survivor-web/tests/phase2.test.ts (6 tests)
  ✓ apps/survivor-web/tests/offlineQueue.test.ts (6 tests)
- ✓ apps/responder-web/tests/sortIncidents.test.ts (8 tests)
- ✓ apps/responder-web/tests/geo.test.ts (11 tests)
+ ✓ apps/survivor-web/tests/phase2.test.ts (6 tests)
+ ✓ apps/survivor-web/tests/phase3.test.ts (8 tests)
+ ✓ apps/survivor-web/tests/phase4.test.ts (6 tests)
  ✓ tests/contract/incidents.contract.test.ts (13 tests)
- ✓ apps/api/tests/triage.test.ts (3 tests)
- ✓ apps/api/tests/notifications.test.ts (2 tests)
+ ✓ apps/responder-web/tests/sortIncidents.test.ts (9 tests)
  ✓ packages/schema/tests/schema.test.ts (4 tests)
+ ✓ apps/responder-web/tests/lifecycle.test.ts (4 tests)
+ ✓ apps/api/tests/notifications.test.ts (2 tests)
+ ✓ apps/responder-web/tests/geo.test.ts (11 tests)
+ ✓ apps/api/tests/triage.test.ts (3 tests)
 
- Test Files  9 passed (9)
-      Tests  61 passed (61)
+ Test Files  11 passed (11)
+      Tests  72 passed (72)
 ```
 
 ### 2. TypeScript Strict Typecheck
 ```bash
 $ npm run typecheck
-(Exited with code 0 - 0 errors across all workspaces)
+(Exited with code 0 - 0 errors across all 5 workspace packages)
 ```
 
 ### 3. Production Next.js Build
 ```bash
-$ npm run build --workspace=apps/survivor-web
-✓ Compiled successfully in 5.6s
-✓ Generating static pages (4/4)
-✓ Finalizing page optimization
+$ npm run build
+✓ apps/responder-web compiled successfully in 7.7s (4/4 static pages generated)
+✓ apps/survivor-web compiled successfully in 3.6s (4/4 static pages generated)
 (Exited with code 0)
 ```
 
 ---
 
-## 7. How to Run & Verify Step-by-Step
+## 8. How to Run & Verify Step-by-Step
 
 ```bash
 # Start all 3 services in separate terminals:
@@ -185,23 +228,30 @@ npm run dev:survivor     # http://localhost:3000
 npm run dev:responder    # http://localhost:3002
 ```
 
-1. **Submit SOS with Voice Recording**:
-   - Open `http://localhost:3000`. Click **Record Voice Distress**, speak for 4 seconds, stop and submit.
-   - Verify the tracking screen shows the **Attached Voice SOS Recording** player, **LIVE RELAY** badge, and **LoRa Payload** diagnostics.
-2. **Test Night Rescue Strobe & Whistle**:
-   - Click **NIGHT BEACON** in top-right.
-   - Screen flashes high-frequency white/black SOS pulses and emits acoustic alpine whistle bursts. Tap **STOP BEACON**.
-3. **Simulate Two-Way Dispatcher Broadcast**:
-   - Open `http://localhost:3002`, click on the newly submitted incident.
-   - Click **Broadcast directive**, enter `"Urgent: Flash flood wave approaching. Evacuate to roof."` and send.
-   - Notice `http://localhost:3000` **instantly** sounds the siren chime and displays the **Emergency Flash Directive** banner with the **Confirm Receipt** button!
+1. **Submit SOS with Voice Distress**:
+   - Open `http://localhost:3000`. Record a voice message and submit SOS.
+   - Note the assigned tracking ID and watch the status start at `NEW`.
+2. **Acknowledge and Assign Officer in Responder Dashboard**:
+   - Open `http://localhost:3002`. Click on the incident.
+   - Enter Assignee (e.g. `Commander Miller`) and click **Save Assignee**.
+   - Add field unit (e.g. `Boat Unit-4`). Click **Acknowledge**.
+   - Notice `http://localhost:3000` **instantly** reflects:
+     - Step `ACKNOWLEDGED`.
+     - Rescuer card displays **Lead Dispatch Officer: Commander Miller**.
+     - Deployed unit chip: **Boat Unit-4**.
+3. **Progress Through Rescue, Resolution, and Closure**:
+   - On `http://localhost:3002`, click **Start Rescue** (&rarr; `in_progress`), then **Resolve** (&rarr; `resolved`), and finally **Close** (&rarr; `closed`).
+   - Notice `http://localhost:3000` updates to step `CLOSED`, displays the green **"Rescue Mission Concluded — Incident Closed"** banner, and provides the **"Submit New SOS Beacon"** button!
 
 ---
 
-## 8. Git Delivery & Commit Log
+## 9. Git Delivery & Commit Log
 
 | Commit | Author | Description |
 | :--- | :--- | :--- |
-| `HEAD` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): Phase 3 - zero-latency SSE relay, voice review player, night rescue beacon & SW captive caching` |
+| `HEAD` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): Phase 4 synchronization - closed status support, 5-stage stepper, assignedTo lead officer display & phase4 test suite` |
+| `187528c` | `Anurag Thakur` | `Update Dev B (Anurag).md` |
+| `1167904` | `Yash` | `Merge branch 'feature/responder-dashboard' into main` |
 | `11253e9` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `docs: consolidate all Phase 1 and Phase 2 documentation into Dev A (Sahil).md` |
 | `0ae83f3` | `CyberCodezilla <sahil.s.rane13012007@gmail.com>` | `feat(survivor-web): implement Phase 2 voice distress audio, rescuer tracking, OLED survival mode & PWA manifest` |
+

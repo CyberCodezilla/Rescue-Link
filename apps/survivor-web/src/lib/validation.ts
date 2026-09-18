@@ -10,7 +10,13 @@ export type IncidentCategory = z.infer<typeof IncidentCategoryEnum>;
 export const PriorityEnum = z.enum(['critical', 'high', 'medium', 'low', 'pending_triage']);
 export type Priority = z.infer<typeof PriorityEnum>;
 
-export const IncidentStatusEnum = z.enum(['new', 'acknowledged', 'in_progress', 'resolved']);
+export const IncidentStatusEnum = z.enum([
+  'new',
+  'acknowledged',
+  'in_progress',
+  'resolved',
+  'closed',
+]);
 export type IncidentStatus = z.infer<typeof IncidentStatusEnum>;
 
 export const UrgentNeedEnum = z.enum(['medical', 'boat', 'food', 'clean_water', 'infant_care']);

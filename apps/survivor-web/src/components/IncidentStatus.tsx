@@ -22,6 +22,7 @@ import {
   Check,
   Mic,
   Activity,
+  UserCheck,
 } from 'lucide-react';
 import type {
   IncidentCategory,
@@ -81,7 +82,7 @@ const STATIC_SAFETY_DIRECTIVES: Record<IncidentCategory, { title: string; bullet
   },
 };
 
-const STATUS_STEPS: IncidentStatusType[] = ['new', 'acknowledged', 'in_progress', 'resolved'];
+const STATUS_STEPS: IncidentStatusType[] = ['new', 'acknowledged', 'in_progress', 'resolved', 'closed'];
 
 export const IncidentStatus: React.FC<IncidentStatusProps> = ({
   incidentId: initialIncidentId,
@@ -635,8 +636,8 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
         </div>
       )}
 
-      {/* RESCUER EN-ROUTE & UNIT DEPLOYMENT CARD (Stage 3 Live Relay) */}
-      {assignedUnits.length > 0 && (
+      {/* RESCUER EN-ROUTE & UNIT DEPLOYMENT CARD (Phase 4 Real-time Relay) */}
+      {(assignedUnits.length > 0 || incidentData?.assignedTo) && (
         <div
           role="region"
           aria-label="Rescue Unit Deployment"
@@ -695,44 +696,120 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
             </span>
           </div>
 
-          <div
-            style={{
-              backgroundColor: oledMode ? '#000000' : '#022c22',
-              borderRadius: '8px',
-              padding: '12px 14px',
-              border: '1px solid #047857',
-            }}
-          >
-            <div style={{ fontSize: '11px', color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Assigned Field Units &amp; Call Signs
+          {/* Lead Dispatch Officer (Phase 4 assignment) */}
+          {incidentData?.assignedTo && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                backgroundColor: oledMode ? '#000000' : '#022c22',
+                border: '1px solid #047857',
+                fontSize: '13px',
+                color: '#d1fae5',
+              }}
+            >
+              <UserCheck size={16} color="#34d399" />
+              <span>
+                Lead Dispatch Officer: <strong style={{ color: '#ffffff' }}>{incidentData.assignedTo}</strong>
+              </span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {assignedUnits.map((unit, i) => (
-                <div
-                  key={i}
-                  style={{
-                    backgroundColor: '#064e3b',
-                    color: '#d1fae5',
-                    border: '1px solid #34d399',
-                    borderRadius: '6px',
-                    padding: '4px 10px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <Radio size={12} color="#34d399" />
-                  {unit}
+          )}
+
+          {/* Tactical Field Units */}
+          {assignedUnits.length > 0 && (
+            <div
+              style={{
+                backgroundColor: oledMode ? '#000000' : '#022c22',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                border: '1px solid #047857',
+              }}
+            >
+              <div style={{ fontSize: '11px', color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                Assigned Field Units &amp; Call Signs
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {assignedUnits.map((unit, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      backgroundColor: '#064e3b',
+                      color: '#d1fae5',
+                      border: '1px solid #34d399',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <Radio size={12} color="#34d399" />
+                    {unit}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* INCIDENT CLOSED / RESCUE COMPLETED BANNER (Phase 4 Terminal State) */}
+      {effectiveStatus === 'closed' && (
+        <div
+          role="region"
+          aria-label="Incident Closed"
+          style={{
+            backgroundColor: oledMode ? '#031a0e' : '#064e3b',
+            border: '2px solid #34d399',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: oledMode ? 'none' : '0 0 25px rgba(52, 211, 153, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <CheckCircle2 size={28} color="#34d399" />
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#ecfdf5', margin: 0 }}>
+                  Rescue Mission Concluded — Incident Closed
+                </h3>
+                <div style={{ fontSize: '12px', color: '#a7f3d0' }}>
+                  Responders and emergency coordinators have completed all actions and officially marked this incident as resolved and closed.
                 </div>
-              ))}
+              </div>
             </div>
+            <button
+              onClick={onReset}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                backgroundColor: '#059669',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              <RefreshCw size={14} />
+              Submit New SOS Beacon
+            </button>
           </div>
         </div>
       )}
 
-      {/* Live Status Pipeline */}
+      {/* Live Status Pipeline (5-Stage Phase 4 Lifecycle) */}
       <div
         style={{
           backgroundColor: theme.cardBg,
@@ -753,7 +830,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
           {STATUS_STEPS.map((step, idx) => {
             const isCompleted = currentStepIndex >= idx;
             const isCurrent = currentStepIndex === idx;
