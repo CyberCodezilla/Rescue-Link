@@ -3,53 +3,35 @@ import { bedrockService } from './bedrockService';
 import { incidentStore } from '../store/incidentStore';
 import { eventStreamManager } from './eventStream';
 import { notificationService } from './notificationService';
-import { defaultProvider } from '@aws-sdk/credential-provider-node';
-import { SignatureV4 } from '@smithy/signature-v4';
-import { createHash } from 'node:crypto';
 import { CONFIG } from '@rescue-link/config';
+import type { SFNClient as SFNClientType, StartExecutionCommand as StartExecutionCommandType } from '@aws-sdk/client-sfn';
 
 export class TriageWorkflowOrchestrator {
+  private sfnClientPromise: Promise<{ sfnClient: SFNClientType; StartExecutionCommand: typeof StartExecutionCommandType }> | null = null;
+
+  private async getSfnClient() {
+    if (!this.sfnClientPromise) {
+      this.sfnClientPromise = (async () => {
+        const { SFNClient, StartExecutionCommand } = await import('@aws-sdk/client-sfn');
+        const sfnClient = new SFNClient({ region: CONFIG.AWS_REGION });
+        return { sfnClient, StartExecutionCommand };
+      })();
+    }
+    return this.sfnClientPromise;
+  }
+
   private async startAwsWorkflow(incident: Incident): Promise<Incident | null> {
     if (!CONFIG.STATE_MACHINE_ARN) return null;
 
-    class NodeSha256 {
-      private hash = createHash('sha256');
-      update(data: Uint8Array | string): void { this.hash.update(data); }
-      async digest(): Promise<Uint8Array> { return this.hash.digest(); }
-    }
+    const { sfnClient, StartExecutionCommand } = await this.getSfnClient();
 
-    const credentials = await defaultProvider()();
-    const url = new URL(`https://states.${CONFIG.AWS_REGION}.amazonaws.com/`);
-    const body = JSON.stringify({ stateMachineArn: CONFIG.STATE_MACHINE_ARN, input: JSON.stringify({ incident }) });
-    const request = {
-      method: 'POST',
-      protocol: url.protocol,
-      hostname: url.hostname,
-      path: url.pathname,
-      query: {},
-      headers: {
-        host: url.hostname,
-        'content-type': 'application/x-amz-json-1.0',
-        'x-amz-target': 'AWSStepFunctions.StartExecution',
-      },
-      body,
-    };
-    const signer = new SignatureV4({
-      credentials,
-      region: CONFIG.AWS_REGION,
-      service: 'states',
-      sha256: NodeSha256 as any,
+    const command = new StartExecutionCommand({
+      stateMachineArn: CONFIG.STATE_MACHINE_ARN,
+      input: JSON.stringify({ incident }),
     });
-    const signed = await signer.sign(request);
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: signed.headers as Record<string, string>,
-      body,
-    });
-    const responseText = await response.text();
-    if (!response.ok) throw new Error(`Step Functions StartExecution failed (${response.status}): ${responseText}`);
-    const parsed = JSON.parse(responseText) as { executionArn?: string };
-    console.log(`[TriageWorkflow] Step Functions execution started for ${incident.id}: ${parsed.executionArn || 'unknown'}`);
+
+    const response = await sfnClient.send(command);
+    console.log(`[TriageWorkflow] Step Functions execution started for ${incident.id}: ${response.executionArn || 'unknown'}`);
     return incident;
   }
   /**

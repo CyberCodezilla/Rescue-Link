@@ -12,11 +12,12 @@ import { triageWorkflow } from '../services/triageWorkflow';
 import { eventStreamManager } from '../services/eventStream';
 import { CONFIG } from '@rescue-link/config';
 import { requireApiKey } from '../middleware/auth';
+import { sosRateLimit } from '../middleware/rateLimit';
 
 export const incidentsRouter = Router();
 
 // POST /api/incidents - Create SOS Incident
-incidentsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.post('/', sosRateLimit, async (req: Request, res: Response): Promise<void> => {
   const parseResult = SOSSubmissionSchema.safeParse(req.body);
 
   if (!parseResult.success) {
@@ -70,7 +71,7 @@ incidentsRouter.post('/', async (req: Request, res: Response): Promise<void> => 
 
 // GET /api/incidents - List Incidents
 incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
-  const { status, priority, page: pageQuery, limit: limitQuery } = req.query;
+  const { status, priority, q, since, page: pageQuery, limit: limitQuery } = req.query;
 
   const statuses =
     typeof status === 'string'
@@ -86,13 +87,27 @@ incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
       ? (priority as Incident['priority'])
       : undefined;
 
-  let list = await incidentStore.list({
-    priority: validPriority,
-  });
+  const searchQuery = typeof q === 'string' && q.trim() !== '' ? q.trim() : undefined;
 
-  if (validStatuses.length > 0) {
-    list = list.filter((incident) => validStatuses.includes(incident.status));
+  let sinceTimestamp: number | undefined = undefined;
+  if (typeof since === 'string' && since.trim() !== '') {
+    const parsed = Number(since);
+    if (!Number.isNaN(parsed)) {
+      sinceTimestamp = parsed;
+    } else {
+      const dateParsed = Date.parse(since);
+      if (!Number.isNaN(dateParsed)) {
+        sinceTimestamp = dateParsed;
+      }
+    }
   }
+
+  let list = await incidentStore.list({
+    status: validStatuses.length > 0 ? validStatuses : undefined,
+    priority: validPriority,
+    q: searchQuery,
+    since: sinceTimestamp,
+  });
 
   const hasPagination =
     typeof pageQuery === 'string' || typeof limitQuery === 'string';

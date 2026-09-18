@@ -73,6 +73,39 @@ describe('API Scalability, Notification Queue & Pub/Sub Architecture Tests', () 
     eventStreamManager.setAdapter(new LocalBroadcastAdapter());
   });
 
+  it('LocalBroadcastAdapter dispatches events to registered onMessage handlers', async () => {
+    const localAdapter = new LocalBroadcastAdapter();
+    const receivedEvents: SSEEvent[] = [];
+
+    localAdapter.onMessage((event) => {
+      receivedEvents.push(event);
+    });
+
+    const mockEvent: SSEEvent = {
+      type: 'broadcast:sent',
+      incident: {
+        id: 'local-pubsub-1',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        status: 'in_progress',
+        priority: 'critical',
+        category: 'fire',
+        description: 'Local adapter test',
+        peopleAffected: 1,
+        urgentNeeds: [],
+        location: { lat: 0, lng: 0 },
+      },
+      message: 'Evacuate immediately',
+      timestamp: Date.now(),
+    };
+
+    localAdapter.publish(mockEvent);
+
+    expect(receivedEvents.length).toBe(1);
+    expect(receivedEvents[0].message).toBe('Evacuate immediately');
+    expect(receivedEvents[0].incident.id).toBe('local-pubsub-1');
+  });
+
   it('GET /api/incidents supports multi-status filter ?status=new,acknowledged', async () => {
     await incidentStore.create({
       id: 'inc-1',
@@ -140,5 +173,48 @@ describe('API Scalability, Notification Queue & Pub/Sub Architecture Tests', () 
     expect(res.body.incidents.length).toBe(1);
     expect(res.body.pagination.totalCount).toBe(2);
     expect(res.body.pagination.hasMore).toBe(true);
+  });
+
+  it('GET /api/incidents supports full-text search query ?q=balcony and timestamp delta ?since=', async () => {
+    const pastTime = Date.now() - 10000;
+    const currentTime = Date.now();
+
+    await incidentStore.create({
+      id: 'search-1',
+      createdAt: pastTime - 5000,
+      updatedAt: pastTime - 5000,
+      status: 'new',
+      priority: 'high',
+      category: 'flood',
+      description: 'Trapped on balcony in downtown area',
+      peopleAffected: 2,
+      urgentNeeds: ['boat'],
+      location: { lat: 37.77, lng: -122.41, label: 'Downtown Tower' },
+    });
+
+    await incidentStore.create({
+      id: 'search-2',
+      createdAt: currentTime,
+      updatedAt: currentTime,
+      status: 'new',
+      priority: 'critical',
+      category: 'fire',
+      description: 'Basement fire spreading to main hall',
+      peopleAffected: 5,
+      urgentNeeds: ['medical'],
+      location: { lat: 37.78, lng: -122.42, label: 'Main Street Mall' },
+    });
+
+    // Test q parameter
+    const searchRes = await request(app).get('/api/incidents?q=balcony');
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body.length).toBe(1);
+    expect(searchRes.body[0].id).toBe('search-1');
+
+    // Test since parameter
+    const sinceRes = await request(app).get(`/api/incidents?since=${currentTime - 1000}`);
+    expect(sinceRes.status).toBe(200);
+    expect(sinceRes.body.length).toBe(1);
+    expect(sinceRes.body[0].id).toBe('search-2');
   });
 });

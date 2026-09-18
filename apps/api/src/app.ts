@@ -7,12 +7,14 @@ import { telemetryRouter } from './routes/telemetry';
 import { notificationsRouter } from './routes/notifications';
 import { workflowCallbackRouter } from './routes/workflowCallback';
 import { satelliteRouter } from './routes/satellite';
+import { generalRateLimit } from './middleware/rateLimit';
 
 export const createApp = (): Express => {
   const app = express();
 
   app.use(cors());
   app.use(express.json());
+  app.use(generalRateLimit);
 
   app.get('/', (req: Request, res: Response) => {
     res.json({
