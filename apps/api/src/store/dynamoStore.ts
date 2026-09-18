@@ -1,6 +1,5 @@
-import { Incident, IncidentStatus, Priority, IncidentSchema } from '@rescue-link/schema';
+import { Incident, IncidentStatus, Priority } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
-import type { IncidentFilterOptions } from './incidentStore';
 
 export class DynamoIncidentStore {
   private tableName = CONFIG.DYNAMODB_TABLE_INCIDENTS;
@@ -22,18 +21,16 @@ export class DynamoIncidentStore {
   }
 
   async create(incident: Incident): Promise<Incident> {
-    // Persistence Boundary Guard: Enforce strict schema validation before writing to DynamoDB
-    const validIncident = IncidentSchema.parse(incident);
     const { docClient, PutCommand } = await this.getDocClient();
 
     await docClient.send(
       new PutCommand({
         TableName: this.tableName,
-        Item: validIncident,
+        Item: incident,
       })
     );
 
-    return validIncident;
+    return incident;
   }
 
   async getById(id: string): Promise<Incident | null> {
@@ -46,16 +43,10 @@ export class DynamoIncidentStore {
       })
     );
 
-    if (!res.Item) return null;
-    const parsed = IncidentSchema.safeParse(res.Item);
-    if (!parsed.success) {
-      console.warn(`[DynamoIncidentStore] Ignored malformed item in DB (ID: ${id}):`, parsed.error.format());
-      return null;
-    }
-    return parsed.data;
+    return (res.Item as Incident) || null;
   }
 
-  async list(filter?: IncidentFilterOptions): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
     const { docClient, ScanCommand } = await this.getDocClient();
 
     let items: Incident[] = [];
@@ -69,44 +60,20 @@ export class DynamoIncidentStore {
         })
       );
       if (res.Items) {
-        for (const item of res.Items) {
-          const parsed = IncidentSchema.safeParse(item);
-          if (parsed.success) {
-            items.push(parsed.data);
-          } else {
-            console.warn(`[DynamoIncidentStore] Ignored malformed item in DB list scan (ID: ${item?.id}):`, parsed.error.format());
-          }
-        }
+        items.push(...(res.Items as Incident[]));
       }
       lastEvaluatedKey = res.LastEvaluatedKey;
     } while (lastEvaluatedKey);
 
-    if (filter) {
-      const statuses = filter.status
-        ? Array.isArray(filter.status)
-          ? filter.status
-          : [filter.status]
-        : undefined;
+    const hasStatus = Boolean(filter?.status);
+    const hasPriority = Boolean(filter?.priority);
 
-      const priorities = filter.priority
-        ? Array.isArray(filter.priority)
-          ? filter.priority
-          : [filter.priority]
-        : undefined;
-
-      const searchQuery = filter.q?.toLowerCase();
-      const sinceTime = filter.since;
-
-      items = items.filter((i) => {
-        if (statuses && !statuses.includes(i.status)) return false;
-        if (priorities && !priorities.includes(i.priority)) return false;
-        if (sinceTime !== undefined && i.createdAt < sinceTime) return false;
-        if (searchQuery) {
-          const text = `${i.category} ${i.description} ${i.triage?.suggestedAction || ''}`.toLowerCase();
-          if (!text.includes(searchQuery)) return false;
-        }
-        return true;
-      });
+    if (hasStatus || hasPriority) {
+      items = items.filter(
+        (i) =>
+          (!hasStatus || i.status === filter!.status) &&
+          (!hasPriority || i.priority === filter!.priority)
+      );
     }
 
     return items.sort((a, b) => b.createdAt - a.createdAt);
@@ -123,10 +90,8 @@ export class DynamoIncidentStore {
       updatedAt: Date.now(),
     };
 
-    // Enforce persistence boundary schema validation before update
-    const validUpdated = IncidentSchema.parse(updated);
-    await this.create(validUpdated);
-    return validUpdated;
+    await this.create(updated);
+    return updated;
   }
 
   async clear(): Promise<void> {

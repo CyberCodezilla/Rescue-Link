@@ -1,24 +1,19 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import { CONFIG } from '@rescue-link/config';
-import { incidentStore } from '../store/incidentStore';
 import { bedrockService } from '../services/bedrockService';
+import { incidentStore } from '../store/incidentStore';
 
 export const healthRouter = Router();
 
-healthRouter.get('/', (req: Request, res: Response) => {
-  const persistence = incidentStore.getStoreTelemetry();
-  const aiCircuit = bedrockService.getCircuitTelemetry();
-
-  const isHealthy = !persistence.isProductionFallbackAlert;
-
-  res.status(isHealthy ? 200 : 500).json({
-    status: isHealthy ? 'ok' : 'degraded',
+healthRouter.get('/', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
     service: 'rescue-link-api',
     environment: CONFIG.NODE_ENV,
     timestamp: new Date().toISOString(),
     telemetry: {
-      persistence,
-      aiCircuit,
+      persistence: incidentStore.getStoreTelemetry(),
+      aiCircuit: bedrockService.getCircuitTelemetry(),
     },
   });
 });

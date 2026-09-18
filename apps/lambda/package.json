@@ -1,0 +1,23 @@
+{
+  "name": "@rescue-link/lambda",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1132.0",
+    "@aws-sdk/client-dynamodb": "^3.1132.0",
+    "@aws-sdk/client-ses": "^3.1132.0",
+    "@aws-sdk/client-sns": "^3.1132.0",
+    "@aws-sdk/lib-dynamodb": "^3.1132.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  }
+}

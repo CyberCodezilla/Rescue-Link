@@ -1,6 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import type { SOSSubmission, PendingIncident } from './validation';
-import { fetchWithRetry } from './api';
 
 const DB_NAME = 'rescue-link-survivor';
 const DB_VERSION = 1;
@@ -95,7 +94,7 @@ export async function flushPendingIncidents(
 
   for (const item of pending) {
     try {
-      const response = await fetchWithRetry(`${apiBase}/api/incidents`, {
+      const response = await fetch(`${apiBase}/api/incidents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,10 +107,6 @@ export async function flushPendingIncidents(
         const serverId = data.id || data.incident?.id || `srv-${Date.now()}`;
         await removePendingIncident(item.localId);
         syncedIncidents.push({ localId: item.localId, serverId });
-      } else if (response.status === 429) {
-        failedCount++;
-        console.warn('[OfflineQueue] Rate limited (429) during bulk sync. Pausing queue flush until cooldown.');
-        break; // Halt batch processing early to prevent rate limit hammering
       } else {
         failedCount++;
       }
