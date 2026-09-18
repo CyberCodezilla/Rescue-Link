@@ -70,7 +70,16 @@ function heuristic(incident: Incident): { priority: Priority; triage: Incident['
 }
 
 async function bedrockTriage(incident: Incident) {
-  const prompt = `You are an expert emergency dispatch AI for RescueLink. Triage this disaster SOS report.\nCategory: ${incident.category}\nDescription: ${incident.description}\nPeople Affected: ${incident.peopleAffected}\nUrgent Needs: ${incident.urgentNeeds.join(', ') || 'None specified'}\nLocation: Lat ${incident.location.lat}, Lng ${incident.location.lng}\n\nRespond ONLY with JSON: {"priority":"critical|high|medium|low","suggestedAction":"...","summary":"...","reasoning":"...","confidence":0.95}`;
+  const audioSignal = incident.audioBlob ? 'Yes (Recorded voice distress signal attached by survivor)' : 'None';
+  const prompt = `You are an expert emergency dispatch AI for RescueLink. Triage this disaster SOS report.
+Category: ${incident.category}
+Description: ${incident.description}
+Audio Distress Signal: ${audioSignal}
+People Affected: ${incident.peopleAffected}
+Urgent Needs: ${incident.urgentNeeds.join(', ') || 'None specified'}
+Location: Lat ${incident.location.lat}, Lng ${incident.location.lng}
+
+Respond ONLY with JSON: {"priority":"critical|high|medium|low","suggestedAction":"...","summary":"...","reasoning":"...","confidence":0.95}`;
   const response = await bedrock.send(new InvokeModelCommand({
     modelId: CONFIG.MODEL_ID,
     contentType: 'application/json',
