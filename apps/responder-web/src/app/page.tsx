@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [filters, setFilters] = useState<IncidentFiltersState>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [mapMode, setMapMode] = useState<MapMode>('tactical');
+  const [mapMode, setMapMode] = useState<MapMode>('satellite');
   const [showSensors, setShowSensors] = useState(false);
   const [showHazardZones, setShowHazardZones] = useState(false);
   const [showUnits, setShowUnits] = useState(false);
@@ -139,47 +139,54 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="relative h-[480px] xl:col-span-5 xl:sticky xl:top-4 xl:h-[calc(100vh-220px)]">
-            {incidents ? (
-              <IncidentMapClient
-                incidents={incidents}
-                selectedId={selectedId}
-                onSelect={handleSelect}
-                sensors={mapLayerData.sensors}
-                hazardZones={mapLayerData.hazardZones}
-                unitPositions={mapLayerData.unitPositions}
-                showSensors={showSensors}
-                showHazardZones={showHazardZones}
-                showUnits={showUnits}
-                geofenceEnabled={geofenceEnabled}
-                onGeofenceChange={setGeofenceShape}
-              />
-            ) : !isInitialLoading ? (
-              <EmptyState title="Map unavailable" description="Incident data failed to load." />
-            ) : null}
-
-            {incidents ? (
-              <>
-                <MapLayerControls
+          <section className="relative xl:col-span-5 xl:sticky xl:top-4 flex flex-col gap-3">
+            <div className="relative h-[480px] xl:h-[calc(100vh-280px)] w-full">
+              {incidents ? (
+                <IncidentMapClient
+                  incidents={incidents}
+                  selectedId={selectedId}
+                  onSelect={handleSelect}
                   currentMode={mapMode}
                   onSelectMode={setMapMode}
+                  sensors={mapLayerData.sensors}
+                  hazardZones={mapLayerData.hazardZones}
+                  unitPositions={mapLayerData.unitPositions}
                   showSensors={showSensors}
-                  onToggleSensors={() => setShowSensors((v) => !v)}
                   showHazardZones={showHazardZones}
-                  onToggleHazardZones={() => setShowHazardZones((v) => !v)}
                   showUnits={showUnits}
-                  onToggleUnits={() => setShowUnits((v) => !v)}
                   geofenceEnabled={geofenceEnabled}
-                  onToggleGeofence={() => setGeofenceEnabled((v) => !v)}
+                  onGeofenceChange={setGeofenceShape}
                 />
-                <GeofencePanel
-                  shape={geofenceShape}
-                  incidents={incidents}
-                  onClear={() => setGeofenceShape(null)}
-                  onBatchComplete={refresh}
-                />
-              </>
-            ) : null}
+              ) : !isInitialLoading ? (
+                <EmptyState title="Map unavailable" description="Incident data failed to load." />
+              ) : null}
+
+              {incidents ? (
+                <>
+                  <MapLayerControls
+                    currentMode={mapMode}
+                    onSelectMode={setMapMode}
+                    showSensors={showSensors}
+                    onToggleSensors={() => setShowSensors((v) => !v)}
+                    showHazardZones={showHazardZones}
+                    onToggleHazardZones={() => setShowHazardZones((v) => !v)}
+                    showUnits={showUnits}
+                    onToggleUnits={() => setShowUnits((v) => !v)}
+                    geofenceEnabled={geofenceEnabled}
+                    onToggleGeofence={() => setGeofenceEnabled((v) => !v)}
+                  />
+                  <GeofencePanel
+                    shape={geofenceShape}
+                    incidents={incidents}
+                    onClear={() => setGeofenceShape(null)}
+                    onBatchComplete={refresh}
+                  />
+                </>
+              ) : null}
+            </div>
+
+            {/* OUTSIDE THE MAP: Dedicated Map Recon Legend in Dispatch Form */}
+            <MapLegend currentMode={mapMode} />
           </section>
         </div>
       </main>

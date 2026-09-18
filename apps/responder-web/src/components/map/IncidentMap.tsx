@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import { Mountain } from 'lucide-react';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
@@ -120,7 +122,7 @@ export function IncidentMap({
   geofenceEnabled = false,
   onGeofenceChange,
 }: IncidentMapProps) {
-  const [internalMode, setInternalMode] = useState<MapMode>('tactical');
+  const [internalMode, setInternalMode] = useState<MapMode>('satellite');
   const activeMode = currentMode ?? internalMode;
   const baseLayerRef = useRef<L.TileLayer | null>(null);
   const thermalLayerRef = useRef<L.LayerGroup | null>(null);
@@ -472,13 +474,32 @@ export function IncidentMap({
   }, [geofenceEnabled]);
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full rounded-lg border border-line-2 overflow-hidden bg-surface-2 shadow-panel">
       <div
         ref={containerRef}
         className="h-full w-full bg-canvas relative z-0"
         tabIndex={0}
         aria-label="Tactical incident map"
       />
+
+      {/* Accurate Topographic Height & Depth Telemetry Bar (Active in Topo Mode) */}
+      {activeMode === 'topo' && (
+        <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] flex flex-wrap items-center gap-2 font-mono text-[11px] bg-slate-950/92 border border-amber-500/70 text-amber-400 p-2 rounded-md shadow-xl backdrop-blur-md max-w-sm sm:max-w-md">
+          <div className="flex items-center gap-1.5 font-bold text-amber-300">
+            <Mountain size={13} className="text-amber-400" />
+            <span>HEIGHT & DEPTH RECON:</span>
+          </div>
+          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 font-bold border border-amber-500/40 text-[10px]">
+            CONTOURS: 10M & 20M ISOHYPSES
+          </span>
+          <span className="text-emerald-300 text-[10px]">
+            DATUM: <strong>MEAN SEA LEVEL</strong>
+          </span>
+          <div className="w-full text-[10px] text-amber-200/80 font-sans border-t border-amber-500/30 pt-1 mt-0.5">
+            Terrain Profile: <strong>SRTM Contour Isolines &amp; Shaded Relief</strong>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
