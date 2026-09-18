@@ -2,7 +2,8 @@ import { Incident } from '@rescue-link/schema';
 import { bedrockService } from './bedrockService';
 import { incidentStore } from '../store/incidentStore';
 import { eventStreamManager } from './eventStream';
-import { notificationService } from './notificationService';
+import { notificationQueue } from './notificationQueue';
+import { LifeSafetyTracer } from './lifeSafetyTracer';
 import { CONFIG } from '@rescue-link/config';
 import type { SFNClient as SFNClientType, StartExecutionCommand as StartExecutionCommandType } from '@aws-sdk/client-sfn';
 
@@ -34,12 +35,24 @@ export class TriageWorkflowOrchestrator {
     console.log(`[TriageWorkflow] Step Functions execution started for ${incident.id}: ${response.executionArn || 'unknown'}`);
     return incident;
   }
+
   /**
    * Asynchronously triages an incoming incident using Bedrock AI (or fallback engine),
    * updates the store, broadcasts an SSE update to all connected responders,
-   * and triggers Amazon SNS SMS / SES Email notifications for critical/high incidents.
+   * and enqueues emergency SNS SMS / SES Email notifications for critical/high incidents.
    */
-  async runTriage(incident: Incident): Promise<Incident> {
+  async runTriage(incident: Incident, traceId?: string): Promise<Incident> {
+    const effectiveTraceId = traceId || LifeSafetyTracer.createTraceId(incident.id);
+
+    LifeSafetyTracer.log({
+      traceId: effectiveTraceId,
+      incidentId: incident.id,
+      step: 'TRIAGE_START',
+      timestamp: Date.now(),
+      status: 'STARTED',
+      priority: incident.priority,
+    });
+
     if (CONFIG.STATE_MACHINE_ARN) {
       try {
         const started = await this.startAwsWorkflow(incident);
@@ -50,7 +63,7 @@ export class TriageWorkflowOrchestrator {
     }
 
     try {
-      const triageResult = await bedrockService.triageIncident(incident);
+      const triageResult = await bedrockService.triageIncident(incident, effectiveTraceId);
 
       const updated = await incidentStore.update(incident.id, {
         priority: triageResult.priority,
@@ -62,6 +75,15 @@ export class TriageWorkflowOrchestrator {
 
       const finalIncident = updated || incident;
 
+      LifeSafetyTracer.log({
+        traceId: effectiveTraceId,
+        incidentId: finalIncident.id,
+        step: 'TRIAGE_COMPLETE',
+        timestamp: Date.now(),
+        status: 'SUCCESS',
+        priority: finalIncident.priority,
+      });
+
       // Broadcast updated incident state via SSE
       eventStreamManager.broadcast({
         type: 'incident:updated',
@@ -69,10 +91,8 @@ export class TriageWorkflowOrchestrator {
         timestamp: Date.now(),
       });
 
-      // Dispatch emergency notifications (SNS/SES) if priority is critical or high
-      notificationService.sendCriticalAlert(finalIncident).catch((err) => {
-        console.error(`[TriageWorkflow] Notification trigger failed for ${finalIncident.id}:`, err);
-      });
+      // Enqueue emergency notifications (SNS/SES) via background NotificationQueue
+      notificationQueue.enqueue(finalIncident, effectiveTraceId);
 
       return finalIncident;
     } catch (error) {
@@ -96,11 +116,23 @@ export class TriageWorkflowOrchestrator {
         },
       };
 
+      LifeSafetyTracer.log({
+        traceId: effectiveTraceId,
+        incidentId: finalIncident.id,
+        step: 'TRIAGE_COMPLETE',
+        timestamp: Date.now(),
+        status: 'WARNING',
+        priority: finalIncident.priority,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
       eventStreamManager.broadcast({
         type: 'incident:updated',
         incident: finalIncident,
         timestamp: Date.now(),
       });
+
+      notificationQueue.enqueue(finalIncident, effectiveTraceId);
 
       return finalIncident;
     }

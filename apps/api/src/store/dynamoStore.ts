@@ -3,7 +3,7 @@ import { CONFIG } from '@rescue-link/config';
 
 export class DynamoIncidentStore {
   private tableName = CONFIG.DYNAMODB_TABLE_INCIDENTS;
-  private docClientPromise: Promise<{ docClient: any; PutCommand: any; GetCommand: any; ScanCommand: any }> | null = null;
+  private docClientPromise: Promise<{ docClient: any; PutCommand: any; GetCommand: any; ScanCommand: any; QueryCommand: any }> | null = null;
 
   private async getDocClient() {
     if (!this.docClientPromise) {
@@ -11,10 +11,10 @@ export class DynamoIncidentStore {
         const clientPkg = '@aws-sdk/client-dynamodb';
         const libPkg = '@aws-sdk/lib-dynamodb';
         const { DynamoDBClient } = await import(clientPkg);
-        const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } = await import(libPkg);
+        const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, QueryCommand } = await import(libPkg);
         const client = new DynamoDBClient({ region: CONFIG.AWS_REGION });
         const docClient = DynamoDBDocumentClient.from(client);
-        return { docClient, PutCommand, GetCommand, ScanCommand };
+        return { docClient, PutCommand, GetCommand, ScanCommand, QueryCommand };
       })();
     }
     return this.docClientPromise;
@@ -47,23 +47,41 @@ export class DynamoIncidentStore {
   }
 
   async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
+    const statusList = filter?.status
+      ? Array.isArray(filter.status)
+        ? filter.status
+        : [filter.status]
+      : [];
+
+    if (statusList.length === 1 && !filter?.priority && !filter?.since && !filter?.q) {
+      const { docClient, QueryCommand } = await this.getDocClient();
+      const res: any = await docClient.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'StatusCreatedAtIndex',
+          KeyConditionExpression: '#status = :status',
+          ExpressionAttributeNames: { '#status': 'status' },
+          ExpressionAttributeValues: { ':status': statusList[0] },
+          ScanIndexForward: false,
+        })
+      );
+      return (res.Items as Incident[]) || [];
+    }
+
     const { docClient, ScanCommand } = await this.getDocClient();
 
     const filterExpressions: string[] = [];
     const expressionAttributeNames: Record<string, string> = {};
     const expressionAttributeValues: Record<string, any> = {};
 
-    if (filter?.status) {
-      const statusList = Array.isArray(filter.status) ? filter.status : [filter.status];
-      if (statusList.length > 0) {
-        expressionAttributeNames['#status'] = 'status';
-        const keys = statusList.map((s, idx) => {
-          const k = `:st_${idx}`;
-          expressionAttributeValues[k] = s;
-          return k;
-        });
-        filterExpressions.push(`#status IN (${keys.join(', ')})`);
-      }
+    if (statusList.length > 0) {
+      expressionAttributeNames['#status'] = 'status';
+      const keys = statusList.map((s, idx) => {
+        const k = `:st_${idx}`;
+        expressionAttributeValues[k] = s;
+        return k;
+      });
+      filterExpressions.push(`#status IN (${keys.join(', ')})`);
     }
 
     if (filter?.priority) {

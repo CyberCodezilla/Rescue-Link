@@ -7,6 +7,7 @@ import {
   parseBedrockTriageOutput,
 } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
+import { LifeSafetyTracer } from './lifeSafetyTracer';
 
 export interface BedrockTriageResult {
   priority: Priority;
@@ -15,19 +16,68 @@ export interface BedrockTriageResult {
 
 export class BedrockService {
   private lastFailureAt: number | null = null;
-  private circuitState: "CLOSED" | "OPEN" = "CLOSED";
+  private circuitState: 'CLOSED' | 'OPEN' = 'CLOSED';
   private failureCount = 0;
   private circuitOpenedAt: number | null = null;
+  private readonly FAILURE_THRESHOLD = 3;
+  private readonly RESET_TIMEOUT_MS = 30000;
 
   /**
    * Generates AI Triage assessment for an incoming SOS Incident.
-   * Gracefully falls back to heuristic rule-based AI engine when AWS credentials are not provided.
+   * Gracefully falls back to heuristic rule-based AI engine when AWS credentials are not provided or circuit is open.
    */
-  async triageIncident(incident: Incident): Promise<BedrockTriageResult> {
+  async triageIncident(incident: Incident, traceId?: string): Promise<BedrockTriageResult> {
+    const effectiveTraceId = traceId || LifeSafetyTracer.createTraceId(incident.id);
+    const now = Date.now();
+
+    if (this.circuitState === 'OPEN') {
+      if (this.circuitOpenedAt && now - this.circuitOpenedAt > this.RESET_TIMEOUT_MS) {
+        this.circuitState = 'CLOSED';
+        this.failureCount = 0;
+      } else {
+        LifeSafetyTracer.log({
+          traceId: effectiveTraceId,
+          incidentId: incident.id,
+          step: 'BEDROCK_TRIAGE',
+          timestamp: now,
+          status: 'WARNING',
+          metadata: { circuitState: 'OPEN', reason: 'Circuit open cooldown active' },
+        });
+        return this.generateHeuristicTriage(incident);
+      }
+    }
+
+    LifeSafetyTracer.log({
+      traceId: effectiveTraceId,
+      incidentId: incident.id,
+      step: 'BEDROCK_TRIAGE',
+      timestamp: now,
+      status: 'STARTED',
+    });
+
     try {
-      return await this.invokeBedrockSDK(incident);
+      const result = await this.invokeBedrockSDK(incident);
+      this.failureCount = 0;
+      this.circuitState = 'CLOSED';
+      return result;
     } catch (error) {
+      this.failureCount++;
+      this.lastFailureAt = Date.now();
+      if (this.failureCount >= this.FAILURE_THRESHOLD) {
+        this.circuitState = 'OPEN';
+        this.circuitOpenedAt = Date.now();
+      }
+
       console.warn('[BedrockService] AWS Bedrock call failed, using heuristic fallback:', error);
+      LifeSafetyTracer.log({
+        traceId: effectiveTraceId,
+        incidentId: incident.id,
+        step: 'BEDROCK_TRIAGE',
+        timestamp: Date.now(),
+        status: 'WARNING',
+        error: error instanceof Error ? error.message : String(error),
+        metadata: { failureCount: this.failureCount, circuitState: this.circuitState },
+      });
     }
 
     return this.generateHeuristicTriage(incident);

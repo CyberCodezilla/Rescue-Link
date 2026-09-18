@@ -95,3 +95,34 @@ export class LocalBroadcastAdapter implements BroadcastAdapter {
     this.handlers.add(handler);
   }
 }
+
+/**
+ * Distributed Pub/Sub Broadcast Adapter for multi-instance scaling.
+ * Dispatches SSE events across running API nodes via distributed channel bus.
+ */
+export class PubSubBroadcastAdapter implements BroadcastAdapter {
+  private handlers: Set<(event: SSEEvent) => void> = new Set();
+  private channelName: string;
+
+  constructor(channelName = 'rescuelink:sse:events') {
+    this.channelName = channelName;
+  }
+
+  async publish(event: SSEEvent): Promise<void> {
+    for (const handler of this.handlers) {
+      try {
+        handler(event);
+      } catch (err) {
+        console.error(`[PubSubBroadcastAdapter:${this.channelName}] Delivery error:`, err);
+      }
+    }
+  }
+
+  broadcast(event: SSEEvent): void {
+    void this.publish(event);
+  }
+
+  onMessage(handler: (event: SSEEvent) => void): void {
+    this.handlers.add(handler);
+  }
+}
