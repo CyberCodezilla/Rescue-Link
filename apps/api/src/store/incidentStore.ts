@@ -23,13 +23,17 @@ export class InMemoryIncidentStore implements IIncidentStore {
   }
 
   async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
+    const hasStatus = Boolean(filter?.status);
+    const hasPriority = Boolean(filter?.priority);
+
     let result = Array.from(this.incidents.values());
 
-    if (filter?.status) {
-      result = result.filter((i) => i.status === filter.status);
-    }
-    if (filter?.priority) {
-      result = result.filter((i) => i.priority === filter.priority);
+    if (hasStatus || hasPriority) {
+      result = result.filter(
+        (i) =>
+          (!hasStatus || i.status === filter!.status) &&
+          (!hasPriority || i.priority === filter!.priority)
+      );
     }
 
     return result.sort((a, b) => b.createdAt - a.createdAt);
@@ -67,7 +71,9 @@ export class DelegatingIncidentStore implements IIncidentStore {
       return this.memoryStore.create(incident);
     }
     try {
-      return await this.dynamoStore.create(incident);
+      const created = await this.dynamoStore.create(incident);
+      await this.memoryStore.create(created);
+      return created;
     } catch (err) {
       console.warn('[IncidentStore] DynamoDB create failed, falling back to memory store:', err);
       return this.memoryStore.create(incident);
@@ -79,8 +85,13 @@ export class DelegatingIncidentStore implements IIncidentStore {
       return this.memoryStore.getById(id);
     }
     try {
-      return await this.dynamoStore.getById(id);
+      const item = await this.dynamoStore.getById(id);
+      if (item) {
+        await this.memoryStore.create(item);
+      }
+      return item ?? this.memoryStore.getById(id);
     } catch (err) {
+      console.warn('[IncidentStore] DynamoDB getById failed, falling back to memory store:', err);
       return this.memoryStore.getById(id);
     }
   }
@@ -92,6 +103,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
     try {
       return await this.dynamoStore.list(filter);
     } catch (err) {
+      console.warn('[IncidentStore] DynamoDB list failed, falling back to memory store:', err);
       return this.memoryStore.list(filter);
     }
   }
@@ -101,8 +113,13 @@ export class DelegatingIncidentStore implements IIncidentStore {
       return this.memoryStore.update(id, updates);
     }
     try {
-      return await this.dynamoStore.update(id, updates);
+      const updated = await this.dynamoStore.update(id, updates);
+      if (updated) {
+        await this.memoryStore.create(updated);
+      }
+      return updated ?? this.memoryStore.update(id, updates);
     } catch (err) {
+      console.warn('[IncidentStore] DynamoDB update failed, falling back to memory store:', err);
       return this.memoryStore.update(id, updates);
     }
   }

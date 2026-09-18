@@ -29,10 +29,23 @@ export class BedrockService {
     return this.generateHeuristicTriage(incident);
   }
 
+  /** Cached Bedrock SDK client (from rescuer branch perf optimization). */
+  private bedrockPromise: Promise<{ client: any; InvokeModelCommand: any }> | null = null;
+
+  private async getBedrockClient() {
+    if (!this.bedrockPromise) {
+      this.bedrockPromise = (async () => {
+        const pkg = '@aws-sdk/client-bedrock-runtime';
+        const { BedrockRuntimeClient, InvokeModelCommand } = await import(pkg);
+        const client = new BedrockRuntimeClient({ region: CONFIG.AWS_REGION });
+        return { client, InvokeModelCommand };
+      })();
+    }
+    return this.bedrockPromise;
+  }
+
   private async invokeBedrockSDK(incident: Incident): Promise<BedrockTriageResult> {
-    const pkg = '@aws-sdk/client-bedrock-runtime';
-    const { BedrockRuntimeClient, InvokeModelCommand }: any = await import(pkg);
-    const client = new BedrockRuntimeClient({ region: CONFIG.AWS_REGION });
+    const { client, InvokeModelCommand } = await this.getBedrockClient();
 
     const prompt = `Human: You are an expert emergency dispatch AI for RescueLink. Triage the following disaster SOS report:
 Category: ${incident.category}

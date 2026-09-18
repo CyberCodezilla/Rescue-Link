@@ -5,6 +5,7 @@ import {
   Incident,
   IncidentStatusEnum,
   PriorityEnum,
+  IncidentTriageSchema,
 } from '@rescue-link/schema';
 import { incidentStore } from '../store/incidentStore';
 import { triageWorkflow } from '../services/triageWorkflow';
@@ -124,10 +125,13 @@ incidentsRouter.patch('/:id', async (req: Request, res: Response): Promise<void>
     updates.assignedTo = assignedTo;
   }
   if (triage && typeof triage === 'object') {
-    updates.triage = {
-      ...(existing.triage || {}),
-      ...triage,
-    };
+    const parsedTriage = IncidentTriageSchema.partial().safeParse(triage);
+    if (parsedTriage.success) {
+      updates.triage = {
+        ...(existing.triage || {}),
+        ...parsedTriage.data,
+      };
+    }
   }
 
   const updated = await incidentStore.update(id, updates);
