@@ -103,11 +103,12 @@ Assistant:`;
     let reasoning = 'Standard distress priority based on reported needs.';
 
     const needs = incident.urgentNeeds || [];
+    const needsSet = new Set(needs);
     const count = incident.peopleAffected || 1;
 
     if (
-      needs.includes('medical') ||
-      needs.includes('boat') ||
+      needsSet.has('medical') ||
+      needsSet.has('boat') ||
       count >= 5 ||
       incident.category === 'fire'
     ) {
@@ -121,8 +122,8 @@ Assistant:`;
       summary = `CRITICAL DISTRESS: ${count} people affected. High casualty risk.`;
       reasoning = `Assigned CRITICAL priority due to urgent needs [${needs.join(', ')}] and ${count} casualties reported.`;
     } else if (
-      needs.includes('clean_water') ||
-      needs.includes('food') ||
+      needsSet.has('clean_water') ||
+      needsSet.has('food') ||
       incident.category === 'landslide' ||
       count >= 3
     ) {

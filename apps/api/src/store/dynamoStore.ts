@@ -65,11 +65,15 @@ export class DynamoIncidentStore {
       lastEvaluatedKey = res.LastEvaluatedKey;
     } while (lastEvaluatedKey);
 
-    if (filter?.status) {
-      items = items.filter((i) => i.status === filter.status);
-    }
-    if (filter?.priority) {
-      items = items.filter((i) => i.priority === filter.priority);
+    const hasStatus = Boolean(filter?.status);
+    const hasPriority = Boolean(filter?.priority);
+
+    if (hasStatus || hasPriority) {
+      items = items.filter(
+        (i) =>
+          (!hasStatus || i.status === filter!.status) &&
+          (!hasPriority || i.priority === filter!.priority)
+      );
     }
 
     return items.sort((a, b) => b.createdAt - a.createdAt);

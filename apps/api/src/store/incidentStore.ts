@@ -23,13 +23,17 @@ export class InMemoryIncidentStore implements IIncidentStore {
   }
 
   async list(filter?: { status?: IncidentStatus; priority?: Priority }): Promise<Incident[]> {
+    const hasStatus = Boolean(filter?.status);
+    const hasPriority = Boolean(filter?.priority);
+
     let result = Array.from(this.incidents.values());
 
-    if (filter?.status) {
-      result = result.filter((i) => i.status === filter.status);
-    }
-    if (filter?.priority) {
-      result = result.filter((i) => i.priority === filter.priority);
+    if (hasStatus || hasPriority) {
+      result = result.filter(
+        (i) =>
+          (!hasStatus || i.status === filter!.status) &&
+          (!hasPriority || i.priority === filter!.priority)
+      );
     }
 
     return result.sort((a, b) => b.createdAt - a.createdAt);
@@ -97,11 +101,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
       return this.memoryStore.list(filter);
     }
     try {
-      const items = await this.dynamoStore.list(filter);
-      for (const item of items) {
-        await this.memoryStore.create(item);
-      }
-      return items;
+      return await this.dynamoStore.list(filter);
     } catch (err) {
       console.warn('[IncidentStore] DynamoDB list failed, falling back to memory store:', err);
       return this.memoryStore.list(filter);
