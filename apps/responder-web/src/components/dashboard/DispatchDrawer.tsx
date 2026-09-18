@@ -38,6 +38,9 @@ import { PriorityBadge } from '@responder/components/incidents/PriorityBadge';
 import { StatusBadge } from '@responder/components/incidents/StatusBadge';
 import { DistressAudioPlayer } from '@responder/components/incidents/DistressAudioPlayer';
 import { BroadcastModal } from '@responder/components/incidents/BroadcastModal';
+import { TriageCard } from '@responder/components/incidents/TriageCard';
+import { UnitPositionPanel } from '@responder/components/incidents/UnitPositionPanel';
+import { NotificationStatus } from '@responder/components/incidents/NotificationStatus';
 import {
   generateIncidentRecommendation,
   loadAllRescuePlans,
@@ -282,14 +285,9 @@ export function DispatchDrawer({ incident, onClose, onUpdated }: DispatchDrawerP
             </div>
 
             <div className="flex items-center gap-2">
-              <Link
-                href={`/incidents/${incident.id}`}
-                title="Expand to Full Page Dossier"
-                className="flex items-center gap-1 rounded border border-line bg-surface-3/60 px-2.5 py-1 text-[11px] font-semibold text-ink-500 hover:text-white transition-colors"
-              >
-                <ExternalLink className="h-3 w-3" />
-                <span className="hidden sm:inline">FULL DOSSIER</span>
-              </Link>
+              <span className="font-mono text-[10px] font-bold text-action bg-action/10 border border-action/30 px-2 py-0.5 rounded">
+                INCIDENT DOSSIER
+              </span>
               <button
                 type="button"
                 onClick={onClose}
@@ -317,6 +315,20 @@ export function DispatchDrawer({ incident, onClose, onUpdated }: DispatchDrawerP
 
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+          {/* GEOSPATIAL COORDINATES & LOCATION */}
+          <section className="rounded-lg border border-line bg-surface-2/60 p-3.5 space-y-1.5 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-mono font-bold text-white uppercase tracking-wider">
+                <MapPin className="h-3.5 w-3.5 text-action" />
+                <span>Geospatial Coordinates</span>
+              </div>
+              <span className="font-mono text-[11px] text-action font-semibold">
+                LAT: {incident.location.lat} | LNG: {incident.location.lng}
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-white">{formatLocation(incident.location)}</p>
+          </section>
+
           {/* AI SMART RECOMMENDATIONS CARD */}
           <section className="hud-panel p-4 border border-cyan-500/40 bg-cyan-950/20">
             <div className="flex items-center justify-between gap-2 mb-2">
@@ -556,6 +568,16 @@ export function DispatchDrawer({ incident, onClose, onUpdated }: DispatchDrawerP
           {/* SURVIVOR DISTRESS AUDIO */}
           <DistressAudioPlayer incident={incident} />
 
+          {/* AI BEDROCK TRIAGE INTEL */}
+          {incident.triage && (
+            <div className="border border-line/60 rounded-lg overflow-hidden">
+              <TriageCard triage={incident.triage} />
+            </div>
+          )}
+
+          {/* DISPATCHED UNIT GPS TELEMETRY */}
+          <UnitPositionPanel incident={incident} />
+
           {/* EMERGENCY DIRECTIVE BROADCAST */}
           <section className="rounded-lg border border-red-500/40 bg-red-950/20 p-4 space-y-2.5">
             <div className="flex items-center justify-between">
@@ -611,6 +633,22 @@ export function DispatchDrawer({ incident, onClose, onUpdated }: DispatchDrawerP
               <p className="text-ink-700 mt-1 leading-relaxed">{getDescription(incident)}</p>
             </div>
           </section>
+
+          {/* REPORTER INFORMATION */}
+          <section className="rounded-lg border border-line bg-surface-2/60 p-3.5 space-y-1 text-xs">
+            <span className="font-mono font-bold text-white uppercase tracking-wider block">Reporter Information</span>
+            {incident.reporter?.contactValue && incident.reporter.contactMethod !== 'none' ? (
+              <p className="text-white font-medium">
+                <span className="text-ink-500 capitalize">{incident.reporter.contactMethod}: </span>
+                {incident.reporter.contactValue}
+              </p>
+            ) : (
+              <p className="text-ink-500 italic">No reporter contact details provided.</p>
+            )}
+          </section>
+
+          {/* AUTOMATED ALERT NOTIFICATION PIPELINE */}
+          <NotificationStatus incident={incident} />
 
           {/* INCIDENT LIFECYCLE ACTION */}
           {action && (

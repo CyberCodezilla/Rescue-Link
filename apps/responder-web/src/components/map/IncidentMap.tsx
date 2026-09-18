@@ -101,6 +101,7 @@ export interface IncidentMapProps {
   hoveredId?: string | null;
   onSelect: (id: string) => void;
   onHover?: (id: string | null) => void;
+  onOpenDispatch?: (incident: IncidentResponse) => void;
   sensors?: SensorReading[];
   hazardZones?: HazardZone[];
   unitPositions?: UnitPosition[];
@@ -117,6 +118,7 @@ export function IncidentMap({
   hoveredId,
   onSelect,
   onHover,
+  onOpenDispatch,
   sensors = [],
   hazardZones = [],
   unitPositions = [],
@@ -228,13 +230,24 @@ export function IncidentMap({
             <span style="color:#94A3B8;">${locationLabel}</span>
           </div>
           <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
-            <a href="/incidents/${incident.id}" style="color:#38BDF8;font-size:11px;font-weight:700;text-decoration:none;">
-              Full Tactical Dossier &rarr;
-            </a>
+            <button id="dispatch-map-btn-${incident.id}" style="background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.4);color:#38BDF8;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+              ⚡ Tactical Dispatch Drawer &rarr;
+            </button>
           </div>
         </div>`,
         { className: 'hud-tactical-popup', offset: [0, -6] }
       );
+
+      marker.on('popupopen', () => {
+        const btn = document.getElementById(`dispatch-map-btn-${incident.id}`);
+        if (btn) {
+          btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onOpenDispatch?.(incident);
+          };
+        }
+      });
 
       marker.on('click', () => onSelect(incident.id));
       if (onHover) {

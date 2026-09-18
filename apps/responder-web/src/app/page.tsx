@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useCallback, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Volume2, VolumeX, Keyboard } from 'lucide-react';
 import { DashboardHeader } from '@responder/components/dashboard/DashboardHeader';
 import { CriticalAlertBanner } from '@responder/components/dashboard/CriticalAlertBanner';
@@ -31,6 +31,28 @@ import { buildDashboardMapLayerData } from '@responder/lib/dashboardIntegration'
 import { DEFAULT_FILTERS } from '@responder/lib/schema';
 import type { IncidentFilters as IncidentFiltersState, IncidentResponse } from '@responder/lib/schema';
 import type { GeofenceShape } from '@responder/components/map/IncidentMap';
+
+function IncidentUrlParamWatcher({
+  incidents,
+  onOpenIncident,
+}: {
+  incidents: IncidentResponse[] | null;
+  onOpenIncident: (incident: IncidentResponse) => void;
+}) {
+  const searchParams = useSearchParams();
+  const incidentId = searchParams.get('incident');
+
+  useEffect(() => {
+    if (incidentId && incidents && incidents.length > 0) {
+      const found = incidents.find((i) => i.id === incidentId);
+      if (found) {
+        onOpenIncident(found);
+      }
+    }
+  }, [incidentId, incidents, onOpenIncident]);
+
+  return null;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -105,8 +127,17 @@ export default function DashboardPage() {
           isActive={isActive}
           incident={latestIncident}
           onDismiss={dismiss}
-          onView={(id) => router.push(`/incidents/${id}`)}
+          onView={(id) => {
+            const inc = incidents?.find((i) => i.id === id) || latestIncident;
+            if (inc) {
+              setDrawerIncident(inc);
+            }
+          }}
         />
+
+        <Suspense fallback={null}>
+          <IncidentUrlParamWatcher incidents={incidents} onOpenIncident={setDrawerIncident} />
+        </Suspense>
 
         <main className="flex flex-1 flex-col gap-4 p-3.5 sm:p-5">
           {/* Tactical Status & Audio Arming Bar */}
@@ -269,7 +300,7 @@ export default function DashboardPage() {
                   hoveredId={hoveredId}
                   onSelect={handleSelect}
                   onHover={setHoveredId}
-                  onOpenDispatch={(inc) => setDrawerIncident(inc)}
+                  onOpenDispatch={setDrawerIncident}
                   onClearFilters={() => setFilters(DEFAULT_FILTERS)}
                 />
               )}
@@ -291,6 +322,7 @@ export default function DashboardPage() {
                   hoveredId={hoveredId}
                   onSelect={handleSelect}
                   onHover={setHoveredId}
+                  onOpenDispatch={setDrawerIncident}
                   sensors={mapLayerData.sensors}
                   hazardZones={mapLayerData.hazardZones}
                   unitPositions={mapLayerData.unitPositions}

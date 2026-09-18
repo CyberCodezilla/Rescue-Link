@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { Flame, Waves, Mountain, HelpCircle, Crosshair, ExternalLink } from 'lucide-react';
 import type { IncidentResponse } from '@responder/lib/schema';
 import { CATEGORY_LABELS, getCategory } from '@responder/lib/schema';
@@ -96,21 +95,18 @@ export function IncidentTableRow({ incident, isSelected, isHovered, onSelect, on
           ) : (
             <span className="text-ink-500 italic">Unassigned</span>
           )}
-          <Link
-            href={`/incidents/${incident.id}`}
+          <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (onOpenDispatch) {
-                e.preventDefault();
-                onOpenDispatch(incident);
-              }
+              onOpenDispatch?.(incident);
             }}
             title="Open Slide-over Dispatch Dossier"
             className="inline-flex items-center gap-1 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-[10px] font-bold text-action transition-all hover:bg-action hover:text-white"
           >
             <span>ASSIGN</span>
             <ExternalLink className="h-2.5 w-2.5" />
-          </Link>
+          </button>
         </div>
       </td>
     </tr>
@@ -163,20 +159,18 @@ export function IncidentCard({ incident, isSelected, isHovered, onSelect, onHove
           <span className="text-ink-500 text-[10px]">
             {hasAssignedUnits(units) ? units!.join(', ') : incident.assignedTo || 'Unassigned'}
           </span>
-          <Link
-            href={`/incidents/${incident.id}`}
+          <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (onOpenDispatch) {
-                e.preventDefault();
-                onOpenDispatch(incident);
-              }
+              onOpenDispatch?.(incident);
             }}
+            title="Open Slide-over Dispatch Dossier"
             className="inline-flex items-center gap-1 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-[10px] font-bold text-action transition-all hover:bg-action hover:text-white"
           >
             <span>ASSIGN</span>
             <ExternalLink className="h-2.5 w-2.5" />
-          </Link>
+          </button>
         </div>
       </div>
     </button>
