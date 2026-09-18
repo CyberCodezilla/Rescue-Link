@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,7 +10,7 @@ import { IncidentFilters } from '@responder/components/incidents/IncidentFilters
 import { IncidentList } from '@responder/components/incidents/IncidentList';
 import { IncidentMapClient } from '@responder/components/map/IncidentMapClient';
 import { GeofencePanel } from '@responder/components/map/GeofencePanel';
-import type { MapMode } from '@responder/components/map/MapLegend';
+import { MapLegend, type MapMode } from '@responder/components/map/MapLegend';
 import { MapLayerControls } from '@responder/components/map/MapLayerControls';
 import { EmptyState } from '@responder/components/ui/EmptyState';
 import { ErrorState } from '@responder/components/ui/ErrorState';
@@ -186,3 +186,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

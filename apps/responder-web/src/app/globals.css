@@ -160,3 +160,13 @@ body {
     transition: none !important;
   }
 }
+
+/* Authentic False-Color Thermal Infrared Satellite Recon Filter */
+.leaflet-thermal-mode .leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(185deg) saturate(320%) contrast(150%) brightness(0.95);
+  transition: filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.leaflet-container {
+  background: #0B0F19 !important;
+}

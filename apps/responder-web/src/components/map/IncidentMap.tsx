@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
@@ -39,7 +39,7 @@ function markerIcon(priority: Priority, isSelected: boolean) {
   const shadow = isSelected ? `box-shadow: 0 0 15px ${color}; transform: scale(1.25);` : '';
 
   if (priority === 'critical') {
-    // Critical: Pulsing Diamond ◆
+    // Critical: Pulsing Diamond â—†
     return L.divIcon({
       className: '',
       html: `<div style="
@@ -61,7 +61,7 @@ function markerIcon(priority: Priority, isSelected: boolean) {
   }
 
   if (priority === 'high') {
-    // High: Triangle-Up ▲
+    // High: Triangle-Up â–²
     return L.divIcon({
       className: '',
       html: `<div style="
@@ -83,7 +83,7 @@ function markerIcon(priority: Priority, isSelected: boolean) {
   }
 
   if (priority === 'pending_triage') {
-    // Pending: Hollow Circle ○
+    // Pending: Hollow Circle â—‹
     return L.divIcon({
       className: '',
       html: `<div style="
@@ -124,7 +124,7 @@ function markerIcon(priority: Priority, isSelected: boolean) {
     });
   }
 
-  // Medium: Circle ●
+  // Medium: Circle â—
   return L.divIcon({
     className: '',
     html: `<div style="
@@ -279,18 +279,27 @@ export function IncidentMap({
     let maxZoom = 16;
     let attribution = '&copy; Esri &mdash; Tactical Dark HUD';
 
+    const container = map.getContainer();
     if (activeMode === 'satellite') {
+      container.classList.remove('leaflet-thermal-mode');
       tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       maxZoom = 18;
       attribution = '&copy; Esri, DigitalGlobe, Earthstar Geographics &mdash; Photorealistic Satellite Recon';
     } else if (activeMode === 'topo') {
+      container.classList.remove('leaflet-thermal-mode');
       tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
       maxZoom = 18;
       attribution = '&copy; Esri, USGS, NOAA &mdash; Topographic Elevation & Contours';
     } else if (activeMode === 'thermal') {
+      container.classList.add('leaflet-thermal-mode');
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      maxZoom = 18;
+      attribution = '&copy; Esri, DigitalGlobe &mdash; False-Color Infrared Satellite Thermal Recon';
+    } else {
+      container.classList.remove('leaflet-thermal-mode');
       tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
       maxZoom = 16;
-      attribution = '&copy; Esri &mdash; Infrared Thermal Heat Intensity Analysis';
+      attribution = '&copy; Esri &mdash; Tactical Dark HUD';
     }
 
     const newBase = L.tileLayer(tileUrl, { maxZoom, attribution });
@@ -585,7 +594,7 @@ export function IncidentMap({
         tabIndex={0}
         aria-label="Tactical incident map"
       />
-      <MapLegend currentMode={activeMode} className="absolute bottom-3 left-3 z-[1000]" />
     </div>
   );
 }
+

@@ -1,17 +1,17 @@
 ﻿'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Eye, Mountain, Flame, Shield, MapPin, ShieldAlert } from 'lucide-react';
-import type { IncidentCategory, Priority, UnitPosition } from '@responder/lib/schema';
-import { CATEGORY_LABELS } from '@responder/lib/schema';
+import { Eye, Mountain, Flame, Shield } from 'lucide-react';
 import { MapLegend, type MapMode } from './MapLegend';
+import { CATEGORY_LABELS } from '@responder/lib/schema';
+import type { Priority, UnitPosition } from '@responder/lib/schema';
 
 export interface IncidentFocusMapProps {
   location: { lat: number; lng: number; label?: string };
   priority: Priority;
-  category: IncidentCategory;
+  category: string;
   incidentId: string;
   unitPositions?: UnitPosition[];
 }
@@ -32,21 +32,21 @@ const MODE_CONFIG: Record<
     label: 'SATELLITE RECON',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 18,
-    attribution: '&copy; Esri &mdash; Photorealistic Aerial Recon',
+    attribution: '&copy; Esri, DigitalGlobe &mdash; Photorealistic Aerial Imagery',
     icon: <Eye size={11} />,
   },
   topo: {
     label: 'TOPOGRAPHY & DEPTH',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 18,
-    attribution: '&copy; Esri, USGS &mdash; Elevation & Contours',
+    attribution: '&copy; Esri, USGS, NOAA &mdash; Elevation & Contours',
     icon: <Mountain size={11} />,
   },
   thermal: {
     label: 'THERMAL HAZARD',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    maxZoom: 16,
-    attribution: '&copy; Esri &mdash; Infrared Thermal Gradient',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 18,
+    attribution: '&copy; Esri, DigitalGlobe &mdash; False-Color Infrared Thermal Satellite Recon',
     icon: <Flame size={11} />,
   },
   tactical: {
@@ -81,9 +81,12 @@ export function IncidentFocusMap({
     const map = L.map(containerRef.current, {
       center: [lat, lng],
       zoom: 15,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: false,
     });
+
+    // Add zoom control at bottom-right so it never collides with ribbons or switchers
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     thermalLayerRef.current = L.layerGroup().addTo(map);
 
@@ -137,7 +140,7 @@ export function IncidentFocusMap({
     });
 
     const marker = L.marker([lat, lng], { icon: targetIcon }).addTo(map);
-    const categoryLabel = CATEGORY_LABELS[category] || category;
+    const categoryLabel = (CATEGORY_LABELS as Record<string, string>)[category] || category;
 
     marker.bindPopup(
       `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;min-width:180px;background:#0F172A;color:#F8FAFC;padding:6px;border-radius:4px;border:1px solid ${color};">
@@ -187,9 +190,17 @@ export function IncidentFocusMap({
     const map = mapRef.current;
     if (!map) return;
 
+    const container = map.getContainer();
+
     if (baseLayerRef.current) {
       map.removeLayer(baseLayerRef.current);
       baseLayerRef.current = null;
+    }
+
+    if (activeMode === 'thermal') {
+      container.classList.add('leaflet-thermal-mode');
+    } else {
+      container.classList.remove('leaflet-thermal-mode');
     }
 
     const cfg = MODE_CONFIG[activeMode];
@@ -207,75 +218,76 @@ export function IncidentFocusMap({
       if (activeMode === 'thermal') {
         // High-intensity thermal core
         L.circle([lat, lng], {
-          radius: 800,
+          radius: 600,
           color: '#EF4444',
           weight: 0,
           fillColor: '#EF4444',
-          fillOpacity: 0.35,
+          fillOpacity: 0.55,
         }).addTo(thermalLayer);
 
         // Radiant heat dispersal ring
         L.circle([lat, lng], {
-          radius: 1400,
+          radius: 1200,
           color: '#F97316',
           weight: 0,
           fillColor: '#F97316',
-          fillOpacity: 0.18,
+          fillOpacity: 0.28,
         }).addTo(thermalLayer);
       }
     }
   }, [activeMode, lat, lng]);
 
   return (
-    <div className="relative h-72 sm:h-80 w-full rounded-lg border border-line-2 overflow-hidden bg-surface-2 shadow-panel">
-      {/* Leaflet Map Canvas */}
-      <div ref={containerRef} className="h-full w-full" />
+    <div className="space-y-3 w-full">
+      {/* 100% Visible Map Viewport without any obscuring legend overlay */}
+      <div className="relative h-80 sm:h-96 w-full rounded-lg border border-line-2 overflow-hidden bg-surface-2 shadow-panel">
+        {/* Leaflet Map Canvas */}
+        <div ref={containerRef} className="h-full w-full" />
 
-      {/* Mode Switcher HUD Bar (Top-Right) */}
-      <div className="pointer-events-auto absolute top-2 right-2 z-[1000] flex items-center gap-1 bg-slate-950/90 border border-slate-700/80 p-1 rounded-md backdrop-blur-md shadow-lg">
-        {(Object.keys(MODE_CONFIG) as MapMode[]).map((modeKey) => {
-          const isActive = activeMode === modeKey;
-          return (
-            <button
-              key={modeKey}
-              type="button"
-              onClick={() => setActiveMode(modeKey)}
-              aria-pressed={isActive}
-              className={`flex items-center gap-1 px-2 py-1 rounded font-mono text-[10px] font-bold tracking-wider transition-all ${
-                isActive
-                  ? 'bg-action text-white shadow-[0_0_8px_rgba(59,130,246,0.5)]'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              {MODE_CONFIG[modeKey].icon}
-              <span className="hidden sm:inline">{MODE_CONFIG[modeKey].label}</span>
-            </button>
-          );
-        })}
-      </div>
+        {/* Mode Switcher HUD Bar (Top-Right) */}
+        <div className="pointer-events-auto absolute top-2.5 right-2.5 z-[1000] flex items-center gap-1 bg-slate-950/90 border border-slate-700/80 p-1 rounded-md backdrop-blur-md shadow-lg">
+          {(Object.keys(MODE_CONFIG) as MapMode[]).map((modeKey) => {
+            const isActive = activeMode === modeKey;
+            return (
+              <button
+                key={modeKey}
+                type="button"
+                onClick={() => setActiveMode(modeKey)}
+                aria-pressed={isActive}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded font-mono text-[10px] font-bold tracking-wider transition-all ${
+                  isActive
+                    ? 'bg-action text-white shadow-[0_0_8px_rgba(59,130,246,0.5)]'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                {MODE_CONFIG[modeKey].icon}
+                <span className="hidden sm:inline">{MODE_CONFIG[modeKey].label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-      {/* Tactical HUD Reticle Overlay */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="h-10 w-10 border border-action/40 rounded-full flex items-center justify-center">
-          <div className="h-1.5 w-1.5 bg-action rounded-full animate-ping" />
+        {/* Tactical HUD Reticle Overlay */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="h-10 w-10 border border-action/40 rounded-full flex items-center justify-center">
+            <div className="h-1.5 w-1.5 bg-action rounded-full animate-ping" />
+          </div>
+        </div>
+
+        {/* Top HUD Telemetry Ribbon (Offset to prevent any collision) */}
+        <div className="pointer-events-none absolute top-2.5 left-2.5 flex items-center gap-2 font-mono text-[10px] uppercase font-bold tracking-wider z-[1000]">
+          <span className="px-2.5 py-1 rounded bg-slate-950/85 border border-slate-700 text-action backdrop-blur-sm shadow">
+            {MODE_CONFIG[activeMode].label} // 15.0x
+          </span>
+          <span className="px-2.5 py-1 rounded bg-slate-950/85 border border-slate-700 text-status-resolved backdrop-blur-sm shadow hidden sm:inline">
+            500M PERIMETER
+          </span>
         </div>
       </div>
 
-      {/* Top HUD Telemetry Ribbon */}
-      <div className="pointer-events-none absolute top-2 left-2 flex items-center gap-2 font-mono text-[10px] uppercase font-bold tracking-wider z-[1000]">
-        <span className="px-2 py-0.5 rounded bg-slate-950/85 border border-slate-700 text-action backdrop-blur-sm shadow">
-          {MODE_CONFIG[activeMode].label} // 15.0x
-        </span>
-        <span className="px-2 py-0.5 rounded bg-slate-950/85 border border-slate-700 text-status-resolved backdrop-blur-sm shadow hidden sm:inline">
-          500M PERIMETER
-        </span>
-      </div>
-
-      {/* Bottom Floating Dynamic Map Legend */}
-      <MapLegend
-        currentMode={activeMode}
-        className="absolute bottom-2 left-2 z-[1000] scale-90 origin-bottom-left"
-      />
+      {/* OUTSIDE THE MAP: Dedicated Map Recon Legend in Dispatch Form */}
+      <MapLegend currentMode={activeMode} />
     </div>
   );
 }
+
