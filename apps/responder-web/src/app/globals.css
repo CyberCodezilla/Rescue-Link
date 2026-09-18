@@ -252,3 +252,32 @@ body {
     animation: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   TACTICAL NIGHT-MODE MAP (ZERO API KEY REQUIRED, NO WATERMARK)
+   ═══════════════════════════════════════════════════════════════ */
+.leaflet-tile-pane {
+  filter: brightness(0.65) invert(1) contrast(2.8) hue-rotate(200deg) saturate(0.35) brightness(0.75);
+}
+
+.leaflet-marker-pane,
+.leaflet-popup-pane,
+.leaflet-overlay-pane,
+.leaflet-control-container {
+  filter: none !important;
+}
+
+/* Tactical Dark Popups */
+.leaflet-popup-content-wrapper {
+  background: #0D1322 !important;
+  color: #E2E8F0 !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-tip {
+  background: #0D1322 !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
