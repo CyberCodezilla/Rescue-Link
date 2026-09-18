@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Flame, Waves, Mountain, HelpCircle, Crosshair } from 'lucide-react';
+import Link from 'next/link';
+import { Flame, Waves, Mountain, HelpCircle, Crosshair, ExternalLink } from 'lucide-react';
 import type { IncidentResponse } from '@responder/lib/schema';
 import { CATEGORY_LABELS, getCategory } from '@responder/lib/schema';
 import { formatLocation, formatTimestamp, formatCompactTimestamp, hasAssignedUnits } from '@responder/lib/format';
@@ -86,11 +87,24 @@ export function IncidentTableRow({ incident, isSelected, isHovered, onSelect, on
         <StatusBadge status={incident.status} />
       </td>
       <td className="px-2.5 py-2 text-xs font-mono whitespace-nowrap">
-        {hasAssignedUnits(units) ? (
-          <span className="text-action font-semibold">{units!.join(', ')}</span>
-        ) : (
-          <span className="text-ink-500 italic">Unassigned</span>
-        )}
+        <div className="flex items-center gap-2">
+          {hasAssignedUnits(units) ? (
+            <span className="text-action font-semibold">{units!.join(', ')}</span>
+          ) : incident.assignedTo ? (
+            <span className="text-emerald-400 font-semibold">{incident.assignedTo}</span>
+          ) : (
+            <span className="text-ink-500 italic">Unassigned</span>
+          )}
+          <Link
+            href={`/incidents/${incident.id}`}
+            onClick={(e) => e.stopPropagation()}
+            title="Open Incident Dossier & Assign Units"
+            className="inline-flex items-center gap-1 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-[10px] font-bold text-action transition-all hover:bg-action hover:text-white"
+          >
+            <span>ASSIGN</span>
+            <ExternalLink className="h-2.5 w-2.5" />
+          </Link>
+        </div>
       </td>
     </tr>
   );
@@ -138,9 +152,19 @@ export function IncidentCard({ incident, isSelected, isHovered, onSelect, onHove
 
       <div className="flex items-center justify-between pt-1.5 border-t border-line/40 text-[11px] font-mono">
         <StatusBadge status={incident.status} />
-        <span className="text-ink-500">
-          {hasAssignedUnits(units) ? units!.join(', ') : 'Unassigned'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-ink-500 text-[10px]">
+            {hasAssignedUnits(units) ? units!.join(', ') : incident.assignedTo || 'Unassigned'}
+          </span>
+          <Link
+            href={`/incidents/${incident.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 rounded border border-action/40 bg-action/10 px-1.5 py-0.5 text-[10px] font-bold text-action transition-all hover:bg-action hover:text-white"
+          >
+            <span>ASSIGN</span>
+            <ExternalLink className="h-2.5 w-2.5" />
+          </Link>
+        </div>
       </div>
     </button>
   );
