@@ -11,22 +11,99 @@ export interface BedrockTriageResult {
 }
 
 export class BedrockService {
+  private circuitOpen = false;
+  private consecutiveFailures = 0;
+  private lastFailureTime: number | null = null;
+  private readonly FAILURE_THRESHOLD = 3;
+  private readonly RESET_COOLDOWN_MS = 60000;
+
   /**
-   * Generates AI Triage assessment for an incoming SOS Incident.
-   * Gracefully falls back to heuristic rule-based AI engine when AWS credentials are not provided.
+   * Returns current Bedrock AI circuit breaker telemetry.
    */
-  async triageIncident(incident: Incident): Promise<BedrockTriageResult> {
-    // If AWS credentials exist, attempt active Bedrock SDK invocation
-    if (process.env.AWS_ACCESS_KEY_ID || process.env.AWS_PROFILE) {
-      try {
-        return await this.invokeBedrockSDK(incident);
-      } catch (error) {
-        console.warn('[BedrockService] AWS Bedrock call failed, using heuristic fallback:', error);
+  public getCircuitTelemetry() {
+    this.checkCircuitReset();
+    return {
+      circuitState: this.circuitOpen ? ('OPEN' as const) : ('CLOSED' as const),
+      consecutiveFailures: this.consecutiveFailures,
+      lastFailureTime: this.lastFailureTime,
+    };
+  }
+
+  private checkCircuitReset(): void {
+    if (this.circuitOpen && this.lastFailureTime) {
+      if (Date.now() - this.lastFailureTime > this.RESET_COOLDOWN_MS) {
+        console.log('[BedrockService] Circuit breaker cooldown elapsed. Resetting circuit to CLOSED state.');
+        this.circuitOpen = false;
+        this.consecutiveFailures = 0;
       }
     }
+  }
 
-    // Default intelligent heuristic AI triage generator
-    return this.generateHeuristicTriage(incident);
+  private recordSuccess(): void {
+    this.consecutiveFailures = 0;
+    this.circuitOpen = false;
+  }
+
+  private recordFailure(err: unknown): void {
+    this.consecutiveFailures++;
+    this.lastFailureTime = Date.now();
+    if (this.consecutiveFailures >= this.FAILURE_THRESHOLD) {
+      this.circuitOpen = true;
+      console.error(
+        `🚨 [BedrockService] Circuit breaker TRIPPED to OPEN state due to ${this.consecutiveFailures} consecutive failures. Cooldown: ${this.RESET_COOLDOWN_MS / 1000}s. Error:`,
+        err
+      );
+    }
+  }
+
+  /**
+   * Helper: Exponential Backoff & Retry wrapper for transient Bedrock calls.
+   */
+  private async retryWithBackoff<T>(fn: () => Promise<T>, retries = 2, delayMs = 250): Promise<T> {
+    let attempt = 0;
+    while (attempt <= retries) {
+      try {
+        return await fn();
+      } catch (err) {
+        attempt++;
+        if (attempt > retries) throw err;
+        const backoff = delayMs * Math.pow(2, attempt - 1);
+        console.warn(`[BedrockService] Transient error (attempt ${attempt}/${retries + 1}). Retrying in ${backoff}ms...`);
+        await new Promise((res) => setTimeout(res, backoff));
+      }
+    }
+    throw new Error('Retry failed');
+  }
+
+  /**
+   * Generates AI Triage assessment for an incoming SOS Incident.
+   * Gracefully falls back to heuristic rule-based AI engine when AWS credentials are not provided or circuit is open.
+   */
+  async triageIncident(incident: Incident): Promise<BedrockTriageResult> {
+    this.checkCircuitReset();
+
+    const hasAwsKeys = Boolean(process.env.AWS_ACCESS_KEY_ID || process.env.AWS_PROFILE);
+
+    if (!hasAwsKeys) {
+      console.info(`[BedrockService] TRIAGE_MODE: 'heuristic_fallback' | Reason: AWS credentials absent | Incident: ${incident.id}`);
+      return this.generateHeuristicTriage(incident);
+    }
+
+    if (this.circuitOpen) {
+      console.warn(`[BedrockService] TRIAGE_MODE: 'heuristic_fallback' | Reason: Circuit breaker is OPEN | Incident: ${incident.id}`);
+      return this.generateHeuristicTriage(incident);
+    }
+
+    try {
+      const result = await this.retryWithBackoff(() => this.invokeBedrockSDK(incident));
+      this.recordSuccess();
+      console.info(`[BedrockService] TRIAGE_MODE: 'bedrock' | Model: ${CONFIG.BEDROCK_MODEL_ID} | Priority: ${result.priority} | Incident: ${incident.id}`);
+      return result;
+    } catch (error) {
+      this.recordFailure(error);
+      console.warn(`[BedrockService] TRIAGE_MODE: 'heuristic_fallback' | Reason: Bedrock SDK invocation failed | Incident: ${incident.id}`, error);
+      return this.generateHeuristicTriage(incident);
+    }
   }
 
   /** Cached Bedrock SDK client (from rescuer branch perf optimization). */

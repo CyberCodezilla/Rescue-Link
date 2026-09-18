@@ -61,9 +61,56 @@ export class InMemoryIncidentStore implements IIncidentStore {
 export class DelegatingIncidentStore implements IIncidentStore {
   private memoryStore = new InMemoryIncidentStore();
   private dynamoStore = new DynamoIncidentStore();
+  private fallbackCount = 0;
+  private lastFallbackTime: number | null = null;
+
+  constructor() {
+    this.checkHealthOnStartup();
+  }
 
   private isMock(): boolean {
     return CONFIG.USE_LOCAL_MOCK_STORE || !process.env.AWS_ACCESS_KEY_ID;
+  }
+
+  public checkHealthOnStartup(): void {
+    const isMockMode = this.isMock();
+    const isProd = CONFIG.NODE_ENV === 'production';
+
+    console.log(`[IncidentStore] Initialized active store: ${isMockMode ? 'InMemoryIncidentStore (mock mode)' : 'DynamoDB Dual-Adapter Store'}`);
+
+    if (isProd && isMockMode) {
+      console.error(
+        '🚨 [DATA PERSISTENCE ALERT] PRODUCTION WARNING: Server is using InMemoryIncidentStore. Data WILL NOT persist across server restarts! Verify AWS_ACCESS_KEY_ID and USE_LOCAL_MOCK_STORE settings.'
+      );
+    }
+  }
+
+  public getStoreTelemetry() {
+    const isMockMode = this.isMock();
+    const isProd = CONFIG.NODE_ENV === 'production';
+
+    return {
+      activeStore: isMockMode ? ('memory' as const) : ('dynamodb' as const),
+      isMock: isMockMode,
+      fallbackCount: this.fallbackCount,
+      lastFallbackTime: this.lastFallbackTime,
+      isProductionFallbackAlert: isProd && isMockMode,
+    };
+  }
+
+  private recordFallback(operation: string, err: unknown) {
+    this.fallbackCount++;
+    this.lastFallbackTime = Date.now();
+    const isProd = CONFIG.NODE_ENV === 'production';
+
+    if (isProd) {
+      console.error(
+        `🚨 [DATA PERSISTENCE ALERT] Production DynamoDB operation '${operation}' failed! Falling back to volatile InMemoryIncidentStore. Error:`,
+        err
+      );
+    } else {
+      console.warn(`[IncidentStore] DynamoDB operation '${operation}' failed, falling back to memory store:`, err);
+    }
   }
 
   async create(incident: Incident): Promise<Incident> {
@@ -75,7 +122,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
       await this.memoryStore.create(created);
       return created;
     } catch (err) {
-      console.warn('[IncidentStore] DynamoDB create failed, falling back to memory store:', err);
+      this.recordFallback('create', err);
       return this.memoryStore.create(incident);
     }
   }
@@ -91,7 +138,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
       }
       return item ?? this.memoryStore.getById(id);
     } catch (err) {
-      console.warn('[IncidentStore] DynamoDB getById failed, falling back to memory store:', err);
+      this.recordFallback('getById', err);
       return this.memoryStore.getById(id);
     }
   }
@@ -103,7 +150,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
     try {
       return await this.dynamoStore.list(filter);
     } catch (err) {
-      console.warn('[IncidentStore] DynamoDB list failed, falling back to memory store:', err);
+      this.recordFallback('list', err);
       return this.memoryStore.list(filter);
     }
   }
@@ -119,7 +166,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
       }
       return updated ?? this.memoryStore.update(id, updates);
     } catch (err) {
-      console.warn('[IncidentStore] DynamoDB update failed, falling back to memory store:', err);
+      this.recordFallback('update', err);
       return this.memoryStore.update(id, updates);
     }
   }
