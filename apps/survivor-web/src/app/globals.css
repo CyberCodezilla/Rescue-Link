@@ -28,10 +28,10 @@
 
   --rl-text: #1A1D23;
   --rl-text-secondary: #4A5060;
-  --rl-text-muted: #7A8296;
+  --rl-text-muted: #5A6275;
 
-  --rl-accent: #0D9488;
-  --rl-accent-hover: #0B7F74;
+  --rl-accent: #0F766E;
+  --rl-accent-hover: #115E59;
   --rl-accent-soft: #CCFBF1;
   --rl-accent-text: #064E3B;
 
@@ -168,7 +168,7 @@ input, textarea, select {
   transition: all var(--motion-fast) var(--ease-default);
   touch-action: manipulation;
   min-height: 48px;
-  min-width: 48px;
+  min-width: 56px;
 }
 
 .rl-btn:active {
@@ -400,7 +400,7 @@ input, textarea, select {
   font-size: 13px;
   cursor: pointer;
   transition: all var(--motion-fast) var(--ease-default);
-  min-height: 40px;
+  min-height: 48px;
 }
 
 .rl-segment[data-selected="true"] {
@@ -503,8 +503,8 @@ input, textarea, select {
 
 /* Counter controls */
 .rl-counter-btn {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--rl-radius-sm);
   border: 1px solid var(--rl-border);
   background-color: var(--rl-surface);
