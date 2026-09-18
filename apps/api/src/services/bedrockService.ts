@@ -11,6 +11,11 @@ export interface BedrockTriageResult {
 }
 
 export class BedrockService {
+  private lastFailureAt: number | null = null;
+  private circuitState: "CLOSED" | "OPEN" = "CLOSED";
+  private failureCount = 0;
+  private circuitOpenedAt: number | null = null;
+
   /**
    * Generates AI Triage assessment for an incoming SOS Incident.
    * Gracefully falls back to heuristic rule-based AI engine when AWS credentials are not provided.
@@ -97,7 +102,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
   /**
    * Intelligent heuristic AI fallback engine when offline or without active AWS keys.
    */
-  private generateHeuristicTriage(incident: Incident): BedrockTriageResult {
+  public generateHeuristicTriage(incident: Incident): BedrockTriageResult {
     let priority: Priority = 'medium';
     let suggestedAction = 'Stay calm, keep location service active, and await rescue team dispatch.';
     let summary = `Triage completed for ${incident.category} alert.`;
@@ -154,6 +159,18 @@ Respond ONLY with a valid JSON object matching this exact schema:
       },
     };
   }
-}
+  public getCircuitTelemetry(): {
+    circuitState: "CLOSED" | "OPEN";
+    consecutiveFailures: number;
+    lastFailureAt: number | null;
+    circuitOpenedAt: number | null;
+  } {
+    return {
+      circuitState: this.circuitState,
+      consecutiveFailures: this.failureCount,
+      lastFailureAt: this.lastFailureAt,
+      circuitOpenedAt: this.circuitOpenedAt,
+    };
+  }}
 
 export const bedrockService = new BedrockService();
