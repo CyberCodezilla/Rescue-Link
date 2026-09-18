@@ -1,4 +1,4 @@
-﻿import { Incident, IncidentSchema, IncidentStatus, Priority } from '@rescue-link/schema';
+import { Incident, IncidentSchema, IncidentStatus, Priority } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 import { DynamoIncidentStore } from './dynamoStore';
 
@@ -72,7 +72,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
   }
 
   private isMock(): boolean {
-    return CONFIG.USE_LOCAL_MOCK_STORE || !process.env.AWS_ACCESS_KEY_ID;
+    return CONFIG.USE_LOCAL_MOCK_STORE;
   }
 
   async create(incident: Incident): Promise<Incident> {

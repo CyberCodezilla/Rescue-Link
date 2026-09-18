@@ -1,4 +1,4 @@
-﻿export interface ApiEnvironmentConfig {
+export interface ApiEnvironmentConfig {
   PORT: number;
   NODE_ENV: 'development' | 'test' | 'production';
   AWS_REGION: string;
@@ -85,7 +85,7 @@ export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
     USE_LOCAL_MOCK_STORE: env.USE_LOCAL_MOCK_STORE === 'true',
 
     BEDROCK_MODEL_ID:
-      env.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0',
+      env.BEDROCK_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
     BEDROCK_MAX_TOKENS: integerValue(env, 'BEDROCK_MAX_TOKENS', 300, 1, 100000),
     BEDROCK_TIMEOUT_MS: integerValue(env, 'BEDROCK_TIMEOUT_MS', 3500, 100, 120000),
     BEDROCK_TEMPERATURE: numberValue(env, 'BEDROCK_TEMPERATURE', 0.2, 0, 2),
