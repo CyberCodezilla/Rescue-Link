@@ -127,7 +127,7 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
 
         {/* Title & Status Pills */}
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-base font-extrabold tracking-tight text-white font-sans flex items-center">
               Rescue<span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">Link</span>
             </h1>
@@ -135,26 +135,59 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
               <ShieldCheck size={11} className="text-emerald-400" />
               Active
             </span>
+
+            {/* Distinctive Cyber-Tactical Live Telemetry Tab */}
+            {streamStatus ? (
+              <div
+                className={`relative inline-flex items-center gap-2 rounded-lg px-2.5 py-1 font-mono text-[11px] font-bold tracking-wider transition-all duration-300 ${
+                  streamStatus === 'live'
+                    ? 'border border-emerald-500/40 bg-gradient-to-r from-emerald-950/70 via-slate-900/90 to-cyan-950/50 text-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.25)]'
+                    : streamStatus === 'connecting'
+                    ? 'border border-amber-500/40 bg-gradient-to-r from-amber-950/70 via-slate-900/90 to-slate-950 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                    : 'border border-slate-700/60 bg-slate-900/80 text-slate-400'
+                }`}
+              >
+                {/* Active Multi-Bar Signal Frequency Visualizer */}
+                {streamStatus === 'live' ? (
+                  <div className="flex items-end gap-[2px] h-3 px-0.5" aria-hidden="true">
+                    <span className="w-[2.5px] rounded-full bg-emerald-400 animate-[pulse_1s_ease-in-out_infinite] h-2" />
+                    <span className="w-[2.5px] rounded-full bg-emerald-400 animate-[pulse_1.4s_ease-in-out_infinite_0.2s] h-3" />
+                    <span className="w-[2.5px] rounded-full bg-cyan-400 animate-[pulse_1.1s_ease-in-out_infinite_0.4s] h-2.5" />
+                    <span className="w-[2.5px] rounded-full bg-emerald-400 animate-[pulse_1.3s_ease-in-out_infinite_0.1s] h-2" />
+                  </div>
+                ) : (
+                  <Activity size={12} className={streamStatus === 'connecting' ? 'text-amber-400 animate-spin' : 'text-slate-500'} />
+                )}
+
+                {/* Telemetry Label with glowing status dot */}
+                <div className="flex items-center gap-1.5">
+                  {streamStatus === 'live' && (
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
+                  )}
+                  <span className="text-[10px] tracking-widest font-extrabold uppercase bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">
+                    {STREAM_LABEL[streamStatus]}
+                  </span>
+                </div>
+
+                {/* Subtle Real-Time Feed Tag */}
+                {streamStatus === 'live' && (
+                  <span className="hidden sm:inline-block text-[9px] font-mono text-emerald-400/80 border-l border-emerald-500/30 pl-1.5 uppercase font-medium">
+                    REAL-TIME
+                  </span>
+                )}
+              </div>
+            ) : null}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+          <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_6px_#34d399]" />
             </span>
             <span className="font-mono text-[11px] font-semibold text-slate-300 tracking-wide">SYSTEM NOMINAL</span>
-            {streamStatus ? (
-              <>
-                <span className="text-slate-600">&bull;</span>
-                <span className="flex items-center gap-1.5 rounded-md px-2 py-0.5 bg-slate-900/90 border border-slate-700/70 font-mono text-[10px] text-slate-300 font-medium shadow-inner">
-                  <Activity size={11} className={streamStatus === 'live' ? 'text-emerald-400' : 'text-slate-400'} />
-                  {STREAM_LABEL[streamStatus]}
-                </span>
-              </>
-            ) : null}
-            <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-slate-500 font-mono">
-              <span>&bull;</span>
-              <span>Autonomous Neural Translation & Triage</span>
+            <span className="text-slate-600">&bull;</span>
+            <span className="hidden sm:inline text-[11px] text-slate-400 font-mono">
+              Autonomous Neural Translation & Triage
             </span>
           </div>
         </div>
