@@ -22,6 +22,7 @@ import {
   Check,
   Mic,
   Activity,
+  UserCheck,
 } from 'lucide-react';
 import type {
   IncidentCategory,
@@ -90,11 +91,11 @@ const PRIORITY_BADGE_STYLES: Record<
   Priority,
   { bg: string; color: string; border: string; icon: string; label: string }
 > = {
-  critical: { bg: 'var(--rl-danger-soft)', color: 'var(--rl-danger-text)', border: 'var(--rl-danger)', icon: '●', label: 'CRITICAL' },
-  high: { bg: 'var(--rl-warning-soft)', color: 'var(--rl-warning-text)', border: 'var(--rl-warning)', icon: '▲', label: 'HIGH' },
-  medium: { bg: 'var(--rl-warning-soft)', color: 'var(--rl-warning-text)', border: '#F59E0B', icon: '◆', label: 'MEDIUM' },
-  low: { bg: 'var(--rl-success-soft)', color: 'var(--rl-success-text)', border: 'var(--rl-success)', icon: '▽', label: 'LOW' },
-  pending_triage: { bg: 'var(--rl-bg)', color: 'var(--rl-text-muted)', border: 'var(--rl-border)', icon: '◯', label: 'TRIAGE PENDING' },
+  critical: { bg: '#450a0a', color: '#fca5a5', border: '#ef4444', icon: '🔴', label: 'CRITICAL' },
+  high: { bg: '#431407', color: '#fdba74', border: '#f97316', icon: '🟠', label: 'HIGH' },
+  medium: { bg: '#422006', color: '#fde047', border: '#eab308', icon: '🟡', label: 'MEDIUM' },
+  low: { bg: '#052e16', color: '#86efac', border: '#22c55e', icon: '🟢', label: 'LOW' },
+  pending_triage: { bg: '#0f172a', color: '#94a3b8', border: '#334155', icon: '⏳', label: 'TRIAGE PENDING' },
 };
 
 export const IncidentStatus: React.FC<IncidentStatusProps> = ({
@@ -167,7 +168,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
       }
       setLastPolledAt(new Date());
     },
-    []
+    [playAlertChime]
   );
 
   // Real-time zero-latency event stream listener
@@ -202,7 +203,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
     };
   }, [incidentId, isLocal, fetchIncidentDetails, recommendedPollIntervalMs]);
 
-  // Assigned units resolution
+  // Assigned units resolution (supports both triage.assignedUnits and top-level assignedUnits)
   const assignedUnits: string[] =
     incidentData?.triage?.assignedUnits ||
     (incidentData as { assignedUnits?: string[] })?.assignedUnits ||
@@ -227,13 +228,22 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
   // Audio voice SOS source (from server or local submission payload)
   const effectiveAudioBlob = incidentData?.audioBlob || payload?.audioBlob || null;
 
-  // LoRa / Sat packet payload size estimation
+  // LoRa / Sat packet payload size estimation (PRD Stage 1: Item 3 - 100-byte spec)
   const estimatedPayloadBytes = JSON.stringify({
     cat: category,
     desc: incidentData?.description || payload?.description,
     loc: incidentData?.location || payload?.location,
     p: incidentData?.peopleAffected || payload?.peopleAffected,
   }).length;
+
+  // Visual theming tokens for OLED Survival Mode
+  const theme = {
+    bg: oledMode ? '#000000' : 'transparent',
+    cardBg: oledMode ? '#0a0a0a' : '#121826',
+    cardBorder: oledMode ? '#333333' : '#1e293b',
+    textColor: oledMode ? '#ffffff' : '#f8fafc',
+    subTextColor: oledMode ? '#a3a3a3' : '#94a3b8',
+  };
 
   return (
     <div
@@ -245,7 +255,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
         display: 'flex',
         flexDirection: 'column',
         gap: '20px',
-        backgroundColor: oledMode ? '#000000' : 'transparent',
+        backgroundColor: theme.bg,
         minHeight: '100vh',
         transition: 'background-color 0.3s ease',
       }}
@@ -253,8 +263,6 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
       {/* FULL-SCREEN NIGHT RESCUE SCREEN STROBE OVERLAY */}
       {isBeaconActive && (
         <div
-          role="dialog"
-          aria-label="Rescue Beacon Active"
           style={{
             position: 'fixed',
             inset: 0,
@@ -282,7 +290,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
               RESCUE BEACON ACTIVE
             </div>
             <div style={{ fontSize: '13px', color: '#fca5a5', marginTop: '4px' }}>
-              Flashing SOS Strobe & Whistle Bursts for Search Units
+              Flashing SOS Strobe &amp; Alpine Whistle Bursts for Search Units
             </div>
           </div>
 
@@ -297,7 +305,7 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
               fontSize: '18px',
               fontWeight: 800,
               cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+              boxShadow: '0 0 25px rgba(0,0,0,0.9)',
             }}
           >
             STOP BEACON
@@ -306,48 +314,73 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
       )}
 
       {/* Header with return button & Survival Controls */}
-      <div className="flex items-center justify-between flex-wrap gap-2.5">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <button
           onClick={onReset}
-          className="rl-btn rl-btn-secondary !py-2 !px-4 !text-sm flex items-center gap-2"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: oledMode ? '#171717' : '#1e293b',
+            border: `1px solid ${oledMode ? '#404040' : '#334155'}`,
+            color: '#cbd5e1',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 600,
+          }}
         >
           <ArrowLeft size={16} />
           Submit Another SOS
         </button>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* Night Beacon Trigger */}
           <button
             onClick={toggleBeacon}
-            className="rl-btn !py-1.5 !px-3 !text-xs !font-bold flex items-center gap-1.5"
             style={{
-              backgroundColor: 'var(--rl-warning-soft)',
-              color: 'var(--rl-warning-text)',
-              border: '1px solid var(--rl-warning)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: '1px solid #f59e0b',
+              backgroundColor: '#78350f',
+              color: '#fef3c7',
             }}
-            title="Flash high-visibility screen strobe for search helicopters"
+            title="Flash high-visibility screen strobe and whistle pulses for search helicopters"
           >
-            <Flashlight size={14} />
+            <Flashlight size={14} color="#fde68a" />
             NIGHT BEACON
           </button>
 
           {/* Battery Status Indicator */}
           {batteryLevel !== null && (
             <div
-              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md border"
               style={{
-                backgroundColor: 'var(--rl-surface)',
-                borderColor: isLowBattery ? 'var(--rl-danger)' : 'var(--rl-border)',
-                color: isLowBattery ? 'var(--rl-danger)' : 'var(--rl-text)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                color: isLowBattery ? '#ef4444' : '#10b981',
+                backgroundColor: oledMode ? '#171717' : '#1e293b',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                border: `1px solid ${isLowBattery ? '#b91c1c' : '#334155'}`,
+                fontWeight: 600,
               }}
               title={`Device Battery: ${Math.round(batteryLevel * 100)}%`}
             >
               {isCharging ? (
-                <BatteryCharging size={14} className="text-emerald-500" />
+                <BatteryCharging size={14} />
               ) : isLowBattery ? (
-                <BatteryLow size={14} className="text-red-500" />
+                <BatteryLow size={14} />
               ) : (
-                <Battery size={14} className="text-emerald-500" />
+                <Battery size={14} />
               )}
               <span>{Math.round(batteryLevel * 100)}%</span>
             </div>
@@ -356,11 +389,18 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
           {/* OLED Survival Mode Toggle */}
           <button
             onClick={toggleOledMode}
-            className="rl-btn !py-1.5 !px-3 !text-xs !font-bold flex items-center gap-1.5"
             style={{
-              backgroundColor: oledMode ? '#042f2e' : 'var(--rl-surface)',
-              color: oledMode ? '#34d399' : 'var(--rl-text-secondary)',
-              border: `1px solid ${oledMode ? '#10b981' : 'var(--rl-border)'}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: oledMode ? '1px solid #10b981' : '1px solid #475569',
+              backgroundColor: oledMode ? '#042f2e' : '#1e293b',
+              color: oledMode ? '#34d399' : '#94a3b8',
             }}
             title="Toggle AMOLED pure black survival mode for maximum battery life"
           >
@@ -372,11 +412,23 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
 
       {/* Low Battery Warning Banner */}
       {isLowBattery && (
-        <div className="rl-alert-danger flex items-center gap-3">
-          <BatteryLow size={20} className="text-red-600 shrink-0" />
+        <div
+          style={{
+            backgroundColor: '#450a0a',
+            border: '2px solid #ef4444',
+            borderRadius: '10px',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            color: '#fee2e2',
+            fontSize: '13px',
+          }}
+        >
+          <BatteryLow size={20} color="#ef4444" style={{ flexShrink: 0 }} />
           <div>
             <strong>CRITICAL BATTERY LEVEL (&le; 20%)</strong>
-            <div className="text-xs opacity-90 mt-0.5">
+            <div style={{ color: '#fca5a5', marginTop: '2px' }}>
               Network polling throttled to 30s to conserve life. OLED Survival Mode is strongly recommended.
             </div>
           </div>
@@ -385,36 +437,68 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
 
       {/* Incident Reference & Telemetry Card */}
       <div
-        className="rl-card flex flex-col gap-3"
         style={{
-          borderLeft: `4px solid ${isLocal ? 'var(--rl-warning)' : 'var(--rl-accent)'}`,
+          backgroundColor: theme.cardBg,
+          border: `2px solid ${isLocal ? '#f59e0b' : '#3b82f6'}`,
+          borderRadius: '12px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
         }}
       >
-        <div className="flex justify-between items-start flex-wrap gap-2">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-[var(--rl-text-muted)]">
+            <div style={{ fontSize: '12px', color: theme.subTextColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Incident Tracking ID
             </div>
             <div
-              className="font-mono text-lg font-bold mt-0.5"
-              style={{ color: isLocal ? 'var(--rl-warning-text)' : 'var(--rl-accent)' }}
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '18px',
+                fontWeight: 700,
+                color: isLocal ? '#fbbf24' : '#60a5fa',
+                wordBreak: 'break-all',
+              }}
             >
               {incidentId}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {/* Real-Time Stream Status Badge */}
             {!isLocal && (
               <span
-                className="rl-badge flex items-center gap-1.5 !text-[11px]"
                 style={{
-                  backgroundColor: streamStatus === 'live' ? 'var(--rl-success-soft)' : 'var(--rl-bg)',
-                  color: streamStatus === 'live' ? 'var(--rl-success-text)' : 'var(--rl-text-muted)',
-                  borderColor: streamStatus === 'live' ? 'var(--rl-success)' : 'var(--rl-border)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '4px 10px',
+                  borderRadius: '16px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor:
+                    streamStatus === 'live'
+                      ? '#064e3b'
+                      : streamStatus === 'connecting'
+                      ? '#1e3a8a'
+                      : '#1e293b',
+                  color:
+                    streamStatus === 'live'
+                      ? '#6ee7b7'
+                      : streamStatus === 'connecting'
+                      ? '#93c5fd'
+                      : '#94a3b8',
+                  border: `1px solid ${
+                    streamStatus === 'live'
+                      ? '#10b981'
+                      : streamStatus === 'connecting'
+                      ? '#3b82f6'
+                      : '#334155'
+                  }`,
                 }}
               >
-                <Activity size={12} className={streamStatus === 'live' ? 'text-emerald-600' : ''} />
+                <Activity size={12} />
                 {streamStatus === 'live'
                   ? 'LIVE RELAY'
                   : streamStatus === 'connecting'
@@ -424,62 +508,91 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
             )}
 
             <span
-              className="rl-badge font-bold !text-[11px]"
               style={{
-                backgroundColor: isLocal ? 'var(--rl-warning-soft)' : 'var(--rl-accent-soft)',
-                color: isLocal ? 'var(--rl-warning-text)' : 'var(--rl-accent-text)',
-                borderColor: isLocal ? 'var(--rl-warning)' : 'var(--rl-accent)',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                fontWeight: 700,
+                backgroundColor: isLocal ? '#78350f' : '#1e3a8a',
+                color: isLocal ? '#fde68a' : '#bfdbfe',
+                border: `1px solid ${isLocal ? '#f59e0b' : '#3b82f6'}`,
               }}
             >
               {isLocal ? 'QUEUED OFFLINE' : 'DISPATCH TRANSMITTED'}
             </span>
 
-            {/* AI Triage Priority Badge */}
+            {/* Phase 5: AI Triage Priority Badge */}
             {!isLocal && incidentData?.priority && PRIORITY_BADGE_STYLES[incidentData.priority] && (
               <span
-                className="rl-badge font-extrabold flex items-center gap-1.5 !text-[11px]"
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '4px 10px',
+                  borderRadius: '16px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
                   backgroundColor: PRIORITY_BADGE_STYLES[incidentData.priority].bg,
                   color: PRIORITY_BADGE_STYLES[incidentData.priority].color,
-                  borderColor: PRIORITY_BADGE_STYLES[incidentData.priority].border,
+                  border: `1px solid ${PRIORITY_BADGE_STYLES[incidentData.priority].border}`,
                 }}
               >
-                <span>{PRIORITY_BADGE_STYLES[incidentData.priority].icon}</span>
-                <span>{PRIORITY_BADGE_STYLES[incidentData.priority].label}</span>
+                {PRIORITY_BADGE_STYLES[incidentData.priority].icon}{' '}
+                {PRIORITY_BADGE_STYLES[incidentData.priority].label}
               </span>
             )}
           </div>
         </div>
 
-        {/* LoRa / Satellite Packet Compression Diagnostics */}
+        {/* PRD LoRa / Satellite Packet Compression Diagnostics */}
         <div
-          className="flex items-center justify-between flex-wrap gap-2 px-3 py-2 rounded-lg text-xs"
           style={{
-            backgroundColor: 'var(--rl-bg)',
-            border: '1px solid var(--rl-border)',
-            color: 'var(--rl-text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '8px',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            backgroundColor: oledMode ? '#111111' : '#0f172a',
+            border: `1px solid ${theme.cardBorder}`,
+            fontSize: '12px',
+            color: '#94a3b8',
           }}
         >
-          <div className="flex items-center gap-1.5">
-            <Radio size={14} className="text-teal-600" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Radio size={14} color="#60a5fa" />
             <span>
               Uplink Channel:{' '}
-              <strong style={{ color: isLocal ? 'var(--rl-warning-text)' : 'var(--rl-accent)' }}>
+              <strong style={{ color: isLocal ? '#fbbf24' : '#6ee7b7' }}>
                 {isLocal ? 'Offline Mesh Queue' : 'Captive Wi-Fi / Sat Relay'}
               </strong>
             </span>
           </div>
-          <div className="font-mono text-xs">
+          <div style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>
             Payload Size: <strong>~{estimatedPayloadBytes} B</strong> (LoRa / Sat Compliant)
           </div>
         </div>
 
         {isLocal && (
-          <div className="rl-alert-warning flex items-center gap-2.5">
-            <WifiOff size={20} className="shrink-0" />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              backgroundColor: oledMode ? '#201202' : '#451a03',
+              border: '1px solid #b45309',
+              borderRadius: '8px',
+              padding: '12px',
+              color: '#fef3c7',
+              fontSize: '14px',
+            }}
+          >
+            <WifiOff size={20} color="#f59e0b" style={{ flexShrink: 0 }} />
             <div>
               <strong>Queued offline - waiting for network connection.</strong>
-              <div className="text-xs mt-0.5 opacity-90">
+              <div style={{ fontSize: '13px', color: '#fde68a', marginTop: '2px' }}>
                 Your SOS is securely stored in local IndexedDB. It will automatically transmit as soon as edge uplink or captive Wi-Fi reconnects. Live server polling is paused.
               </div>
             </div>
@@ -487,40 +600,78 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
         )}
       </div>
 
-      {/* EMERGENCY NOTIFICATION DISPATCH CONFIRMATION CARD */}
+      {/* PHASE 5: EMERGENCY NOTIFICATION DISPATCH CONFIRMATION CARD */}
       {!isLocal && (incidentData?.priority === 'critical' || incidentData?.priority === 'high') && (
         <div
           role="region"
           aria-label="Emergency Notification Dispatched"
-          className="rl-alert-danger flex flex-col gap-2.5"
+          style={{
+            backgroundColor: oledMode ? '#1c0a00' : '#431407',
+            border: `2px solid ${incidentData?.priority === 'critical' ? '#ef4444' : '#f97316'}`,
+            borderRadius: '12px',
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+          }}
         >
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle size={20} className="text-red-600 shrink-0" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <AlertTriangle
+              size={20}
+              color={incidentData?.priority === 'critical' ? '#f87171' : '#fb923c'}
+              style={{ flexShrink: 0 }}
+            />
             <div>
-              <div className="text-sm font-extrabold text-[var(--rl-danger-text)]">
-                Emergency Alert Dispatched by Command System
+              <div style={{ fontSize: '14px', fontWeight: 800, color: incidentData?.priority === 'critical' ? '#fca5a5' : '#fdba74' }}>
+                🚨 Emergency Alert Dispatched by Command System
               </div>
-              <div className="text-xs text-[var(--rl-danger-text)] opacity-90 mt-0.5">
+              <div style={{ fontSize: '11px', color: incidentData?.priority === 'critical' ? '#f87171' : '#fb923c', marginTop: '2px' }}>
                 Your distress signal was classified as <strong>{incidentData?.priority?.toUpperCase()}</strong> by AI triage. Emergency notifications have been automatically triggered.
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {/* SMS notification row — shown if reporter registered a phone */}
             {(incidentData?.reporter?.contactMethod === 'phone' ||
               payload?.reporter?.contactMethod === 'phone') && (
-              <div className="flex items-center gap-2 p-2 rounded bg-white/70 border border-red-200 text-xs text-red-950">
-                <Truck size={13} className="text-red-600 shrink-0" />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: oledMode ? '#000000' : '#1c0505',
+                  border: '1px solid #7f1d1d',
+                  fontSize: '12px',
+                  color: '#fecaca',
+                }}
+              >
+                <Truck size={13} color="#f87171" />
                 <span>
-                  <strong>SMS Dispatched:</strong> Emergency SMS alert was automatically sent to your registered phone number via the RescueLink command network.
+                  <strong style={{ color: '#f87171' }}>📱 SMS Dispatched:</strong> Emergency SMS alert was automatically sent to your registered phone number via the RescueLink command network.
                 </span>
               </div>
             )}
 
-            <div className="flex items-center gap-2 p-2 rounded bg-white/70 border border-red-200 text-xs text-red-950">
-              <Radio size={13} className="text-red-600 shrink-0" />
+            {/* Email notification row — always for critical/high */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                backgroundColor: oledMode ? '#000000' : '#1c0505',
+                border: '1px solid #7f1d1d',
+                fontSize: '12px',
+                color: '#fecaca',
+              }}
+            >
+              <Radio size={13} color="#f87171" />
               <span>
-                <strong>Email Dispatched:</strong> Emergency dispatch email has been sent to the RescueLink response coordination team on your behalf.
+                <strong style={{ color: '#f87171' }}>📧 Email Dispatched:</strong> HTML emergency dispatch email has been sent to the RescueLink response coordination team on your behalf.
               </span>
             </div>
           </div>
@@ -532,75 +683,165 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
         <div
           role="region"
           aria-label="Attached Voice Dispatch"
-          className="rl-card flex flex-col gap-2.5"
-          style={{ borderLeft: '4px solid #6366f1' }}
+          style={{
+            backgroundColor: oledMode ? '#0a0a0a' : '#1e1b4b',
+            border: '2px solid #6366f1',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+          }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2 font-bold text-sm text-indigo-900">
-              <Mic size={18} className="text-indigo-600" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c7d2fe', fontWeight: 700, fontSize: '15px' }}>
+              <Mic size={18} color="#818cf8" />
               Attached Voice SOS Recording
             </div>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-              Voice Dispatch Attached
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#a5b4fc',
+                backgroundColor: '#312e81',
+                padding: '2px 8px',
+                borderRadius: '12px',
+              }}
+            >
+              15s Audio Dispatch
             </span>
           </div>
 
-          <div className="text-xs text-[var(--rl-text-secondary)]">
+          <div style={{ fontSize: '13px', color: '#e0e7ff' }}>
             Your spoken distress message is securely packaged with this emergency beacon for arriving first responders.
           </div>
 
           <audio
             src={effectiveAudioBlob}
             controls
-            className="w-full h-10 rounded-lg outline-none mt-1"
+            style={{
+              width: '100%',
+              height: '38px',
+              borderRadius: '8px',
+              outline: 'none',
+            }}
           />
         </div>
       )}
 
-      {/* RESCUER EN-ROUTE & UNIT DEPLOYMENT CARD */}
+      {/* RESCUER EN-ROUTE & UNIT DEPLOYMENT CARD (Phase 4 Real-time Relay) */}
       {(assignedUnits.length > 0 || incidentData?.assignedTo) && (
         <div
           role="region"
           aria-label="Rescue Unit Deployment"
-          className="rl-card flex flex-col gap-3.5"
           style={{
-            backgroundColor: 'var(--rl-success-soft)',
-            border: '2px solid var(--rl-success)',
+            backgroundColor: oledMode ? '#021e14' : '#064e3b',
+            border: '2px solid #10b981',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: oledMode ? 'none' : '0 0 25px rgba(16, 185, 129, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
           }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center">
-                <Truck size={20} className="text-emerald-700" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  backgroundColor: '#10b981',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Truck size={22} color="#ffffff" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-[var(--rl-success-text)] m-0">
-                  Rescuers En Route to Your Location
+                <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#ecfdf5', margin: 0 }}>
+                  Rescue Teams Deployed &amp; En Route
                 </h3>
-                <div className="text-xs text-[var(--rl-success-text)] opacity-90">
-                  Command center has deployed emergency personnel to your coordinates.
+                <div style={{ fontSize: '12px', color: '#a7f3d0' }}>
+                  Responders have confirmed your beacon position and are converging on-site.
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-xs font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full">
-              <Activity size={12} className="text-emerald-600" />
-              ACTIVE DEPLOYMENT
-            </div>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '11px',
+                fontWeight: 800,
+                letterSpacing: '0.05em',
+                backgroundColor: '#065f46',
+                color: '#6ee7b7',
+                border: '1px solid #10b981',
+              }}
+            >
+              <Radio size={12} />
+              DISPATCH LIVE
+            </span>
           </div>
 
+          {/* Lead Dispatch Officer (Phase 4 assignment) */}
+          {incidentData?.assignedTo && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                backgroundColor: oledMode ? '#000000' : '#022c22',
+                border: '1px solid #047857',
+                fontSize: '13px',
+                color: '#d1fae5',
+              }}
+            >
+              <UserCheck size={16} color="#34d399" />
+              <span>
+                Lead Dispatch Officer: <strong style={{ color: '#ffffff' }}>{incidentData.assignedTo}</strong>
+              </span>
+            </div>
+          )}
+
+          {/* Tactical Field Units */}
           {assignedUnits.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <div className="text-xs font-bold text-[var(--rl-success-text)] uppercase tracking-wider">
-                Assigned Search & Rescue Units ({assignedUnits.length})
+            <div
+              style={{
+                backgroundColor: oledMode ? '#000000' : '#022c22',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                border: '1px solid #047857',
+              }}
+            >
+              <div style={{ fontSize: '11px', color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                Assigned Field Units &amp; Call Signs
               </div>
-              <div className="flex flex-wrap gap-2">
-                {assignedUnits.map((unit) => (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {assignedUnits.map((unit, i) => (
                   <div
-                    key={unit}
-                    className="bg-white border border-emerald-300 text-emerald-900 rounded-md px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                    key={i}
+                    style={{
+                      backgroundColor: '#064e3b',
+                      color: '#d1fae5',
+                      border: '1px solid #34d399',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
                   >
-                    <Radio size={12} className="text-emerald-600" />
+                    <Radio size={12} color="#34d399" />
                     {unit}
                   </div>
                 ))}
@@ -610,32 +851,49 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
         </div>
       )}
 
-      {/* INCIDENT CLOSED / RESCUE COMPLETED BANNER */}
+      {/* INCIDENT CLOSED / RESCUE COMPLETED BANNER (Phase 4 Terminal State) */}
       {effectiveStatus === 'closed' && (
         <div
           role="region"
           aria-label="Incident Closed"
-          className="rl-card flex flex-col gap-3"
           style={{
-            backgroundColor: 'var(--rl-success-soft)',
-            border: '2px solid var(--rl-success)',
+            backgroundColor: oledMode ? '#031a0e' : '#064e3b',
+            border: '2px solid #34d399',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: oledMode ? 'none' : '0 0 25px rgba(52, 211, 153, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
           }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 size={28} className="text-emerald-600 shrink-0" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <CheckCircle2 size={28} color="#34d399" />
               <div>
-                <h3 className="text-base font-extrabold text-[var(--rl-success-text)] m-0">
-                  Rescue Mission Concluded - Incident Closed
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#ecfdf5', margin: 0 }}>
+                  Rescue Mission Concluded — Incident Closed
                 </h3>
-                <div className="text-xs text-[var(--rl-success-text)] opacity-90">
+                <div style={{ fontSize: '12px', color: '#a7f3d0' }}>
                   Responders and emergency coordinators have completed all actions and officially marked this incident as resolved and closed.
                 </div>
               </div>
             </div>
             <button
               onClick={onReset}
-              className="rl-btn rl-btn-primary !py-2 !px-4 !text-xs flex items-center gap-1.5"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                backgroundColor: '#059669',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
             >
               <RefreshCw size={14} />
               Submit New SOS Beacon
@@ -644,42 +902,65 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
         </div>
       )}
 
-      {/* Live Status Pipeline */}
-      <div className="rl-card flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-base font-bold text-[var(--rl-text)] m-0">
+      {/* Live Status Pipeline (5-Stage Phase 4 Lifecycle) */}
+      <div
+        style={{
+          backgroundColor: theme.cardBg,
+          border: `1px solid ${theme.cardBorder}`,
+          borderRadius: '12px',
+          padding: '20px',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: theme.textColor }}>
             Dispatch Status
           </h2>
           {isPolling && (
-            <div className="flex items-center gap-1.5 text-xs text-[var(--rl-accent)]">
-              <RefreshCw size={12} className="rl-spin" />
-              Checking updates...
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#60a5fa' }}>
+              <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+              Polling updates...
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-5 gap-2">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
           {STATUS_STEPS.map((step, idx) => {
             const isCompleted = currentStepIndex >= idx;
             const isCurrent = currentStepIndex === idx;
 
             return (
-              <div key={step} className="rl-pipeline-step">
+              <div
+                key={step}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  gap: '6px',
+                }}
+              >
                 <div
-                  className="rl-pipeline-dot"
-                  data-completed={isCompleted ? 'true' : undefined}
-                  data-current={isCurrent ? 'true' : undefined}
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: isCompleted ? '#065f46' : oledMode ? '#171717' : '#1e293b',
+                    border: `2px solid ${isCurrent ? '#34d399' : isCompleted ? '#10b981' : oledMode ? '#404040' : '#334155'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                  }}
                 >
-                  {isCompleted ? (
-                    <CheckCircle2 size={18} className="text-[var(--rl-success)]" />
-                  ) : (
-                    <Clock size={16} className="text-[var(--rl-text-muted)]" />
-                  )}
+                  {isCompleted ? <CheckCircle2 size={18} color="#34d399" /> : <Clock size={16} color="#64748b" />}
                 </div>
                 <span
-                  className="rl-pipeline-label"
-                  data-completed={isCompleted ? 'true' : undefined}
-                  data-current={isCurrent ? 'true' : undefined}
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: isCurrent ? '#34d399' : isCompleted ? '#e2e8f0' : '#64748b',
+                  }}
                 >
                   {step.replace('_', ' ')}
                 </span>
@@ -689,29 +970,50 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
         </div>
       </div>
 
-      {/* TWO-WAY FLASH EVACUATION ALERT & DIRECTIVE */}
+      {/* TWO-WAY FLASH EVACUATION ALERT & DIRECTIVE (Stage 3 Real-time Relay) */}
       {activeDirective ? (
         <div
           role="region"
           aria-label="Rescuer & AI Directive"
-          className="rl-alert-danger flex flex-col gap-3"
+          style={{
+            backgroundColor: oledMode ? '#1e0505' : '#450a0a',
+            border: '2px solid #ef4444',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: oledMode ? 'none' : '0 0 25px rgba(239, 68, 68, 0.35)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <Bot size={24} className="text-red-600 shrink-0" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Bot size={24} color="#f87171" />
               <div>
-                <h3 className="text-base font-extrabold text-[var(--rl-danger-text)] m-0">
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#fca5a5', margin: 0 }}>
                   Emergency Flash Directive
                 </h3>
-                <div className="text-xs text-[var(--rl-danger-text)] opacity-90">
-                  Two-Way Tactical Alert Broadcast from Incident Commander & AI Triage
+                <div style={{ fontSize: '11px', color: '#f87171' }}>
+                  Two-Way Tactical Alert Broadcast from Incident Commander &amp; AI Triage
                 </div>
               </div>
             </div>
 
             <button
               onClick={playAlertChime}
-              className="rl-btn !py-1 !px-2.5 !text-xs !font-bold flex items-center gap-1 bg-red-700 text-white border border-red-800 rounded"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                backgroundColor: '#7f1d1d',
+                border: '1px solid #ef4444',
+                color: '#fee2e2',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontWeight: 700,
+              }}
               title="Play alert tone"
             >
               <Volume2 size={14} />
@@ -719,22 +1021,40 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
             </button>
           </div>
 
-          <div className="bg-white/80 border border-red-300 rounded-lg p-3.5 text-sm font-bold text-red-950 leading-relaxed">
+          <div
+            style={{
+              backgroundColor: oledMode ? '#000000' : '#1c0505',
+              border: '1px solid #7f1d1d',
+              borderRadius: '8px',
+              padding: '14px',
+              color: '#fef2f2',
+              fontSize: '16px',
+              fontWeight: 700,
+              lineHeight: 1.6,
+            }}
+          >
             {activeDirective}
           </div>
 
-          <div className="flex justify-end">
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
               onClick={() => setIsDirectiveAcknowledged(true)}
-              className="rl-btn !py-2 !px-4 !text-xs !font-bold flex items-center gap-1.5"
               style={{
-                backgroundColor: isDirectiveAcknowledged ? 'var(--rl-success)' : 'var(--rl-danger)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: isDirectiveAcknowledged ? '#065f46' : '#991b1b',
+                border: `1px solid ${isDirectiveAcknowledged ? '#10b981' : '#f87171'}`,
                 color: '#ffffff',
-                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
               }}
             >
               <Check size={16} />
-              {isDirectiveAcknowledged ? 'DIRECTIVE ACKNOWLEDGED - SAFE' : 'CONFIRM RECEIPT'}
+              {isDirectiveAcknowledged ? 'DIRECTIVE ACKNOWLEDGED · SAFE' : 'CONFIRM RECEIPT'}
             </button>
           </div>
         </div>
@@ -744,27 +1064,42 @@ export const IncidentStatus: React.FC<IncidentStatusProps> = ({
       <div
         role="region"
         aria-label="Immediate Survival Protocol"
-        className="rl-card flex flex-col gap-3"
         style={{
-          borderLeft: '4px solid var(--rl-danger)',
+          backgroundColor: theme.cardBg,
+          border: '2px solid #ef4444',
+          borderRadius: '12px',
+          padding: '20px',
         }}
       >
-        <div className="flex items-center gap-2.5">
-          <ShieldAlert size={22} className="text-[var(--rl-danger)]" />
-          <h3 className="text-base font-extrabold text-[var(--rl-text)] m-0">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+          <ShieldAlert size={24} color="#ef4444" />
+          <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#fca5a5' }}>
             {safetyDirective.title}
           </h3>
         </div>
-        <ul className="pl-5 flex flex-col gap-2 m-0 text-sm text-[var(--rl-text-secondary)]">
+        <ul style={{ paddingLeft: '22px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {safetyDirective.bullets.map((bullet, idx) => (
-            <li key={idx} className="leading-relaxed">
+            <li key={idx} style={{ color: '#f1f5f9', fontSize: '15px', fontWeight: 500 }}>
               {bullet}
             </li>
           ))}
         </ul>
 
-        <div className="rl-alert-warning flex items-center gap-2 text-xs mt-1">
-          <AlertTriangle size={16} className="shrink-0 text-amber-600" />
+        <div
+          style={{
+            marginTop: '16px',
+            padding: '10px 14px',
+            backgroundColor: oledMode ? '#1c0505' : 'rgba(239, 68, 68, 0.1)',
+            borderRadius: '6px',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            color: '#fecaca',
+          }}
+        >
+          <AlertTriangle size={16} color="#ef4444" style={{ flexShrink: 0 }} />
           <span>Keep your device awake. Do not close this browser window.</span>
         </div>
       </div>

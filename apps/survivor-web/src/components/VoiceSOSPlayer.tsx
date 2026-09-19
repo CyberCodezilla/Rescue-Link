@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Play, Pause, Trash2, Check, Mic } from 'lucide-react';
+import { Play, Pause, Trash2, Check } from 'lucide-react';
 
 interface VoiceSOSPlayerProps {
   audioUrl: string;
@@ -63,18 +63,41 @@ export function VoiceSOSPlayer({ audioUrl, durationSeconds, onDiscard }: VoiceSO
   const progressPercent = Math.min(100, (currentTime / duration) * 100);
 
   return (
-    <div className="rl-voice-player">
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        padding: '12px 14px',
+        backgroundColor: '#064e3b',
+        border: '1.5px solid #059669',
+        borderRadius: '10px',
+        color: '#ecfdf5',
+      }}
+    >
       {/* Top status bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--rl-accent-text)]">
-          <Mic size={14} className="text-[var(--rl-accent)]" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700 }}>
+          <Check size={16} color="#34d399" />
           <span>Voice SOS Audio Ready</span>
         </div>
         <button
           type="button"
           onClick={onDiscard}
           title="Discard and re-record"
-          className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 bg-transparent border-0 cursor-pointer p-1 rounded"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#fca5a5',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '12px',
+            fontWeight: 600,
+            padding: '2px 6px',
+            borderRadius: '4px',
+          }}
         >
           <Trash2 size={13} />
           <span>Discard</span>
@@ -82,31 +105,74 @@ export function VoiceSOSPlayer({ audioUrl, durationSeconds, onDiscard }: VoiceSO
       </div>
 
       {/* Audio Playback Controls */}
-      <div className="flex items-center gap-3">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button
           type="button"
           onClick={togglePlay}
           aria-label={isPlaying ? 'Pause Audio SOS' : 'Play Audio SOS'}
-          className="w-9 h-9 rounded-full bg-[var(--rl-accent)] text-white border-0 flex items-center justify-center cursor-pointer shrink-0 transition-transform active:scale-95 shadow-sm"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            backgroundColor: '#10b981',
+            border: 'none',
+            color: '#ffffff',
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'transform 0.1s ease',
+          }}
         >
-          {isPlaying ? <Pause size={16} fill="#ffffff" /> : <Play size={16} fill="#ffffff" className="ml-0.5" />}
+          {isPlaying ? <Pause size={16} fill="#ffffff" /> : <Play size={16} fill="#ffffff" style={{ marginLeft: '2px' }} />}
         </button>
 
         {/* Custom Progress Bar */}
         <div
           onClick={handleSeek}
-          className="flex-1 h-6 flex items-center cursor-pointer relative"
+          style={{
+            flex: 1,
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            position: 'relative',
+          }}
         >
-          <div className="rl-voice-progress-track">
+          <div
+            style={{
+              width: '100%',
+              height: '6px',
+              backgroundColor: '#065f46',
+              borderRadius: '3px',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
             <div
-              className="rl-voice-progress-fill"
-              style={{ width: `${progressPercent}%` }}
+              style={{
+                width: `${progressPercent}%`,
+                height: '100%',
+                backgroundColor: '#34d399',
+                transition: 'width 0.1s linear',
+              }}
             />
           </div>
         </div>
 
         {/* Time display */}
-        <span className="font-mono text-xs font-bold text-[var(--rl-text-secondary)] shrink-0 min-w-[56px] text-right">
+        <span
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            fontWeight: 700,
+            color: '#a7f3d0',
+            flexShrink: 0,
+            minWidth: '68px',
+            textAlign: 'right',
+          }}
+        >
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
       </div>

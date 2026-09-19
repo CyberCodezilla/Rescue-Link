@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import {
@@ -48,12 +48,13 @@ const CATEGORIES: Array<{
   id: IncidentCategory;
   label: string;
   icon: React.ComponentType<{ size?: number; color?: string; className?: string }>;
-  accentColor: string;
+  color: string;
+  bgColor: string;
 }> = [
-  { id: 'flood', label: 'Flood / Water', icon: Waves, accentColor: '#0891B2' },
-  { id: 'fire', label: 'Fire / Wildfire', icon: Flame, accentColor: '#DC2626' },
-  { id: 'landslide', label: 'Landslide / Debris', icon: Mountain, accentColor: '#D97706' },
-  { id: 'other', label: 'Other Threat', icon: AlertOctagon, accentColor: '#7C3AED' },
+  { id: 'flood', label: 'Flood / Water', icon: Waves, color: '#38bdf8', bgColor: '#082f49' },
+  { id: 'fire', label: 'Fire / Wildfire', icon: Flame, color: '#f87171', bgColor: '#450a0a' },
+  { id: 'landslide', label: 'Landslide / Debris', icon: Mountain, color: '#fbbf24', bgColor: '#451a03' },
+  { id: 'other', label: 'Other Threat', icon: AlertOctagon, color: '#c084fc', bgColor: '#3b0764' },
 ];
 
 const URGENT_NEEDS: Array<{ id: UrgentNeed; label: string }> = [
@@ -198,23 +199,20 @@ export const SOSForm: React.FC<SOSFormProps> = ({
         body: JSON.stringify(validPayload),
       });
 
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => null);
-        throw new Error(
-          errBody?.error || `Server responded with HTTP ${response.status}`
-        );
+      if (response.status === 201 || response.status === 200) {
+        const data = (await response.json()) as { id?: string; incident?: { id?: string } };
+        const serverId = data.id || data.incident?.id || `srv-${Date.now()}`;
+        onSubmitted({
+          id: serverId,
+          category,
+          payload: validPayload,
+          isLocal: false,
+        });
+      } else {
+        throw new Error(`Server returned status ${response.status}`);
       }
-
-      const serverData = await response.json();
-
-      onSubmitted({
-        id: serverData.id,
-        category,
-        payload: validPayload,
-        isLocal: false,
-      });
-    } catch (err) {
-      // Degrade to offline queue on network failure
+    } catch {
+      // Fallback: Enqueue locally if network fails unexpectedly
       try {
         const queued = await enqueueIncident(validPayload);
         if (onQueueUpdated) onQueueUpdated();
@@ -225,11 +223,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
           isLocal: true,
         });
       } catch {
-        setFormErrors([
-          err instanceof Error
-            ? err.message
-            : 'Failed to submit or queue your distress report. Please retry.',
-        ]);
+        setFormErrors(['Network failed and unable to save to local cache.']);
       }
     } finally {
       setIsSubmitting(false);
@@ -239,26 +233,63 @@ export const SOSForm: React.FC<SOSFormProps> = ({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rl-stagger-1"
-      style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '480px', margin: '0 auto' }}
+      aria-label="Distress SOS Submission Form"
+      className="animate-calm-fade"
+      style={{
+        maxWidth: '680px',
+        margin: '0 auto',
+        padding: '24px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '28px',
+      }}
     >
-      {/* Header */}
-      <div style={{ textAlign: 'center', paddingTop: '8px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--rl-danger)', letterSpacing: '-0.01em' }}>
-          Emergency Distress SOS
+      {/* Emergency Header */}
+      <div style={{ textAlign: 'center' }}>
+        <h1
+          style={{
+            fontSize: '28px',
+            fontWeight: 800,
+            color: '#f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          <span
+            style={{
+              display: 'inline-block',
+              width: '14px',
+              height: '14px',
+              borderRadius: '50%',
+              backgroundColor: '#ef4444',
+            }}
+            className="beacon-pulse"
+          />
+          EMERGENCY DISTRESS SOS
         </h1>
-        <p style={{ color: 'var(--rl-text-muted)', fontSize: '14px', marginTop: '4px' }}>
-          Transmit your location and hazard details to nearby rescue responders.
+        <p style={{ color: '#94a3b8', fontSize: '15px', marginTop: '6px' }}>
+          Transmit immediate location and hazard details to nearby rescue responders.
         </p>
       </div>
 
       {/* Validation Errors Display */}
       {formErrors.length > 0 && (
-        <div role="alert" className="rl-alert-danger" style={{ fontSize: '14px' }}>
-          <div style={{ fontWeight: 700, marginBottom: '6px', color: 'var(--rl-danger)' }}>
-            Please complete the following:
-          </div>
-          <ul style={{ paddingLeft: '20px', color: 'var(--rl-danger-text)' }}>
+        <div
+          role="alert"
+          style={{
+            backgroundColor: '#450a0a',
+            border: '2px solid #ef4444',
+            borderRadius: '8px',
+            padding: '14px 16px',
+            color: '#fecaca',
+            fontSize: '14px',
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '6px' }}>Please complete the following:</div>
+          <ul style={{ paddingLeft: '20px' }}>
             {formErrors.map((err, idx) => (
               <li key={idx}>{err}</li>
             ))}
@@ -267,9 +298,27 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       )}
 
       {/* Step 1: Hazard Category */}
-      <div className="rl-stagger-2">
-        <span className="rl-step-label">1. Select Hazard Category</span>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
+      <div>
+        <label
+          style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: '#cbd5e1',
+            marginBottom: '10px',
+          }}
+        >
+          1. Select Hazard Category
+        </label>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: '12px',
+          }}
+        >
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const isSelected = category === cat.id;
@@ -278,19 +327,26 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => setCategory(cat.id)}
-                className="rl-category-card touch-target-large"
-                data-selected={isSelected}
+                className="touch-target-large"
                 style={{
+                  display: 'flex',
                   flexDirection: 'column',
+                  alignItems: 'center',
                   justifyContent: 'center',
-                  borderLeftWidth: '4px',
-                  borderLeftColor: isSelected ? cat.accentColor : 'transparent',
+                  gap: '8px',
+                  padding: '16px 12px',
+                  borderRadius: '12px',
+                  border: `2px solid ${isSelected ? cat.color : '#2a364f'}`,
+                  backgroundColor: isSelected ? cat.bgColor : '#121826',
+                  color: isSelected ? '#ffffff' : '#94a3b8',
+                  cursor: 'pointer',
+                  boxShadow: isSelected ? `0 0 16px ${cat.color}40` : 'none',
+                  transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
               >
-                <Icon size={28} color={isSelected ? cat.accentColor : 'var(--rl-text-muted)'} />
-                <span style={{ fontSize: '14px', fontWeight: 700, color: isSelected ? 'var(--rl-text)' : 'var(--rl-text-secondary)' }}>
-                  {cat.label}
-                </span>
+                <Icon size={32} color={isSelected ? cat.color : '#94a3b8'} />
+                <span style={{ fontSize: '15px', fontWeight: 700 }}>{cat.label}</span>
               </button>
             );
           })}
@@ -298,8 +354,19 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       </div>
 
       {/* Step 2: Immediate Situation Description */}
-      <div className="rl-stagger-3">
-        <label htmlFor="sos-description" className="rl-step-label">
+      <div>
+        <label
+          htmlFor="sos-description"
+          style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: '#cbd5e1',
+            marginBottom: '8px',
+          }}
+        >
           2. Describe Immediate Threat / Trapped State
         </label>
         <textarea
@@ -308,8 +375,17 @@ export const SOSForm: React.FC<SOSFormProps> = ({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="e.g. Water at ceiling level, 3 people trapped in attic, power lines down outside..."
           rows={3}
-          className="rl-input"
-          style={{ resize: 'vertical', fontSize: '15px' }}
+          style={{
+            width: '100%',
+            padding: '14px',
+            borderRadius: '8px',
+            border: '2px solid #2a364f',
+            backgroundColor: '#121826',
+            color: '#ffffff',
+            fontSize: '16px',
+            resize: 'vertical',
+            outline: 'none',
+          }}
         />
 
         {/* 1-Tap Voice Distress Recording */}
@@ -318,30 +394,37 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             <button
               type="button"
               onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
-              className="rl-btn"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
                 width: '100%',
                 padding: '12px 16px',
-                borderRadius: 'var(--rl-radius-sm)',
-                border: voice.isRecording
-                  ? '2px solid var(--rl-danger)'
-                  : '2px solid var(--rl-border-strong)',
-                backgroundColor: voice.isRecording
-                  ? 'var(--rl-danger-soft)'
-                  : 'var(--rl-surface)',
-                color: voice.isRecording ? 'var(--rl-danger)' : 'var(--rl-text-secondary)',
-                fontSize: '13px',
+                borderRadius: '8px',
+                border: `2px solid ${voice.isRecording ? '#ef4444' : '#3b82f6'}`,
+                backgroundColor: voice.isRecording ? '#7f1d1d' : '#1e293b',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
               }}
             >
               {voice.isRecording ? (
                 <>
-                  <Square size={16} />
+                  <Square size={16} color="#ffffff" />
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', height: '20px' }}>
+                    <span className="wave-bar-1" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
+                    <span className="wave-bar-2" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
+                    <span className="wave-bar-3" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
+                  </div>
                   <span>Recording Voice SOS ({voice.recordingDuration}s / 30s) — Click to Complete</span>
                 </>
               ) : (
                 <>
-                  <Mic size={18} />
-                  <span>1-Tap: Record Voice Distress (30s Max)</span>
+                  <Mic size={18} color="#60a5fa" />
+                  <span>1-Tap: Record Voice Distress (30s Max for Trapped Victims)</span>
                 </>
               )}
             </button>
@@ -354,7 +437,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
           )}
 
           {voice.error && (
-            <div style={{ color: 'var(--rl-danger)', fontSize: '12px', marginTop: '6px' }}>
+            <div style={{ color: '#fca5a5', fontSize: '12px', marginTop: '6px' }}>
               {voice.error}
             </div>
           )}
@@ -362,116 +445,207 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       </div>
 
       {/* Step 3: Location Capture */}
-      <div className="rl-stagger-4">
-        <span className="rl-step-label">3. Emergency Location (GPS or Manual)</span>
+      <div>
+        <label
+          style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: '#cbd5e1',
+            marginBottom: '8px',
+          }}
+        >
+          3. Emergency Location (GPS or Manual)
+        </label>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button
             type="button"
             onClick={captureLocation}
             disabled={geoLoading}
-            className="rl-btn touch-target-large"
+            className="touch-target-large"
             style={{
-              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              backgroundColor: '#1e293b',
+              border: `2px solid ${location ? '#10b981' : '#3b82f6'}`,
+              color: '#ffffff',
+              borderRadius: '8px',
               padding: '14px 20px',
-              borderRadius: 'var(--rl-radius-sm)',
-              border: location
-                ? '2px solid var(--rl-success)'
-                : '2px solid var(--rl-accent)',
-              backgroundColor: location
-                ? 'var(--rl-success-soft)'
-                : 'var(--rl-surface)',
-              color: location ? 'var(--rl-success-text)' : 'var(--rl-text)',
-              fontSize: '15px',
               fontWeight: 700,
+              fontSize: '16px',
               cursor: geoLoading ? 'not-allowed' : 'pointer',
             }}
           >
             {geoLoading ? (
               <>
-                <Loader2 size={20} className="rl-spin" />
-                <span>Acquiring GPS Fix...</span>
+                <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Acquiring High-Accuracy GPS Fix...</span>
               </>
             ) : location ? (
               <>
-                <Check size={20} />
+                <Check size={20} color="#10b981" />
                 <span>GPS Locked: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}</span>
               </>
             ) : (
               <>
-                <MapPin size={20} />
-                <span>Capture GPS Coordinates</span>
+                <MapPin size={20} color="#60a5fa" />
+                <span>1-Tap: Capture Browser GPS Coordinates</span>
               </>
             )}
           </button>
 
           {geoError && (
-            <div className="rl-alert-warning">
-              <MapPin size={14} style={{ flexShrink: 0, marginTop: '1px' }} />
-              <span>{geoError} — Enter coordinates manually below.</span>
+            <div style={{ color: '#fca5a5', fontSize: '13px', padding: '4px 8px' }}>
+              {geoError}
             </div>
           )}
 
-          {/* Manual coordinate fallback */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          {/* Manual Coordinate fallback fields */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: '10px',
+              backgroundColor: '#121826',
+              padding: '12px',
+              borderRadius: '8px',
+              border: '1px solid #1e293b',
+            }}
+          >
             <div>
-              <label htmlFor="manual-lat" className="rl-label">Latitude</label>
+              <label
+                htmlFor="manual-lat"
+                style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}
+              >
+                Latitude
+              </label>
               <input
                 id="manual-lat"
                 type="number"
                 step="any"
+                placeholder={location ? String(location.lat) : 'e.g. 37.7749'}
                 value={manualLat}
                 onChange={(e) => handleManualCoordinateChange(e.target.value, manualLng)}
-                placeholder="-90 to 90"
-                className="rl-input"
-                style={{ fontSize: '14px' }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  border: '1px solid #2a364f',
+                  backgroundColor: '#0a0d14',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                }}
               />
             </div>
             <div>
-              <label htmlFor="manual-lng" className="rl-label">Longitude</label>
+              <label
+                htmlFor="manual-lng"
+                style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}
+              >
+                Longitude (lng)
+              </label>
               <input
                 id="manual-lng"
                 type="number"
                 step="any"
+                placeholder={location ? String(location.lng) : 'e.g. -122.4194'}
                 value={manualLng}
                 onChange={(e) => handleManualCoordinateChange(manualLat, e.target.value)}
-                placeholder="-180 to 180"
-                className="rl-input"
-                style={{ fontSize: '14px' }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  border: '1px solid #2a364f',
+                  backgroundColor: '#0a0d14',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                }}
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Step 4: People Affected */}
-      <div className="rl-stagger-5">
-        <span className="rl-step-label">4. Individuals Requiring Rescue</span>
-        <div className="rl-card" style={{ padding: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-            <Users size={16} color="var(--rl-accent)" />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--rl-text-secondary)' }}>
-              Total individuals with you (including yourself)
-            </span>
+      {/* Step 4: People Affected Stepper */}
+      <div>
+        <label
+          style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: '#cbd5e1',
+            marginBottom: '8px',
+          }}
+        >
+          4. Number of People Affected
+        </label>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#121826',
+            border: '2px solid #2a364f',
+            borderRadius: '8px',
+            padding: '8px 16px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#cbd5e1' }}>
+            <Users size={20} />
+            <span style={{ fontSize: '15px' }}>Total Individuals with you:</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               type="button"
               onClick={() => setPeopleAffected((prev) => Math.max(1, (prev || 1) - 1))}
+              disabled={peopleAffected <= 1}
               aria-label="Decrease people affected"
-              className="rl-counter-btn"
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '8px',
+                border: '1px solid #334155',
+                backgroundColor: '#1e293b',
+                color: peopleAffected <= 1 ? '#64748b' : '#ffffff',
+                cursor: peopleAffected <= 1 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease',
+              }}
             >
               <Minus size={18} />
             </button>
 
             <input
-              type="number"
-              min={1}
-              value={peopleAffected}
+              id="peopleAffectedInput"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={peopleAffected === 0 ? '' : peopleAffected}
               onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val) && val >= 1) setPeopleAffected(val);
-                else if (e.target.value === '') setPeopleAffected(1);
+                const cleanVal = e.target.value.replace(/[^0-9]/g, '');
+                if (cleanVal === '') {
+                  setPeopleAffected(0);
+                } else {
+                  const parsed = parseInt(cleanVal, 10);
+                  if (!isNaN(parsed)) {
+                    setPeopleAffected(Math.max(1, Math.min(9999, parsed)));
+                  }
+                }
+              }}
+              onBlur={() => {
+                if (!peopleAffected || peopleAffected < 1) {
+                  setPeopleAffected(1);
+                }
               }}
               onKeyDown={(e) => {
                 if (e.key === 'ArrowUp') {
@@ -483,24 +657,42 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 }
               }}
               aria-label="Total individuals with you"
-              className="rl-counter-display"
               style={{
                 width: '64px',
-                height: '48px',
-                border: '1px solid var(--rl-border)',
-                borderRadius: 'var(--rl-radius-sm)',
-                backgroundColor: 'var(--rl-surface)',
+                height: '44px',
+                borderRadius: '8px',
+                border: '1px solid #334155',
+                backgroundColor: '#0a0d14',
+                color: '#ffffff',
+                fontSize: '20px',
+                fontWeight: 800,
                 textAlign: 'center',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'inherit',
                 outline: 'none',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)',
+                transition: 'border-color 0.15s ease',
               }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = '#38bdf8')}
+              onBlurCapture={(e) => (e.currentTarget.style.borderColor = '#334155')}
             />
 
             <button
               type="button"
               onClick={() => setPeopleAffected((prev) => (prev || 0) + 1)}
               aria-label="Increase people affected"
-              className="rl-counter-btn"
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '8px',
+                border: '1px solid #334155',
+                backgroundColor: '#1e293b',
+                color: '#ffffff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease',
+              }}
             >
               <Plus size={18} />
             </button>
@@ -509,8 +701,20 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       </div>
 
       {/* Step 5: Urgent Needs Multi-Select */}
-      <div className="rl-stagger-6">
-        <span className="rl-step-label">5. Urgent Resource Needs (Select All That Apply)</span>
+      <div>
+        <label
+          style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: '#cbd5e1',
+            marginBottom: '8px',
+          }}
+        >
+          5. Urgent Resource Needs (Select All That Apply)
+        </label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {URGENT_NEEDS.map((need) => {
             const isSelected = urgentNeeds.includes(need.id);
@@ -519,10 +723,22 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 key={need.id}
                 type="button"
                 onClick={() => toggleUrgentNeed(need.id)}
-                className="rl-pill"
-                data-selected={isSelected}
+                style={{
+                  padding: '12px 18px',
+                  borderRadius: '24px',
+                  border: `2px solid ${isSelected ? '#f59e0b' : '#334155'}`,
+                  backgroundColor: isSelected ? '#78350f' : '#121826',
+                  color: isSelected ? '#ffffff' : '#cbd5e1',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.15s ease',
+                }}
               >
-                {isSelected && <Check size={16} color="var(--rl-accent)" />}
+                {isSelected && <Check size={16} color="#fbbf24" />}
                 {need.label}
               </button>
             );
@@ -531,10 +747,32 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       </div>
 
       {/* Step 6: Reporter Contact (Optional) */}
-      <div className="rl-stagger-7">
-        <span className="rl-step-label">6. Contact Method for Rescuers (Optional)</span>
-        <div className="rl-card" style={{ padding: '14px' }}>
-          <div className="rl-segment-group">
+      <div>
+        <label
+          style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: '#cbd5e1',
+            marginBottom: '8px',
+          }}
+        >
+          6. Contact Method for Rescuers (Optional)
+        </label>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            backgroundColor: '#121826',
+            padding: '14px',
+            borderRadius: '8px',
+            border: '1px solid #1e293b',
+          }}
+        >
+          <div style={{ display: 'flex', gap: '8px' }}>
             {(['none', 'phone', 'email'] as ContactMethod[]).map((method) => {
               const isSelected = contactMethod === method;
               return (
@@ -542,13 +780,26 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                   key={method}
                   type="button"
                   onClick={() => setContactMethod(method)}
-                  className="rl-segment"
-                  data-selected={isSelected}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: `1px solid ${isSelected ? '#3b82f6' : '#334155'}`,
+                    backgroundColor: isSelected ? '#1e3a8a' : '#0a0d14',
+                    color: isSelected ? '#ffffff' : '#94a3b8',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
                 >
                   {method === 'phone' && <Phone size={14} />}
                   {method === 'email' && <Mail size={14} />}
                   {method === 'none' && <HelpCircle size={14} />}
-                  {method === 'none' ? 'None' : method.charAt(0).toUpperCase() + method.slice(1)}
+                  {method === 'none' ? 'No Contact' : method.toUpperCase()}
                 </button>
               );
             })}
@@ -564,25 +815,56 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                   ? 'Enter phone number (e.g. +1 555-0199)'
                   : 'Enter email address'
               }
-              className="rl-input"
-              style={{ marginTop: '10px', fontSize: '14px' }}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                border: '1px solid #2a364f',
+                backgroundColor: '#0a0d14',
+                color: '#ffffff',
+                fontSize: '14px',
+              }}
             />
           )}
 
           {/* Phase 5: SNS/SES Notification Helper Text */}
           {contactMethod === 'phone' && (
-            <div className="rl-alert-success" style={{ marginTop: '10px' }}>
-              <Phone size={13} style={{ marginTop: '1px', flexShrink: 0 }} />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                backgroundColor: '#0c2020',
+                border: '1px solid #065f46',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#6ee7b7',
+              }}
+            >
+              <Phone size={13} style={{ marginTop: '1px', flexShrink: 0 }} color="#34d399" />
               <span>
-                <strong>Emergency SMS Active:</strong> Your phone number enables an automatic emergency SMS alert to be dispatched directly to you the moment your distress signal reaches our command center.
+                <strong style={{ color: '#34d399' }}>Emergency SMS Active:</strong> Your phone number enables an automatic emergency SMS alert to be dispatched directly to you the moment your distress signal reaches our command center.
               </span>
             </div>
           )}
           {contactMethod === 'email' && (
-            <div className="rl-alert-info" style={{ marginTop: '10px' }}>
-              <Mail size={13} style={{ marginTop: '1px', flexShrink: 0 }} />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                backgroundColor: '#0a1628',
+                border: '1px solid #1e40af',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#93c5fd',
+              }}
+            >
+              <Mail size={13} style={{ marginTop: '1px', flexShrink: 0 }} color="#60a5fa" />
               <span>
-                <strong>Emergency Email Active:</strong> An HTML emergency dispatch notification will be sent to the RescueLink response coordination team on your behalf when your SOS is received.
+                <strong style={{ color: '#60a5fa' }}>Emergency Email Active:</strong> An HTML emergency dispatch notification will be sent to the RescueLink response coordination team on your behalf when your SOS is received.
               </span>
             </div>
           )}
@@ -593,17 +875,33 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rl-btn rl-btn-danger touch-target-large"
-        style={{ width: '100%' }}
+        className="touch-target-large"
+        style={{
+          backgroundColor: '#dc2626',
+          color: '#ffffff',
+          border: 'none',
+          borderRadius: '12px',
+          padding: '18px 24px',
+          fontSize: '20px',
+          fontWeight: 900,
+          letterSpacing: '0.04em',
+          cursor: isSubmitting ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+          boxShadow: '0 8px 24px rgba(220, 38, 38, 0.45)',
+          transition: 'transform 0.1s ease, background-color 0.15s ease',
+        }}
       >
         {isSubmitting ? (
           <>
-            <Loader2 size={22} className="rl-spin" />
+            <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
             <span>TRANSMITTING DISTRESS SIGNAL...</span>
           </>
         ) : (
           <>
-            <Send size={22} />
+            <Send size={24} />
             <span>TRANSMIT DISTRESS SOS</span>
           </>
         )}

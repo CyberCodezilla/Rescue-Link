@@ -53,7 +53,7 @@ export default function SurvivorWebPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col bg-[var(--rl-bg)]">
+    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#0a0d14' }}>
       {/* High-contrast Offline / Mesh Connectivity Banner */}
       <OfflineIndicator
         isOnline={isOnline}
@@ -62,24 +62,63 @@ export default function SurvivorWebPage() {
         onSyncNow={syncNow}
       />
 
-      {/* Brand Bar */}
-      <header className="px-4 py-3 flex items-center justify-between border-b border-[var(--rl-border)] bg-[var(--rl-surface)]">
-        <div className="flex items-center gap-2 max-w-[680px] mx-auto w-full">
-          <div className="w-8 h-8 rounded-lg bg-[var(--rl-accent-soft)] border border-[var(--rl-accent)] flex items-center justify-center text-[var(--rl-accent)]">
-            <Shield size={18} />
+      {/* Sleek Tactical Brand Header */}
+      <header
+        style={{
+          padding: '12px 20px',
+          backgroundColor: '#121826',
+          borderBottom: '1px solid #1e293b',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', maxWidth: '680px', width: '100%' }}>
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '8px',
+              backgroundColor: '#064e3b',
+              border: '1.5px solid #10b981',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#34d399',
+              boxShadow: '0 0 12px rgba(16, 185, 129, 0.3)',
+              flexShrink: 0,
+            }}
+          >
+            <Shield size={22} />
           </div>
           <div>
-            <h1 className="text-sm font-extrabold tracking-tight text-[var(--rl-text)] m-0 leading-tight">
-              RESCUELINK
-            </h1>
-            <p className="text-[11px] text-[var(--rl-text-muted)] m-0 font-medium">
-              Emergency Civilian Beacon
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1 style={{ fontSize: '15px', fontWeight: 900, letterSpacing: '0.04em', color: '#f8fafc', margin: 0 }}>
+                RESCUELINK
+              </h1>
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  color: '#38bdf8',
+                  backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                  border: '1px solid rgba(56, 189, 248, 0.35)',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                }}
+              >
+                CIVILIAN BEACON
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, marginTop: '2px' }}>
+              Emergency Distress SOS & Real-Time Incident Response
             </p>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 px-3 py-4 max-w-[680px] mx-auto w-full">
+      <div style={{ flex: 1, padding: '20px 12px', maxWidth: '680px', margin: '0 auto', width: '100%' }}>
         {activeIncident ? (
           <IncidentStatus
             key={activeIncident.id}
