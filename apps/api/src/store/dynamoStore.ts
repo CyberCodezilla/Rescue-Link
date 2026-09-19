@@ -56,7 +56,7 @@ export class DynamoIncidentStore {
     return (res.Item as Incident) || null;
   }
 
-  async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number; assignedTo?: string }): Promise<Incident[]> {
     const statusList = filter?.status
       ? (Array.isArray(filter.status) ? filter.status : [filter.status])
       : [];
@@ -81,6 +81,10 @@ export class DynamoIncidentStore {
       }));
       return (res.Items as Incident[]) || [];
     };
+
+    if (filter?.assignedTo) {
+      return queryIndex('AssignedToCreatedAtIndex', 'assignedTo', filter.assignedTo);
+    }
 
     // Indexed paths avoid a full table scan for the common responder filters.
     if (statusList.length === 1 && !filter?.priority && !filter?.q) {

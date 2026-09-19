@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import './amplifyConfig';
 import {
   IncidentSchema,
   type IncidentResponse,
@@ -50,6 +52,14 @@ async function request(
   let attempt = 0;
   let response: Response | undefined;
 
+  let cognitoToken: string | null = null;
+  try {
+    const session = await fetchAuthSession();
+    cognitoToken = session.tokens?.accessToken?.toString() || null;
+  } catch {
+    // Auth session unavailable
+  }
+
   while (attempt <= maxRetries) {
     if (init?.signal?.aborted) {
       throw new DOMException('The operation was aborted', 'AbortError');
@@ -59,16 +69,21 @@ async function request(
       const apiOrigin =
         process.env.NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN ||
         process.env.RESCUE_LINK_API_ORIGIN ||
-        'https://pfqm76wx1g.execute-api.us-east-1.amazonaws.com';
+        'http://localhost:3001';
       const baseUrl = apiOrigin.trim().replace(/\/$/, '');
       const apiKey = process.env.NEXT_PUBLIC_API_KEY || 'rescuelink-responder-key-2026';
+      
+      const authHeader = cognitoToken
+        ? `Bearer ${cognitoToken}`
+        : (init?.headers as Record<string, string>)?.[ 'Authorization'] || `Bearer ${apiKey}`;
+
       response = await fetch(`${baseUrl}/api${path}`, {
         ...init,
         headers: {
           Accept: 'application/json',
           'x-api-key': apiKey,
           'X-API-Key': apiKey,
-          'Authorization': 'Bearer ' + apiKey,
+          'Authorization': authHeader,
           ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
           ...init?.headers,
         },

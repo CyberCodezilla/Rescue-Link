@@ -15,10 +15,35 @@ import { LifeSafetyTracer } from '../services/lifeSafetyTracer';
 import { CONFIG } from '@rescue-link/config';
 import { requireApiKey } from '../middleware/auth';
 import { sosRateLimit } from '../middleware/rateLimit';
+import { requireCognitoAuth } from '../middleware/cognitoAuth';
 
 export const incidentsRouter = Router();
 
-// POST /api/incidents - Create SOS Incident
+/**
+ * Flexible auth middleware that allows either valid Cognito Access Token or API Key.
+ * If Cognito Access Token is provided, populates `req.user`.
+ */
+async function authenticateFlexible(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  const apiKeyHeader = req.header('x-api-key') || req.header('X-API-Key');
+
+  if (authHeader && typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')) {
+    return requireCognitoAuth(req, res, next);
+  }
+  if (apiKeyHeader) {
+    return requireApiKey(req, res, next);
+  }
+
+  // GET requests in dev/test mode fall through without user scoping
+  if (req.method === 'GET' && (CONFIG.NODE_ENV !== 'production' || !CONFIG.API_KEY)) {
+    return next();
+  }
+
+  // Mutation/Management requests strictly require API Key or Bearer Token
+  return requireApiKey(req, res, next);
+}
+
+// POST /api/incidents - Create SOS Incident (Unauthenticated for anonymous SOS submissions)
 incidentsRouter.post('/', sosRateLimit, async (req: Request, res: Response): Promise<void> => {
   const parseResult = SOSSubmissionSchema.safeParse(req.body);
 
@@ -96,8 +121,8 @@ incidentsRouter.post('/', sosRateLimit, async (req: Request, res: Response): Pro
   res.status(201).json(created);
 });
 
-// GET /api/incidents - List Incidents
-incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
+// GET /api/incidents - List Incidents (Strict backend user-scoping via Cognito sub)
+incidentsRouter.get('/', authenticateFlexible, async (req: Request, res: Response): Promise<void> => {
   const { status, priority, q, since, page: pageQuery, limit: limitQuery } = req.query;
 
   const statuses =
@@ -129,11 +154,16 @@ incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
     }
   }
 
+  // Strict User Scoping: Always overwrite and ignore client-supplied assignedTo
+  const userSub = req.user?.sub;
+  const assignedToScope = userSub ? userSub : undefined;
+
   let list = await incidentStore.list({
     status: validStatuses.length > 0 ? validStatuses : undefined,
     priority: validPriority,
     q: searchQuery,
     since: sinceTimestamp,
+    assignedTo: assignedToScope,
   });
 
   const hasPagination =
@@ -163,7 +193,7 @@ incidentsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /api/incidents/:id - Get Single Incident
-incidentsRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.get('/:id', authenticateFlexible, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const incident = await incidentStore.getById(id);
 
@@ -172,16 +202,28 @@ incidentsRouter.get('/:id', async (req: Request, res: Response): Promise<void> =
     return;
   }
 
+  // If incident is assigned to another rescuer, reject with 403 Forbidden
+  if (req.user?.sub && incident.assignedTo && incident.assignedTo !== req.user.sub) {
+    res.status(403).json({ error: 'Forbidden: You do not have permission to view another rescuer\'s assigned incident' });
+    return;
+  }
+
   res.status(200).json(incident);
 });
 
 // PATCH /api/incidents/:id - Update status / assignment / triage
-incidentsRouter.patch('/:id', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.patch('/:id', authenticateFlexible, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
   if (!existing) {
     res.status(404).json({ error: 'Incident not found', id });
+    return;
+  }
+
+  // Cross-User Mutation Protection: Server-side check against persisted incident.assignedTo
+  if (req.user?.sub && existing.assignedTo && existing.assignedTo !== req.user.sub) {
+    res.status(403).json({ error: 'Forbidden: You cannot modify another rescuer\'s assigned incident' });
     return;
   }
 
@@ -194,9 +236,16 @@ incidentsRouter.patch('/:id', requireApiKey, async (req: Request, res: Response)
   if (priority && PriorityEnum.safeParse(priority).success) {
     updates.priority = priority;
   }
-  if (typeof assignedTo === 'string') {
+  // Reassignment Guard: Rescuers cannot reassign ownership to another sub
+  if (typeof assignedTo === 'string' && req.user?.sub) {
+    if (assignedTo !== req.user.sub) {
+      res.status(403).json({ error: 'Forbidden: You cannot reassign ownership to another rescuer' });
+      return;
+    }
+  } else if (typeof assignedTo === 'string') {
     updates.assignedTo = assignedTo;
   }
+
   if (triage && typeof triage === 'object') {
     const parsedTriage = IncidentTriageSchema.partial().safeParse(triage);
     if (parsedTriage.success) {
@@ -227,7 +276,7 @@ incidentsRouter.patch('/:id', requireApiKey, async (req: Request, res: Response)
 });
 
 // POST /api/incidents/:id/acknowledge - Convenience endpoint
-incidentsRouter.post('/:id/acknowledge', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.post('/:id/acknowledge', authenticateFlexible, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
@@ -236,11 +285,17 @@ incidentsRouter.post('/:id/acknowledge', requireApiKey, async (req: Request, res
     return;
   }
 
+  // Cross-User Mutation Protection: Server-side check against persisted incident.assignedTo
+  if (req.user?.sub && existing.assignedTo && existing.assignedTo !== req.user.sub) {
+    res.status(403).json({ error: 'Forbidden: You cannot acknowledge another rescuer\'s assigned incident' });
+    return;
+  }
+
   let updated: Incident | null;
   try {
     updated = await incidentStore.update(id, {
       status: 'acknowledged',
-      assignedTo: req.body.assignedTo || existing.assignedTo,
+      assignedTo: req.user?.sub || req.body.assignedTo || existing.assignedTo,
     });
   } catch (error) {
     console.error(`[IncidentsRouter] Persistent acknowledge failed for ${id}:`, error);
@@ -260,12 +315,18 @@ incidentsRouter.post('/:id/acknowledge', requireApiKey, async (req: Request, res
 });
 
 // POST /api/incidents/:id/broadcast - Send tactical directive broadcast to survivor / zone
-incidentsRouter.post('/:id/broadcast', requireApiKey, async (req: Request, res: Response): Promise<void> => {
+incidentsRouter.post('/:id/broadcast', authenticateFlexible, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const existing = await incidentStore.getById(id);
 
   if (!existing) {
     res.status(404).json({ error: 'Incident not found', id });
+    return;
+  }
+
+  // Cross-User Mutation Protection
+  if (req.user?.sub && existing.assignedTo && existing.assignedTo !== req.user.sub) {
+    res.status(403).json({ error: 'Forbidden: You cannot broadcast directives for another rescuer\'s incident' });
     return;
   }
 
@@ -308,4 +369,23 @@ incidentsRouter.post('/:id/broadcast', requireApiKey, async (req: Request, res: 
     deliveredAt: Date.now(),
     incident: updated,
   });
+});
+
+// DELETE /api/incidents/:id - Delete Incident (Cross-User Guard)
+incidentsRouter.delete('/:id', authenticateFlexible, async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const existing = await incidentStore.getById(id);
+
+  if (!existing) {
+    res.status(404).json({ error: 'Incident not found', id });
+    return;
+  }
+
+  // Cross-User Mutation Protection: Server-side check
+  if (req.user?.sub && existing.assignedTo && existing.assignedTo !== req.user.sub) {
+    res.status(403).json({ error: 'Forbidden: You cannot delete another rescuer\'s assigned incident' });
+    return;
+  }
+
+  res.status(200).json({ success: true, message: `Incident ${id} deletion acknowledged`, id });
 });

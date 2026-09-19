@@ -11,6 +11,10 @@ Globals:
       Variables:
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
         DYNAMODB_TABLE_INCIDENTS: !Ref IncidentTableName
+        SAGEMAKER_ENDPOINT_NAME: rescue-link-triage-endpoint
+        SAGEMAKER_MAX_TOKENS: '300'
+        SAGEMAKER_TIMEOUT_MS: '3500'
+        SAGEMAKER_TEMPERATURE: '0.2'
         BEDROCK_MODEL_ID: us.anthropic.claude-haiku-4-5-20251001-v1:0
         BEDROCK_MAX_TOKENS: '300'
         BEDROCK_TIMEOUT_MS: '3500'
@@ -70,6 +74,8 @@ Resources:
           AttributeType: N
         - AttributeName: priority
           AttributeType: S
+        - AttributeName: assignedTo
+          AttributeType: S
       KeySchema:
         - AttributeName: id
           KeyType: HASH
@@ -86,6 +92,14 @@ Resources:
         - IndexName: PriorityCreatedAtIndex
           KeySchema:
             - AttributeName: priority
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: AssignedToCreatedAtIndex
+          KeySchema:
+            - AttributeName: assignedTo
               KeyType: HASH
             - AttributeName: createdAt
               KeyType: RANGE
@@ -112,6 +126,7 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - sagemaker:InvokeEndpoint
                 - bedrock:InvokeModel
               Resource: '*'
 
@@ -234,6 +249,33 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName: !Ref CallbackFunction
 
+  RescueLinkUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-user-pool'
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+
+  RescueLinkUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${AWS::StackName}-user-pool-client'
+      UserPoolId: !Ref RescueLinkUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+
 Outputs:
   StateMachineArn:
     Value: !Ref RescueWorkflow
@@ -251,3 +293,8 @@ Outputs:
     Value: !Ref IncidentTableName
   EmergencyTopicArn:
     Value: !Ref EmergencyTopic
+  UserPoolId:
+    Value: !Ref RescueLinkUserPool
+  UserPoolClientId:
+    Value: !Ref RescueLinkUserPoolClient
+

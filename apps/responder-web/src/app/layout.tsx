@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
+import { AuthProvider } from '@/context/AuthContext';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 export const metadata: Metadata = {
   title: 'Rescue-Link | Tactical Operations Command',
@@ -24,8 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="font-sans antialiased bg-canvas text-ink-900 min-h-screen">
-        <ServiceWorkerRegistration />
-        {children}
+        <AuthProvider>
+          <ServiceWorkerRegistration />
+          <AuthModal />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

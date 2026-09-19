@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, Activity } from 'lucide-react';
+import { RefreshCw, Activity, User, LogOut } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import type { StreamStatus } from '@/hooks/useIncidentStream';
 
 interface DashboardHeaderProps {
@@ -19,6 +20,7 @@ const STREAM_LABEL: Record<StreamStatus, string> = {
 
 export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, streamStatus }: DashboardHeaderProps) {
   const [mounted, setMounted] = useState(false);
+  const { userEmail, userSub, signOut, isAuthenticated } = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -44,7 +46,7 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
               Rescue-Link // Tactical Operations Command
             </h1>
             <span className="rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30 px-2.5 py-0.5 font-mono font-bold text-[10px] tracking-wider shadow-sm">
-              
+              RESPONDER
             </span>
           </div>
           <p className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
@@ -63,7 +65,15 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
         </div>
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-slate-400">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+        {isAuthenticated && userEmail && (
+          <div className="flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/40 px-3 py-1 font-mono text-[11px] text-blue-300">
+            <User size={12} className="text-blue-400" />
+            <span>{userEmail}</span>
+            {userSub && <span className="text-[9px] text-blue-400/70">({userSub.slice(0, 8)}...)</span>}
+          </div>
+        )}
+
         <span
           aria-live="polite"
           suppressHydrationWarning
@@ -80,6 +90,17 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
           <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
           <span>{isRefreshing ? 'REFRESHING...' : 'REFRESH'}</span>
         </button>
+
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 font-mono text-xs font-bold text-red-300 hover:bg-red-900/50 hover:text-white transition-all shadow-sm"
+          >
+            <LogOut size={12} />
+            <span>SIGN OUT</span>
+          </button>
+        )}
       </div>
     </header>
   );

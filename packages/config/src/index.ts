@@ -8,6 +8,13 @@ export interface ApiEnvironmentConfig {
   BEDROCK_MAX_TOKENS: number;
   BEDROCK_TIMEOUT_MS: number;
   BEDROCK_TEMPERATURE: number;
+  SAGEMAKER_ENDPOINT_NAME: string;
+  SAGEMAKER_MAX_TOKENS: number;
+  SAGEMAKER_TIMEOUT_MS: number;
+  SAGEMAKER_TEMPERATURE: number;
+  COGNITO_USER_POOL_ID: string;
+  COGNITO_CLIENT_ID: string;
+  COGNITO_REGION: string;
   STATE_MACHINE_ARN: string;
   RESCUELINK_CALLBACK_URL: string;
   LAMBDA_CALLBACK_SECRET: string;
@@ -31,6 +38,9 @@ export interface ApiEnvironmentConfig {
 export interface ClientEnvironmentConfig {
   RESCUE_LINK_API_ORIGIN: string;
   NEXT_PUBLIC_API_KEY: string;
+  NEXT_PUBLIC_COGNITO_USER_POOL_ID: string;
+  NEXT_PUBLIC_COGNITO_CLIENT_ID: string;
+  NEXT_PUBLIC_COGNITO_REGION: string;
 }
 
 type Env = Record<string, string | undefined>;
@@ -122,13 +132,23 @@ export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
     BEDROCK_TIMEOUT_MS: integerValue(env, 'BEDROCK_TIMEOUT_MS', 3500, 100, 120000),
     BEDROCK_TEMPERATURE: numberValue(env, 'BEDROCK_TEMPERATURE', 0.2, 0, 2),
 
+    SAGEMAKER_ENDPOINT_NAME:
+      env.SAGEMAKER_ENDPOINT_NAME || 'rescue-link-triage-endpoint',
+    SAGEMAKER_MAX_TOKENS: integerValue(env, 'SAGEMAKER_MAX_TOKENS', 300, 1, 100000),
+    SAGEMAKER_TIMEOUT_MS: integerValue(env, 'SAGEMAKER_TIMEOUT_MS', 3500, 100, 120000),
+    SAGEMAKER_TEMPERATURE: numberValue(env, 'SAGEMAKER_TEMPERATURE', 0.2, 0, 2),
+
+    COGNITO_USER_POOL_ID: env.COGNITO_USER_POOL_ID || 'us-east-1_rescuePool',
+    COGNITO_CLIENT_ID: env.COGNITO_CLIENT_ID || 'rescueClientAppId',
+    COGNITO_REGION: env.COGNITO_REGION || env.AWS_REGION || 'us-east-1',
+
     STATE_MACHINE_ARN: env.STATE_MACHINE_ARN || '',
     RESCUELINK_CALLBACK_URL: env.RESCUELINK_CALLBACK_URL || '',
     LAMBDA_CALLBACK_SECRET: env.LAMBDA_CALLBACK_SECRET || '',
 
     SNS_TOPIC_ARN: env.SNS_TOPIC_ARN || '',
-    SES_FROM_EMAIL: env.SES_FROM_EMAIL || 'alerts@rescuelink.org',
-    SES_ALERT_RECIPIENT: env.SES_ALERT_RECIPIENT || 'responders@rescuelink.org',
+    SES_FROM_EMAIL: env.SES_FROM_EMAIL || 'yashdedhia05@GMAIL.COM',
+    SES_ALERT_RECIPIENT: env.SES_ALERT_RECIPIENT || 'yashdedhia05@GMAIL.COM',
     NOTIFICATION_PRIORITY_GATE: listValue(
       env,
       'NOTIFICATION_PRIORITY_GATE',
@@ -215,6 +235,9 @@ export function validateClientEnv(
   return {
     RESCUE_LINK_API_ORIGIN: origin,
     NEXT_PUBLIC_API_KEY: env.NEXT_PUBLIC_API_KEY || '',
+    NEXT_PUBLIC_COGNITO_USER_POOL_ID: env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || env.COGNITO_USER_POOL_ID || '',
+    NEXT_PUBLIC_COGNITO_CLIENT_ID: env.NEXT_PUBLIC_COGNITO_CLIENT_ID || env.COGNITO_CLIENT_ID || '',
+    NEXT_PUBLIC_COGNITO_REGION: env.NEXT_PUBLIC_COGNITO_REGION || env.COGNITO_REGION || env.AWS_REGION || 'us-east-1',
   };
 }
 

@@ -12,7 +12,7 @@ export class IncidentPersistenceError extends Error {
 export interface IIncidentStore {
   create(incident: Incident): Promise<Incident>;
   getById(id: string): Promise<Incident | null>;
-  list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]>;
+  list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number; assignedTo?: string }): Promise<Incident[]>;
   update(id: string, updates: Partial<Incident>): Promise<Incident | null>;
   clear(): Promise<void>;
 }
@@ -34,8 +34,12 @@ export class InMemoryIncidentStore implements IIncidentStore {
     return this.incidents.get(id) || null;
   }
 
-  async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number; assignedTo?: string }): Promise<Incident[]> {
     let result = Array.from(this.incidents.values());
+
+    if (filter?.assignedTo) {
+      result = result.filter((incident) => incident.assignedTo === filter.assignedTo);
+    }
 
     if (filter?.status) {
       const statusList = Array.isArray(filter.status) ? filter.status : [filter.status];
@@ -155,7 +159,7 @@ export class DelegatingIncidentStore implements IIncidentStore {
     }
   }
 
-  async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
+  async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number; assignedTo?: string }): Promise<Incident[]> {
     if (this.isMock()) {
       return this.memoryStore.list(filter);
     }
