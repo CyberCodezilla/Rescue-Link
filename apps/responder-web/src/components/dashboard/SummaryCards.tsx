@@ -12,9 +12,9 @@ interface SummaryCardsProps {
 const ACTIVE_STATUSES = new Set(['new', 'acknowledged', 'in_progress']);
 
 export function SummaryCards({ incidents }: SummaryCardsProps) {
-  const critical = incidents.filter((i) => i.priority === 'critical').length;
-  const high = incidents.filter((i) => i.priority === 'high').length;
-  const pendingTriage = incidents.filter((i) => i.priority === 'pending_triage').length;
+  const critical = incidents.filter((i) => i.priority === 'critical' && ACTIVE_STATUSES.has(i.status)).length;
+  const high = incidents.filter((i) => i.priority === 'high' && ACTIVE_STATUSES.has(i.status)).length;
+  const pendingTriage = incidents.filter((i) => i.priority === 'pending_triage' && ACTIVE_STATUSES.has(i.status)).length;
   const active = incidents.filter((i) => ACTIVE_STATUSES.has(i.status)).length;
   const unassigned = incidents.filter(
     (i) => ACTIVE_STATUSES.has(i.status) && !hasAssignedUnits(i.triage?.assignedUnits)
