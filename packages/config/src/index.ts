@@ -35,6 +35,23 @@ export interface ClientEnvironmentConfig {
 
 type Env = Record<string, string | undefined>;
 
+export const parseListEnv = (raw: string | undefined, fallback: string): string[] =>
+  (raw || fallback)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+export const parseNumberEnv = (raw: string | undefined, fallback: number): number => {
+  if (raw === undefined || raw === '') return fallback;
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+export const parseIntegerEnv = (raw: string | undefined, fallback: number): number => {
+  const num = parseNumberEnv(raw, fallback);
+  return Number.isInteger(num) ? num : Math.floor(fallback);
+};
+
 const numberValue = (
   env: Env,
   key: string,
@@ -64,15 +81,30 @@ const integerValue = (
 };
 
 const listValue = (env: Env, key: string, fallback: string): string[] =>
-  (env[key] || fallback)
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
+  parseListEnv(env[key], fallback);
 
 export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
   const nodeEnv = env.NODE_ENV || 'development';
   if (!['development', 'test', 'production'].includes(nodeEnv)) {
     throw new Error('NODE_ENV must be development, test, or production');
+  }
+
+  if (nodeEnv === 'production') {
+    if (!env.API_KEY || env.API_KEY === 'rescuelink-responder-key-2026') {
+      throw new Error('API_KEY environment variable must be explicitly defined in production');
+    }
+    if (env.DYNAMODB_TABLE_INCIDENTS !== undefined && env.DYNAMODB_TABLE_INCIDENTS.trim() === '') {
+      throw new Error('DYNAMODB_TABLE_INCIDENTS environment variable cannot be empty in production');
+    }
+    if (env.SES_FROM_EMAIL && env.SES_FROM_EMAIL.includes('example.com')) {
+      throw new Error('SES_FROM_EMAIL cannot use placeholder example.com in production');
+    }
+    if (env.SES_ALERT_RECIPIENT && env.SES_ALERT_RECIPIENT.includes('example.com')) {
+      throw new Error('SES_ALERT_RECIPIENT cannot use placeholder example.com in production');
+    }
+    if (env.LAMBDA_CALLBACK_SECRET === 'change-me') {
+      throw new Error('LAMBDA_CALLBACK_SECRET must not be placeholder value in production');
+    }
   }
 
   const apiKey = env.API_KEY ?? 'rescuelink-responder-key-2026';
@@ -182,4 +214,12 @@ export function validateClientEnv(
   };
 }
 
-export const CONFIG = validateApiEnv(process.env);
+export const CONFIG = {
+  ...validateApiEnv(process.env),
+  SATELLITE_API_KEY: process.env.SATELLITE_API_KEY || '',
+  SATELLITE_IOT_TOPIC: process.env.SATELLITE_IOT_TOPIC || 'rescuelink/satellite/+/uplink',
+  SATELLITE_GATEWAY_URL: process.env.SATELLITE_GATEWAY_URL || '',
+  SATELLITE_GATEWAY_SECRET: process.env.SATELLITE_GATEWAY_SECRET || '',
+};
+
+export * from './motion.js';

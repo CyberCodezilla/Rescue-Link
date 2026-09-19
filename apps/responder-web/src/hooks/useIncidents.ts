@@ -6,6 +6,50 @@ import type { IncidentResponse } from '@responder/lib/schema';
 
 const POLL_INTERVAL_MS = 15_000;
 
+// Module-level persistent cache across client-side page navigations (Dashboard <-> Dispatcher)
+let memoryIncidentsCache: IncidentResponse[] | null = null;
+let memoryLastRefreshedAt: Date | null = null;
+
+function getInitialIncidents(): IncidentResponse[] | null {
+  if (memoryIncidentsCache && memoryIncidentsCache.length > 0) {
+    return memoryIncidentsCache;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = sessionStorage.getItem('rescuelink_incidents_cache');
+      if (stored) {
+        const parsed = JSON.parse(stored) as IncidentResponse[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          memoryIncidentsCache = parsed;
+          return parsed;
+        }
+      }
+    } catch {
+      // Ignore sessionStorage exceptions
+    }
+  }
+  return null;
+}
+
+function getInitialTimestamp(): Date | null {
+  if (memoryLastRefreshedAt) return memoryLastRefreshedAt;
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = sessionStorage.getItem('rescuelink_synced_at');
+      if (stored) {
+        const parsed = new Date(stored);
+        if (!isNaN(parsed.getTime())) {
+          memoryLastRefreshedAt = parsed;
+          return parsed;
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }
+  return null;
+}
+
 interface UseIncidentsState {
   incidents: IncidentResponse[] | null;
   isInitialLoading: boolean;
@@ -17,10 +61,13 @@ interface UseIncidentsState {
 }
 
 export function useIncidents(): UseIncidentsState {
-  const [incidents, setIncidents] = useState<IncidentResponse[] | null>(null);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const initialData = getInitialIncidents();
+  const initialTime = getInitialTimestamp();
+
+  const [incidents, setIncidents] = useState<IncidentResponse[] | null>(initialData);
+  const [isInitialLoading, setIsInitialLoading] = useState(initialData === null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(initialTime);
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -41,14 +88,36 @@ export function useIncidents(): UseIncidentsState {
     getIncidents(controller.signal)
       .then((data) => {
         if (latestRequestId.current !== requestId) return;
+
+        // Update in-memory and session storage cache
+        memoryIncidentsCache = data;
+        const now = new Date();
+        memoryLastRefreshedAt = now;
+
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('rescuelink_incidents_cache', JSON.stringify(data));
+            sessionStorage.setItem('rescuelink_synced_at', now.toISOString());
+          } catch {
+            // Ignore
+          }
+        }
+
         setIncidents(data);
         setRefreshError(null);
-        setLastRefreshedAt(new Date());
+        setLastRefreshedAt(now);
       })
       .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
+        const isAbort =
+          (err as any)?.name === 'AbortError' ||
+          err instanceof DOMException ||
+          controller.signal.aborted;
+        if (isAbort) return;
         if (latestRequestId.current !== requestId) return;
-        setRefreshError(err instanceof ApiError ? err.message : 'Unable to load incidents.');
+
+        const errorMsg = err instanceof ApiError ? err.message : 'Unable to load incidents.';
+        // If we already hold incidents in state, do not blank out the dashboard; keep displaying existing data
+        setRefreshError(errorMsg);
       })
       .finally(() => {
         if (latestRequestId.current === requestId) {
@@ -61,11 +130,27 @@ export function useIncidents(): UseIncidentsState {
 
   const applyIncidentUpdate = useCallback((incident: IncidentResponse) => {
     setIncidents((current) => {
-      if (!current) return [incident];
-      const index = current.findIndex((item) => item.id === incident.id);
-      if (index === -1) return [incident, ...current];
-      const next = current.slice();
-      next[index] = incident;
+      let next: IncidentResponse[];
+      if (!current) {
+        next = [incident];
+      } else {
+        const index = current.findIndex((item) => item.id === incident.id);
+        if (index === -1) {
+          next = [incident, ...current];
+        } else {
+          next = current.slice();
+          next[index] = incident;
+        }
+      }
+
+      memoryIncidentsCache = next;
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('rescuelink_incidents_cache', JSON.stringify(next));
+        } catch {
+          // Ignore
+        }
+      }
       return next;
     });
     setRefreshError(null);
@@ -80,5 +165,13 @@ export function useIncidents(): UseIncidentsState {
     };
   }, [load]);
 
-  return { incidents, isInitialLoading, isRefreshing, lastRefreshedAt, refreshError, refresh: load, applyIncidentUpdate };
+  return {
+    incidents,
+    isInitialLoading,
+    isRefreshing,
+    lastRefreshedAt,
+    refreshError,
+    refresh: load,
+    applyIncidentUpdate,
+  };
 }

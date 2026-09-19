@@ -11,7 +11,7 @@ Globals:
       Variables:
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
         DYNAMODB_TABLE_INCIDENTS: !Ref IncidentTableName
-        BEDROCK_MODEL_ID: anthropic.claude-3-haiku-20240307-v1:0
+        BEDROCK_MODEL_ID: us.anthropic.claude-haiku-4-5-20251001-v1:0
         BEDROCK_MAX_TOKENS: '300'
         BEDROCK_TEMPERATURE: '0.2'
         TRIAGE_CRITICAL_PEOPLE_THRESHOLD: '5'
@@ -46,8 +46,37 @@ Parameters:
     Type: String
     NoEcho: true
     Default: change-me
+  SatelliteIotTopic:
+    Type: String
+    Default: rescuelink/satellite/+/uplink
+    Description: MQTT topic filter used by satellite and LoRa gateway uplinks.
 
 Resources:
+  IncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref IncidentTableName
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: N
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: StatusCreatedAtIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
   EmergencyTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -90,6 +119,48 @@ Resources:
     Properties:
       CodeUri: apps/lambda/
       Handler: dist/callback.handler
+
+  SatelliteIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: apps/lambda/
+      Handler: dist/satellite.handler
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref RescueWorkflow
+          SATELLITE_IOT_TOPIC: !Ref SatelliteIotTopic
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${IncidentTableName}
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+              Resource: !Ref RescueWorkflow
+
+  SatelliteUplinkRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: rescuelink_satellite_uplink
+      TopicRulePayload:
+        RuleDisabled: false
+        AwsIotSqlVersion: '2016-03-23'
+        Sql: !Sub "SELECT * FROM '${SatelliteIotTopic}'"
+        Actions:
+          - Lambda:
+              FunctionArn: !GetAtt SatelliteIngestFunction.Arn
+
+  SatelliteUplinkRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SatelliteIngestFunction
+      Principal: iot.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:rule/rescuelink_satellite_uplink
 
   RescueWorkflow:
     Type: AWS::Serverless::StateMachine
@@ -157,6 +228,10 @@ Outputs:
     Value: !GetAtt NotificationFunction.Arn
   CallbackFunctionArn:
     Value: !GetAtt CallbackFunction.Arn
+  SatelliteIngestFunctionArn:
+    Value: !GetAtt SatelliteIngestFunction.Arn
+  SatelliteUplinkRuleName:
+    Value: rescuelink_satellite_uplink
   IncidentTableName:
     Value: !Ref IncidentTableName
   EmergencyTopicArn:

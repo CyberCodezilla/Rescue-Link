@@ -1,5 +1,5 @@
-// RescueLink Survivor Portal Service Worker - Offline Captive Caching
-const CACHE_NAME = 'rescuelink-survivor-v1';
+﻿// RescueLink Survivor Portal Service Worker - Offline Captive Caching
+const CACHE_NAME = 'rescuelink-survivor-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
@@ -35,29 +35,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // In development, network-first to prevent stale dev caching
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        // Return cached while fetching update in background
-        fetch(request).then((response) => {
-          if (response && response.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, response));
-          }
-        }).catch(() => {});
-        return cached;
-      }
-      return fetch(request).then((response) => {
+    fetch(request)
+      .then((response) => {
         if (response && response.status === 200 && response.type === 'basic') {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
         }
         return response;
-      }).catch(() => {
-        // If navigating and offline, return cached root
-        if (request.mode === 'navigate') {
-          return caches.match('/');
-        }
-      });
-    })
+      })
+      .catch(() => {
+        return caches.match(request).then((cached) => {
+          if (cached) return cached;
+          if (request.mode === 'navigate') return caches.match('/');
+        });
+      })
   );
 });

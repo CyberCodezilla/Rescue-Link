@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 
@@ -19,7 +19,6 @@ describe('API Security & Authentication Tests', () => {
       .set('x-api-key', 'rescuelink-responder-key-2026')
       .send({ status: 'resolved' });
 
-    // Should pass auth check (returns 404 because ID doesn't exist, not 401)
     expect(res.status).toBe(404);
   });
 
@@ -32,9 +31,28 @@ describe('API Security & Authentication Tests', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns helmet security headers on API responses', async () => {
+  it('rejects unauthenticated POST /api/incidents/:id/acknowledge request', async () => {
+    const res = await request(app)
+      .post('/api/incidents/test-id-123/acknowledge')
+      .set('NODE_ENV', 'production')
+      .send({ assignedTo: 'unit-1' });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Unauthorized access');
+  });
+
+  it('rejects unauthenticated POST /api/incidents/:id/broadcast request', async () => {
+    const res = await request(app)
+      .post('/api/incidents/test-id-123/broadcast')
+      .set('NODE_ENV', 'production')
+      .send({ message: 'Emergency alert' });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Unauthorized access');
+  });
+
+  it('includes rate limit standard headers on API requests', async () => {
     const res = await request(app).get('/api/health');
-    expect(res.headers['x-dns-prefetch-control']).toBe('off');
-    expect(res.headers['x-frame-options']).toBe('SAMEORIGIN');
+    expect(res.headers).toHaveProperty('ratelimit-limit');
   });
 });

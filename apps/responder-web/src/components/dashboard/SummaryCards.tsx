@@ -1,5 +1,9 @@
+'use client';
+
+import React from 'react';
 import type { IncidentResponse } from '@responder/lib/schema';
 import { hasAssignedUnits } from '@responder/lib/format';
+import { AnimatedCounter } from './AnimatedCounter';
 
 interface SummaryCardsProps {
   incidents: IncidentResponse[];
@@ -17,19 +21,63 @@ export function SummaryCards({ incidents }: SummaryCardsProps) {
   ).length;
 
   const metrics = [
-    { label: 'Critical', value: critical, accent: 'text-priority-critical' },
-    { label: 'High', value: high, accent: 'text-priority-high' },
-    { label: 'Pending Triage', value: pendingTriage, accent: 'text-priority-pending' },
-    { label: 'Active', value: active, accent: 'text-action' },
-    { label: 'Unassigned', value: unassigned, accent: 'text-ink-700' },
+    {
+      label: 'CRITICAL',
+      value: critical,
+      accent: 'text-red-400',
+      borderStripe: 'border-l-red-500',
+      badgeBg: 'bg-red-500/15 border-red-500/30 text-red-300',
+      bgGlow: critical > 0 ? 'hud-glow-red' : '',
+    },
+    {
+      label: 'HIGH PRIORITY',
+      value: high,
+      accent: 'text-orange-400',
+      borderStripe: 'border-l-orange-500',
+      badgeBg: 'bg-orange-500/15 border-orange-500/30 text-orange-300',
+      bgGlow: high > 0 ? 'hud-glow-orange' : '',
+    },
+    {
+      label: 'PENDING TRIAGE',
+      value: pendingTriage,
+      accent: 'text-slate-400',
+      borderStripe: 'border-l-slate-500',
+      badgeBg: 'bg-slate-800/80 border-slate-700 text-slate-300',
+      bgGlow: '',
+    },
+    {
+      label: 'ACTIVE INCIDENTS',
+      value: active,
+      accent: 'text-blue-400',
+      borderStripe: 'border-l-blue-500',
+      badgeBg: 'bg-blue-500/15 border-blue-500/30 text-blue-300',
+      bgGlow: '',
+    },
+    {
+      label: 'UNASSIGNED UNITS',
+      value: unassigned,
+      accent: 'text-amber-400',
+      borderStripe: 'border-l-amber-500',
+      badgeBg: 'bg-amber-500/15 border-amber-500/30 text-amber-300',
+      bgGlow: '',
+    },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       {metrics.map((metric) => (
-        <div key={metric.label} className="rounded-md border border-line bg-surface px-4 py-3 shadow-panel">
-          <p className="text-xs font-medium text-ink-500">{metric.label}</p>
-          <p className={`mt-1 text-2xl font-semibold tabular-nums ${metric.accent}`}>{metric.value}</p>
+        <div
+          key={metric.label}
+          className={`rounded-xl border border-slate-800/90 bg-slate-900/60 backdrop-blur-md px-4 py-3.5 border-l-4 ${metric.borderStripe} ${metric.bgGlow} transition-all duration-200 hover:border-slate-700 hover:shadow-md hover:-translate-y-0.5`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+              {metric.label}
+            </span>
+          </div>
+          <p className={`mt-1.5 text-2xl font-black font-mono tracking-tight ${metric.accent}`}>
+            <AnimatedCounter value={metric.value} />
+          </p>
         </div>
       ))}
     </div>

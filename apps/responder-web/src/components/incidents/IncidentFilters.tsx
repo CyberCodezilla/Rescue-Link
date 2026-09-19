@@ -1,3 +1,5 @@
+import React from 'react';
+import { Filter, X } from 'lucide-react';
 import {
   CATEGORY_LABELS,
   DEFAULT_FILTERS,
@@ -15,7 +17,7 @@ interface IncidentFiltersProps {
 }
 
 const selectClasses =
-  'rounded border border-line bg-surface px-2.5 py-1.5 text-sm text-ink-700 focus:border-action focus:outline-none focus:ring-1 focus:ring-action';
+  'rounded-lg border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 font-mono text-xs font-medium text-slate-200 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all duration-150 cursor-pointer hover:border-slate-600 hover:bg-slate-900';
 
 export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
   const isFiltered =
@@ -24,16 +26,21 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
     filters.category !== DEFAULT_FILTERS.category;
 
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1 text-xs font-medium text-ink-500">
+    <div className="flex flex-wrap items-end gap-3 p-3.5 bg-slate-900/60 border border-slate-800/80 rounded-xl shadow-sm backdrop-blur-md">
+      <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mr-1">
+        <Filter size={14} className="text-blue-400" />
+        <span>FILTERS:</span>
+      </div>
+
+      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
         Status
         <select
           className={selectClasses}
           value={filters.status}
           onChange={(e) => onChange({ ...filters, status: e.target.value as IncidentFiltersState['status'] })}
         >
-          <option value="active">Active (default)</option>
-          <option value="all">All</option>
+          <option value="active">Active (Default)</option>
+          <option value="all">All Statuses</option>
           {STATUS_ORDER.map((status) => (
             <option key={status} value={status}>
               {STATUS_LABELS[status]}
@@ -42,14 +49,14 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-ink-500">
+      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
         Priority
         <select
           className={selectClasses}
           value={filters.priority}
           onChange={(e) => onChange({ ...filters, priority: e.target.value as IncidentFiltersState['priority'] })}
         >
-          <option value="all">All</option>
+          <option value="all">All Priorities</option>
           {PRIORITY_ORDER.map((priority) => (
             <option key={priority} value={priority}>
               {PRIORITY_LABELS[priority]}
@@ -58,14 +65,14 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium text-ink-500">
+      <label className="flex flex-col gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
         Category
         <select
           className={selectClasses}
           value={filters.category}
           onChange={(e) => onChange({ ...filters, category: e.target.value as IncidentFiltersState['category'] })}
         >
-          <option value="all">All</option>
+          <option value="all">All Categories</option>
           {IncidentCategoryEnum.options.map((category) => (
             <option key={category} value={category}>
               {CATEGORY_LABELS[category]}
@@ -78,9 +85,10 @@ export function IncidentFilters({ filters, onChange }: IncidentFiltersProps) {
         <button
           type="button"
           onClick={() => onChange(DEFAULT_FILTERS)}
-          className="rounded border border-line px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-canvas"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/90 px-3 py-1.5 font-mono text-xs font-bold text-slate-200 hover:text-white hover:bg-slate-700 transition-all duration-150 shadow-sm active:scale-95"
         >
-          Clear filters
+          <X size={12} />
+          <span>CLEAR</span>
         </button>
       ) : null}
     </div>

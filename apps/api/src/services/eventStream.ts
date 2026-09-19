@@ -9,8 +9,9 @@ export interface SSEEvent {
 }
 
 export interface BroadcastAdapter {
-  broadcast?: (event: SSEEvent) => void | Promise<void>;
   publish?: (event: SSEEvent) => void | Promise<void>;
+  broadcast?: (event: SSEEvent) => void | Promise<void>;
+  onMessage?: (handler: (event: SSEEvent) => void) => void;
 }
 
 export class EventStreamManager {
@@ -18,11 +19,18 @@ export class EventStreamManager {
   private clients: Set<Response> = new Set();
 
   constructor(adapter: BroadcastAdapter | null = null) {
-    this.adapter = adapter;
+    if (adapter) {
+      this.setAdapter(adapter);
+    }
   }
 
   setAdapter(adapter: BroadcastAdapter | null): void {
     this.adapter = adapter;
+    if (this.adapter?.onMessage) {
+      this.adapter.onMessage((event) => {
+        this.sendToClients(event);
+      });
+    }
   }
 
   addClient(res: Response): void {
@@ -33,13 +41,7 @@ export class EventStreamManager {
     this.clients.delete(res);
   }
 
-  broadcast(event: SSEEvent): void {
-    if (this.adapter?.broadcast) {
-      void this.adapter.broadcast(event);
-    } else if (this.adapter?.publish) {
-      void this.adapter.publish(event);
-    }
-
+  private sendToClients(event: SSEEvent): void {
     const payload = `event: incident\ndata: ${JSON.stringify(event)}\n\n`;
 
     for (const client of this.clients) {
@@ -48,6 +50,16 @@ export class EventStreamManager {
       } catch {
         this.clients.delete(client);
       }
+    }
+  }
+
+  broadcast(event: SSEEvent): void {
+    if (this.adapter?.publish) {
+      void this.adapter.publish(event);
+    } else if (this.adapter?.broadcast) {
+      void this.adapter.broadcast(event);
+    } else {
+      this.sendToClients(event);
     }
   }
 
@@ -63,7 +75,54 @@ export const eventStreamManager = new EventStreamManager();
  * Used for single-node operation and tests.
  */
 export class LocalBroadcastAdapter implements BroadcastAdapter {
+  private handlers: Set<(event: SSEEvent) => void> = new Set();
+
+  publish(event: SSEEvent): void {
+    for (const handler of this.handlers) {
+      try {
+        handler(event);
+      } catch (err) {
+        console.error('[LocalBroadcastAdapter] Handler execution error:', err);
+      }
+    }
+  }
+
   broadcast(event: SSEEvent): void {
-    void event;
+    this.publish(event);
+  }
+
+  onMessage(handler: (event: SSEEvent) => void): void {
+    this.handlers.add(handler);
+  }
+}
+
+/**
+ * Distributed Pub/Sub Broadcast Adapter for multi-instance scaling.
+ * Dispatches SSE events across running API nodes via distributed channel bus.
+ */
+export class PubSubBroadcastAdapter implements BroadcastAdapter {
+  private handlers: Set<(event: SSEEvent) => void> = new Set();
+  private channelName: string;
+
+  constructor(channelName = 'rescuelink:sse:events') {
+    this.channelName = channelName;
+  }
+
+  async publish(event: SSEEvent): Promise<void> {
+    for (const handler of this.handlers) {
+      try {
+        handler(event);
+      } catch (err) {
+        console.error(`[PubSubBroadcastAdapter:${this.channelName}] Delivery error:`, err);
+      }
+    }
+  }
+
+  broadcast(event: SSEEvent): void {
+    void this.publish(event);
+  }
+
+  onMessage(handler: (event: SSEEvent) => void): void {
+    this.handlers.add(handler);
   }
 }

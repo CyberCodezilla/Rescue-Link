@@ -27,6 +27,10 @@ export const UrgentNeedEnum = z.enum([
   'food',
   'clean_water',
   'infant_care',
+  'sanitation',
+  'shelter',
+  'psychosocial_support',
+  'evacuation',
 ]);
 export type UrgentNeed = z.infer<typeof UrgentNeedEnum>;
 
@@ -46,11 +50,29 @@ export const ReporterSchema = z.object({
 });
 export type Reporter = z.infer<typeof ReporterSchema>;
 
+export const HouseholdCompositionSchema = z.object({
+  adults: z.coerce.number().int().min(0).default(1),
+  childrenUnder5: z.coerce.number().int().min(0).default(0),
+  elderly: z.coerce.number().int().min(0).default(0),
+  pregnantOrLactating: z.coerce.number().int().min(0).default(0),
+  disabled: z.coerce.number().int().min(0).default(0),
+});
+export type HouseholdComposition = z.infer<typeof HouseholdCompositionSchema>;
+
+export const LocationContextSchema = z.object({
+  landmark: z.string().optional(),
+  shelterName: z.string().optional(),
+  roadAccessBlocked: z.boolean().optional(),
+});
+export type LocationContext = z.infer<typeof LocationContextSchema>;
+
 export const IncidentDetailsSchema = z.object({
   category: IncidentCategoryEnum,
   description: z.string().min(1, 'Description is required'),
   peopleAffected: z.coerce.number().int().min(1).default(1),
   urgentNeeds: z.array(UrgentNeedEnum).default([]),
+  householdComposition: HouseholdCompositionSchema.optional(),
+  locationContext: LocationContextSchema.optional(),
 });
 export type IncidentDetails = z.infer<typeof IncidentDetailsSchema>;
 
@@ -72,6 +94,8 @@ export const SOSSubmissionSchema = z.object({
   urgentNeeds: z.array(UrgentNeedEnum).default([]),
   reporter: ReporterSchema.optional(),
   audioBlob: z.string().optional(),
+  householdComposition: HouseholdCompositionSchema.optional(),
+  locationContext: LocationContextSchema.optional(),
 });
 export type SOSSubmission = z.infer<typeof SOSSubmissionSchema>;
 
@@ -91,5 +115,7 @@ export const IncidentSchema = z.object({
   triage: IncidentTriageSchema.optional(),
   assignedTo: z.string().optional(),
   audioBlob: z.string().optional(),
+  householdComposition: HouseholdCompositionSchema.optional(),
+  locationContext: LocationContextSchema.optional(),
 });
 export type Incident = z.infer<typeof IncidentSchema>;

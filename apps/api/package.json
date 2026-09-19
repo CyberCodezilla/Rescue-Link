@@ -13,6 +13,7 @@
     "@aws-sdk/client-bedrock-runtime": "^3.1132.0",
     "@aws-sdk/client-dynamodb": "^3.1132.0",
     "@aws-sdk/client-ses": "^3.1132.0",
+    "@aws-sdk/client-sfn": "^3.1135.0",
     "@aws-sdk/client-sns": "^3.1132.0",
     "@aws-sdk/credential-provider-node": "^3.972.83",
     "@aws-sdk/lib-dynamodb": "^3.1132.0",
@@ -22,8 +23,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "express-rate-limit": "^8.7.0",
-    "helmet": "^8.3.0",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },

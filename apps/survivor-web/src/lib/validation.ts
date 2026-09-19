@@ -19,7 +19,17 @@ export const IncidentStatusEnum = z.enum([
 ]);
 export type IncidentStatus = z.infer<typeof IncidentStatusEnum>;
 
-export const UrgentNeedEnum = z.enum(['medical', 'boat', 'food', 'clean_water', 'infant_care']);
+export const UrgentNeedEnum = z.enum([
+  'medical',
+  'boat',
+  'food',
+  'clean_water',
+  'infant_care',
+  'sanitation',
+  'shelter',
+  'psychosocial_support',
+  'evacuation',
+]);
 export type UrgentNeed = z.infer<typeof UrgentNeedEnum>;
 
 export const ContactMethodEnum = z.enum(['email', 'phone', 'none']);
@@ -38,6 +48,22 @@ export const ReporterSchema = z.object({
 });
 export type Reporter = z.infer<typeof ReporterSchema>;
 
+export const HouseholdCompositionSchema = z.object({
+  adults: z.coerce.number().int().min(0).default(1),
+  childrenUnder5: z.coerce.number().int().min(0).default(0),
+  elderly: z.coerce.number().int().min(0).default(0),
+  pregnantOrLactating: z.coerce.number().int().min(0).default(0),
+  disabled: z.coerce.number().int().min(0).default(0),
+});
+export type HouseholdComposition = z.infer<typeof HouseholdCompositionSchema>;
+
+export const LocationContextSchema = z.object({
+  landmark: z.string().optional(),
+  shelterName: z.string().optional(),
+  roadAccessBlocked: z.boolean().optional(),
+});
+export type LocationContext = z.infer<typeof LocationContextSchema>;
+
 export const SOSSubmissionSchema = z.object({
   category: IncidentCategoryEnum,
   description: z.string().min(1, 'Please describe the emergency situation'),
@@ -46,6 +72,8 @@ export const SOSSubmissionSchema = z.object({
   urgentNeeds: z.array(UrgentNeedEnum).default([]),
   reporter: ReporterSchema.optional(),
   audioBlob: z.string().optional(),
+  householdComposition: HouseholdCompositionSchema.optional(),
+  locationContext: LocationContextSchema.optional(),
 });
 export type SOSSubmission = z.infer<typeof SOSSubmissionSchema>;
 

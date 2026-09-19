@@ -16,6 +16,7 @@ describe('Centralized Environment Schema Validation', () => {
     const customEnv = {
       PORT: '8080',
       NODE_ENV: 'production',
+      API_KEY: 'prod-secure-key-999',
       AWS_REGION: 'us-west-2',
       BEDROCK_MAX_TOKENS: '500',
       BEDROCK_TIMEOUT_MS: '5000',
@@ -26,11 +27,19 @@ describe('Centralized Environment Schema Validation', () => {
     const config = validateApiEnv(customEnv);
     expect(config.PORT).toBe(8080);
     expect(config.NODE_ENV).toBe('production');
+    expect(config.API_KEY).toBe('prod-secure-key-999');
     expect(config.AWS_REGION).toBe('us-west-2');
     expect(config.BEDROCK_MAX_TOKENS).toBe(500);
     expect(config.BEDROCK_TIMEOUT_MS).toBe(5000);
     expect(config.USE_LOCAL_MOCK_STORE).toBe(true);
     expect(config.NOTIFICATION_PRIORITY_GATE).toEqual(['critical', 'high', 'medium']);
+  });
+
+  it('requires explicit non-default API_KEY in production mode', () => {
+    const prodWithoutApiKey = {
+      NODE_ENV: 'production',
+    };
+    expect(() => validateApiEnv(prodWithoutApiKey as any)).toThrow('API_KEY environment variable must be explicitly defined in production');
   });
 
   it('fails validation on invalid enum or malformed numerical input', () => {

@@ -1,9 +1,9 @@
-import { IncidentRedirectClient } from './IncidentRedirectClient';
+import IncidentDetailClient from './IncidentDetailClient';
 
-export async function generateStaticParams() {
-  return [{ id: '1' }];
+export function generateStaticParams() {
+  return [{ id: 'demo' }];
 }
 
-export default function IncidentRedirectPage() {
-  return <IncidentRedirectClient />;
+export default function IncidentDetailPage() {
+  return <IncidentDetailClient />;
 }

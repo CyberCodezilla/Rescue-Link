@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { MapPin, Navigation } from 'lucide-react';
 import { useUnitPositions } from '@responder/hooks/useUnitPositions';
 import { haversineDistanceMeters, estimateEtaMinutes, formatDistance } from '@responder/lib/geo';
 import type { IncidentResponse } from '@responder/lib/schema';
@@ -9,11 +10,6 @@ interface UnitPositionPanelProps {
   incident: IncidentResponse;
 }
 
-/**
- * There's no GPS telemetry from field units yet (see README). This lets a
- * dispatcher manually log "last known position" per assigned unit so the
- * map/distance display has something real to show instead of nothing.
- */
 export function UnitPositionPanel({ incident }: UnitPositionPanelProps) {
   const units = incident.triage?.assignedUnits || [];
   const { getPosition, reportPosition } = useUnitPositions();
@@ -30,13 +26,15 @@ export function UnitPositionPanel({ incident }: UnitPositionPanelProps) {
   }
 
   return (
-    <section className="rounded-md border border-line bg-surface p-4">
-      <h2 className="text-sm font-semibold text-ink-900">Field unit positions</h2>
-      <p className="mt-1 text-xs text-ink-500">
-        Manually-logged last-known position, stored on this device only until real unit telemetry exists.
-      </p>
+    <section className="hud-panel p-4 border border-line bg-surface">
+      <div className="flex items-center gap-2 border-b border-line pb-2">
+        <Navigation size={14} className="text-action" />
+        <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900">
+          FIELD UNIT TELEMETRY LOG
+        </h2>
+      </div>
 
-      <ul className="mt-3 space-y-3">
+      <ul className="mt-3 space-y-2.5">
         {units.map((unitName) => {
           const position = getPosition(unitName);
           const distance = position
@@ -44,44 +42,50 @@ export function UnitPositionPanel({ incident }: UnitPositionPanelProps) {
             : null;
 
           return (
-            <li key={unitName} className="rounded border border-line p-2.5">
+            <li key={unitName} className="rounded border border-line-2 bg-surface-2/60 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-ink-900">{unitName}</span>
+                <span className="font-mono text-xs font-bold text-action">{unitName}</span>
                 {distance !== null ? (
-                  <span className="text-xs text-ink-500">
-                    {formatDistance(distance)} · ~{estimateEtaMinutes(distance)} min ETA
+                  <span className="font-mono text-[11px] text-emerald-400">
+                    {formatDistance(distance)} // ~{estimateEtaMinutes(distance)} MIN ETA
                   </span>
                 ) : (
-                  <span className="text-xs text-ink-300">No position logged</span>
+                  <span className="font-mono text-[11px] text-ink-500">NO TELEMETRY LOGGED</span>
                 )}
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 <input
                   type="number"
                   step="any"
-                  placeholder="lat"
+                  placeholder="LATITUDE"
                   value={drafts[unitName]?.lat ?? ''}
                   onChange={(e) =>
-                    setDrafts((prev) => ({ ...prev, [unitName]: { ...prev[unitName], lat: e.target.value, lng: prev[unitName]?.lng ?? '' } }))
+                    setDrafts((prev) => ({
+                      ...prev,
+                      [unitName]: { ...prev[unitName], lat: e.target.value, lng: prev[unitName]?.lng ?? '' },
+                    }))
                   }
-                  className="w-24 rounded border border-line px-2 py-1 text-xs focus:border-action focus:outline-none focus:ring-1 focus:ring-action"
+                  className="w-28 rounded border border-line-2 bg-surface px-2.5 py-1 font-mono text-xs text-ink-900 placeholder:text-ink-500 focus:border-action focus:outline-none"
                 />
                 <input
                   type="number"
                   step="any"
-                  placeholder="lng"
+                  placeholder="LONGITUDE"
                   value={drafts[unitName]?.lng ?? ''}
                   onChange={(e) =>
-                    setDrafts((prev) => ({ ...prev, [unitName]: { ...prev[unitName], lng: e.target.value, lat: prev[unitName]?.lat ?? '' } }))
+                    setDrafts((prev) => ({
+                      ...prev,
+                      [unitName]: { ...prev[unitName], lng: e.target.value, lat: prev[unitName]?.lat ?? '' },
+                    }))
                   }
-                  className="w-24 rounded border border-line px-2 py-1 text-xs focus:border-action focus:outline-none focus:ring-1 focus:ring-action"
+                  className="w-28 rounded border border-line-2 bg-surface px-2.5 py-1 font-mono text-xs text-ink-900 placeholder:text-ink-500 focus:border-action focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => handleSave(unitName)}
-                  className="rounded border border-line px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-canvas"
+                  className="rounded border border-line-2 bg-surface-2 px-3 py-1 font-mono text-xs font-semibold text-ink-700 hover:bg-surface-3 hover:text-ink-900 transition-colors"
                 >
-                  Log position
+                  LOG FIX
                 </button>
               </div>
             </li>
