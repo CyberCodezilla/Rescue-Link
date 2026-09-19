@@ -138,8 +138,8 @@ export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
     SAGEMAKER_TIMEOUT_MS: integerValue(env, 'SAGEMAKER_TIMEOUT_MS', 3500, 100, 120000),
     SAGEMAKER_TEMPERATURE: numberValue(env, 'SAGEMAKER_TEMPERATURE', 0.2, 0, 2),
 
-    COGNITO_USER_POOL_ID: env.COGNITO_USER_POOL_ID || 'us-east-1_rescuePool',
-    COGNITO_CLIENT_ID: env.COGNITO_CLIENT_ID || 'rescueClientAppId',
+    COGNITO_USER_POOL_ID: env.COGNITO_USER_POOL_ID || 'us-east-1_92uD8l6uE',
+    COGNITO_CLIENT_ID: env.COGNITO_CLIENT_ID || '4o8r5rbke2t82v7b91kh9ie0r1',
     COGNITO_REGION: env.COGNITO_REGION || env.AWS_REGION || 'us-east-1',
 
     STATE_MACHINE_ARN: env.STATE_MACHINE_ARN || '',

@@ -92,6 +92,14 @@ async function request(
         headers,
       });
 
+      // Resilient 401 fallback: If Cognito token is rejected, retry seamlessly with API key
+      if (response.status === 401 && cognitoToken) {
+        console.warn('[API] Cognito access token rejected (401). Retrying with API key credentials fallback...');
+        cognitoToken = null;
+        attempt++;
+        continue;
+      }
+
       // HTTP 429 (Rate Limited) handling with exponential backoff & Retry-After header support
       if (response.status === 429) {
         if (attempt < maxRetries) {
