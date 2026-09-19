@@ -1,3 +1,5 @@
+import { TranslateClient, TranslateTextCommand } from '@aws-sdk/client-translate';
+
 export interface TranslationResult {
   translatedDescription: string;
   detectedLanguage: string;
@@ -47,33 +49,33 @@ const OFFLINE_TERMS: Record<string, string> = {
   'सहायता': 'assistance',
   'पानी': 'water',
   'छत': 'roof/terrace',
-  'खाना': 'food',
   'भोजन': 'food',
+  'खाना': 'food',
   'दवा': 'medicine',
   'दवाई': 'medicine',
-  'बोट': 'rescue boat',
-  'नाव': 'boat',
+  'नाव': 'rescue boat',
+  'कश्ती': 'boat',
   'घायल': 'injured',
-  'जख्मी': 'injured',
+  'चोट': 'injured',
   'लोग': 'people',
   'घर': 'house',
-  'डूब': 'submerged/drowning',
+  'डूबा': 'submerged/drowning',
   'तुरंत': 'immediately',
   'जल्दी': 'urgently',
   'कृपया': 'please',
   
   // Marathi
   'पूर': 'flood',
-  'पुराच्या': 'flood',
+  'पाणी': 'flood/water',
   'पाण्यात': 'in water',
   'अडकलो': 'trapped',
   'अडकले': 'trapped',
   'मदत': 'help',
   'औषध': 'medicine',
-  'जण': 'people',
-  'लवकर': 'urgently',
-  'ताबडतोब': 'immediately',
-  'घर कोसळले': 'house collapsed',
+  'लोक': 'people',
+  'तातडीने': 'urgently',
+  'त्वरीत': 'immediately',
+  'घर पडले': 'house collapsed',
 
   // Bengali
   'বন্যা': 'flood',
@@ -95,7 +97,7 @@ const OFFLINE_TERMS: Record<string, string> = {
   'உணவு': 'food',
   'மருந்து': 'medicine',
   'படகு': 'boat',
-  'சிக்கி': 'trapped',
+  'சிக்கியுள்ளனர்': 'trapped',
 
   // Telugu
   'వరద': 'flood',
@@ -128,6 +130,17 @@ const OFFLINE_TERMS: Record<string, string> = {
   'nourriture': 'food',
 };
 
+let cachedTranslateClient: TranslateClient | null = null;
+
+function getTranslateClient(): TranslateClient {
+  if (!cachedTranslateClient) {
+    cachedTranslateClient = new TranslateClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+    });
+  }
+  return cachedTranslateClient;
+}
+
 /**
  * Checks if a string contains non-Latin scripts (Devanagari, Bengali, Tamil, Telugu, etc.)
  */
@@ -149,6 +162,7 @@ export function detectNonEnglishScript(text: string): { isNonLatin: boolean; scr
 
 /**
  * Accurately translates any survivor distress message into canonical, actionable English text.
+ * Prioritizes Amazon Translate (AWS Free Tier), with resilient fallbacks to ensure zero failure.
  */
 export async function translateDistressMessage(text: string): Promise<TranslationResult> {
   const trimmed = text ? text.trim() : '';
@@ -162,7 +176,7 @@ export async function translateDistressMessage(text: string): Promise<Translatio
 
   const { isNonLatin, scriptName } = detectNonEnglishScript(trimmed);
 
-  // Quick check: If plain ASCII English and no non-English indicators
+  // Quick check: If plain ASCII English and no foreign indicators
   const isAsciiOnly = /^[\x00-\x7F]*$/.test(trimmed);
   const commonForeignWords = /\b(ayuda|por favor|inundaci[oó]n|fuego|heridos|est[aá]n|atrapad[oa]s|urgente|secours|bless[eé]s|bloqu[eé]s|s'il vous pla[iî]t|hilfe|bitte|rettung)\b/i;
   const isForeignLatin = commonForeignWords.test(trimmed);
@@ -175,7 +189,32 @@ export async function translateDistressMessage(text: string): Promise<Translatio
     };
   }
 
-  // 1. Primary High-Accuracy Neural Translation
+  // 1. PRIMARY: Amazon Translate (AWS Free Tier: 2 Million Characters/Month)
+  try {
+    const client = getTranslateClient();
+    const command = new TranslateTextCommand({
+      Text: trimmed,
+      SourceLanguageCode: 'auto',
+      TargetLanguageCode: 'en',
+    });
+
+    const response = await client.send(command);
+    if (response.TranslatedText && response.TranslatedText.trim().length > 0) {
+      const rawCode = (response.SourceLanguageCode || '').toLowerCase();
+      const detectedLanguage = LANGUAGE_CODE_MAP[rawCode] || scriptName || (rawCode ? rawCode.toUpperCase() : 'Non-English');
+
+      return {
+        translatedDescription: response.TranslatedText.trim(),
+        detectedLanguage,
+        isTranslated: true,
+      };
+    }
+  } catch (awsErr: any) {
+    // Graceful continuation: If running locally without AWS credentials or offline,
+    // seamlessly proceed to secondary neural / offline fallback with zero errors.
+  }
+
+  // 2. SECONDARY: Neural Public Endpoint Fallback
   try {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(trimmed)}`;
     const response = await fetch(url, {
@@ -203,10 +242,10 @@ export async function translateDistressMessage(text: string): Promise<Translatio
       }
     }
   } catch (netErr) {
-    // Network offline or endpoint unreachable: gracefully proceed to offline fallback
+    // Network offline: proceed to offline disaster term match
   }
 
-  // 2. Offline Fallback Keyword Translator
+  // 3. TERTIARY: Offline Disaster Emergency Term Dictionary
   const detectedLang = scriptName || (isForeignLatin ? 'Spanish/French' : 'Non-English');
   const matchedTerms: string[] = [];
 
@@ -225,7 +264,7 @@ export async function translateDistressMessage(text: string): Promise<Translatio
     };
   }
 
-  // Fallback if untranslatable offline
+  // 4. Final Fallback
   return {
     translatedDescription: `[Civilian SOS reported in ${detectedLang}]: ${trimmed}`,
     detectedLanguage: detectedLang,

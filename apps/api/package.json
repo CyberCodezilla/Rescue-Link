@@ -16,6 +16,7 @@
     "@aws-sdk/client-ses": "^3.1132.0",
     "@aws-sdk/client-sfn": "^3.1135.0",
     "@aws-sdk/client-sns": "^3.1132.0",
+    "@aws-sdk/client-translate": "^3.1136.0",
     "@aws-sdk/credential-provider-node": "^3.972.83",
     "@aws-sdk/lib-dynamodb": "^3.1132.0",
     "@rescue-link/config": "*",
