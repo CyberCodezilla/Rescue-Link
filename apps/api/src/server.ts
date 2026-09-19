@@ -1,3 +1,8 @@
+import path from 'node:path';
+import dotenv from 'dotenv';
+// Load from both apps/api/.env and monorepo root .env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 import 'dotenv/config'; // MUST be the first import to load .env before other modules evaluate process.env
 
 import { CONFIG } from '@rescue-link/config';
