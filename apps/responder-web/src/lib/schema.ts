@@ -90,7 +90,13 @@ export function getCategory(incident: Incident): IncidentCategory {
   return incident.category ?? incident.details?.category ?? 'other';
 }
 export function getDescription(incident: Incident): string {
-  return incident.description ?? incident.details?.description ?? '';
+  return incident.translatedDescription || incident.triage?.translatedDescription || incident.description || incident.details?.description || '';
+}
+export function getOriginalDescription(incident: Incident): string {
+  return incident.description || incident.details?.description || '';
+}
+export function getDetectedLanguage(incident: Incident): string {
+  return incident.detectedLanguage || incident.triage?.detectedLanguage || 'English';
 }
 export function getPeopleAffected(incident: Incident): number {
   return incident.peopleAffected ?? incident.details?.peopleAffected ?? 0;

@@ -8,6 +8,7 @@ import {
   MapPin,
   Users,
   FileText,
+  Languages,
   PhoneCall,
   Activity,
   ShieldCheck,
@@ -32,6 +33,7 @@ import {
   URGENT_NEED_LABELS,
   getCategory,
   getDescription,
+  getOriginalDescription,
   getPeopleAffected,
   getUrgentNeeds,
 } from '@responder/lib/schema';

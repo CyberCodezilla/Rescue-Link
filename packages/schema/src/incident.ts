@@ -83,6 +83,8 @@ export const IncidentTriageSchema = z.object({
   notes: z.string().optional(),
   summary: z.string().optional(),
   reasoning: z.string().optional(),
+  translatedDescription: z.string().optional(),
+  detectedLanguage: z.string().optional(),
 });
 export type IncidentTriage = z.infer<typeof IncidentTriageSchema>;
 
@@ -113,6 +115,8 @@ export const IncidentSchema = z.object({
   urgentNeeds: z.array(UrgentNeedEnum).optional().default([]),
   details: IncidentDetailsSchema.optional(),
   triage: IncidentTriageSchema.optional(),
+  translatedDescription: z.string().optional(),
+  detectedLanguage: z.string().optional(),
   assignedTo: z.string().optional(),
   audioBlob: z.string().optional(),
   householdComposition: HouseholdCompositionSchema.optional(),

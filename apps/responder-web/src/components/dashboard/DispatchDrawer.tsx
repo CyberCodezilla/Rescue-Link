@@ -28,6 +28,7 @@ import {
   URGENT_NEED_LABELS,
   getCategory,
   getDescription,
+  getOriginalDescription,
   getPeopleAffected,
   getUrgentNeeds,
   NEXT_ACTION,

@@ -79,6 +79,8 @@ export function generateHeuristicTriage(
       summary,
       reasoning,
       confidence,
+      translatedDescription: incident.translatedDescription || incident.description || '',
+      detectedLanguage: incident.detectedLanguage || 'en',
     },
   };
 }
@@ -111,18 +113,21 @@ Urgent Needs: ${incident.urgentNeeds.join(', ') || 'None specified'}
 Location: Lat ${incident.location.lat}, Lng ${incident.location.lng}
 
 CRITICAL MULTILINGUAL & TACTICAL INSTRUCTIONS:
-1. The survivor's description may be written in ANY language or dialect (e.g. Hindi, Marathi, Bengali, Telugu, Tamil, Gujarati, Kannada, Punjabi, Spanish, French, Arabic, Hinglish, etc.). Accurately comprehend the situation, hazards, trapped state, and urgency.
-2. The tactical responder/rescuer dashboard MUST ALWAYS receive information in standard ENGLISH.
-3. All output fields ("suggestedAction", "summary", "reasoning") MUST BE IN ENGLISH.
-4. In "summary", provide a clear English translation/summary of what the survivor reported so English-speaking rescue teams can respond immediately without language barriers.
+1. The survivor's description may be written in ANY language or dialect (e.g. Hindi, Marathi, Bengali, Telugu, Tamil, Gujarati, Kannada, Malayalam, Punjabi, Urdu, Spanish, French, Arabic, Hinglish, etc.). Accurately comprehend the situation, hazards, trapped state, and urgency.
+2. The tactical responder/rescuer dashboard MUST ALWAYS receive information in standard ENGLISH so rescuers don't need to manually translate anything.
+3. You MUST provide a faithful, accurate, and comprehensive English translation of the entire survivor's distress description in "translatedDescription". Preserve all details (casualty count, hazards, trapped level, injuries, resources needed).
+4. Identify the source language in "detectedLanguage" (e.g. "Hindi", "Marathi", "Bengali", "Spanish", "English", etc.).
+5. All output fields ("suggestedAction", "summary", "reasoning", "translatedDescription") MUST BE IN CANONICAL ENGLISH.
 
 Respond ONLY with a valid JSON object matching this exact schema:
 {
   "priority": "critical" | "high" | "medium" | "low",
   "suggestedAction": "Immediate life-safety directive in English",
-  "summary": "Brief dispatcher summary in English (with translated description if non-English)",
+  "summary": "Brief dispatcher situation summary in English",
   "reasoning": "Reason for priority assignment in English",
-  "confidence": 0.95
+  "confidence": 0.95,
+  "detectedLanguage": "Detected survivor language",
+  "translatedDescription": "Accurate, complete English translation of the survivor's description"
 }`;
 }
 
@@ -143,6 +148,8 @@ export function parseBedrockTriageOutput(responseBodyText: string): { priority: 
       summary: data.summary || `AI Triaged disaster distress call.`,
       reasoning: data.reasoning || 'Evaluated severity based on reported casualty risk.',
       confidence: typeof data.confidence === 'number' ? data.confidence : 0.9,
+      translatedDescription: typeof data.translatedDescription === 'string' && data.translatedDescription.trim() ? data.translatedDescription.trim() : (data.summary || undefined),
+      detectedLanguage: typeof data.detectedLanguage === 'string' ? data.detectedLanguage : 'en',
     },
   };
 }

@@ -9,6 +9,7 @@ import {
 } from '@rescue-link/schema';
 import { incidentStore } from '../store/incidentStore';
 import { triageWorkflow } from '../services/triageWorkflow';
+import { translateDistressMessage } from '../services/translationService';
 import { eventStreamManager } from '../services/eventStream';
 import { LifeSafetyTracer } from '../services/lifeSafetyTracer';
 import { CONFIG } from '@rescue-link/config';
@@ -32,6 +33,8 @@ incidentsRouter.post('/', sosRateLimit, async (req: Request, res: Response): Pro
   const payload = parseResult.data;
   const now = Date.now();
 
+  const translation = await translateDistressMessage(payload.description);
+
   const newIncident: Incident = {
     id: uuidv4(),
     createdAt: now,
@@ -42,9 +45,15 @@ incidentsRouter.post('/', sosRateLimit, async (req: Request, res: Response): Pro
     reporter: payload.reporter,
     category: payload.category,
     description: payload.description,
+    translatedDescription: translation.translatedDescription,
+    detectedLanguage: translation.detectedLanguage,
     peopleAffected: payload.peopleAffected,
     urgentNeeds: payload.urgentNeeds,
     audioBlob: payload.audioBlob,
+    triage: {
+      translatedDescription: translation.translatedDescription,
+      detectedLanguage: translation.detectedLanguage,
+    },
     details: {
       category: payload.category,
       description: payload.description,
