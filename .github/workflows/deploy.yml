@@ -23,13 +23,28 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Verify Survivor App Build
+        run: |
+          npm ci
+          npm run build:packages
+          npm run build --workspace=apps/survivor-web
+
       - name: Trigger AWS Amplify Survivor App Build
         run: |
           echo "Deploying Survivor Web App to AWS Amplify (App ID: d1s5o36sosgnvp, Region: us-east-1)..."
-          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
+            aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+            aws configure set default.region "us-east-1"
             aws amplify start-job --app-id d1s5o36sosgnvp --branch-name survivor --job-type RELEASE --region us-east-1
           else
-            echo "AWS credentials secret not configured in GitHub repository. Skipping direct AWS API trigger."
+            echo "AWS credentials secret not configured in GitHub repository. Relying on AWS Amplify Git webhook integration."
           fi
 
   deploy-rescuer-app:
@@ -40,13 +55,28 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Verify Rescuer App Build
+        run: |
+          npm ci
+          npm run build:packages
+          npm run build --workspace=apps/responder-web
+
       - name: Trigger AWS Amplify Rescuer App Build
         run: |
           echo "Deploying Rescuer Web App to AWS Amplify (App ID: d3w0lc6ciydtzq, Region: us-west-2)..."
-          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
+            aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+            aws configure set default.region "us-west-2"
             aws amplify start-job --app-id d3w0lc6ciydtzq --branch-name rescuer --job-type RELEASE --region us-west-2
           else
-            echo "AWS credentials secret not configured in GitHub repository. Skipping direct AWS API trigger."
+            echo "AWS credentials secret not configured in GitHub repository. Relying on AWS Amplify Git webhook integration."
           fi
 
   deploy-api-ec2:

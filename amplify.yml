@@ -1,0 +1,34 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+        - npm run build:packages
+    build:
+      commands:
+        - |
+          if [ "$AWS_BRANCH" = "rescuer" ] || [ "$AWS_BRANCH" = "responder" ]; then
+            echo "Deploying Responder/Rescuer Web App for branch $AWS_BRANCH..."
+            npm run build --workspace=apps/responder-web
+            rm -rf .next
+            cp -r apps/responder-web/.next .next
+            mkdir -p public
+            cp -r apps/responder-web/public/* public/ 2>/dev/null || true
+          else
+            echo "Deploying Survivor Web App for branch $AWS_BRANCH..."
+            npm run build --workspace=apps/survivor-web
+            rm -rf .next
+            cp -r apps/survivor-web/.next .next
+            mkdir -p public
+            cp -r apps/survivor-web/public/* public/ 2>/dev/null || true
+          fi
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - apps/survivor-web/.next/cache/**/*
+      - apps/responder-web/.next/cache/**/*
