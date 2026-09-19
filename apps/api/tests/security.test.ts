@@ -16,7 +16,7 @@ describe('API Security & Authentication Tests', () => {
   it('allows authenticated PATCH /api/incidents/:id with valid x-api-key', async () => {
     const res = await request(app)
       .patch('/api/incidents/non-existent-id')
-      .set('x-api-key', 'rescuelink-responder-key-2026')
+      .set('x-api-key', 'test-only-rescue-link-key')
       .send({ status: 'resolved' });
 
     expect(res.status).toBe(404);

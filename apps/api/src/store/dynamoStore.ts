@@ -27,9 +27,19 @@ export class DynamoIncidentStore {
       new PutCommand({
         TableName: this.tableName,
         Item: incident,
+        ConditionExpression: 'attribute_not_exists(id)',
       })
     );
 
+    return incident;
+  }
+
+  async replace(incident: Incident): Promise<Incident> {
+    const { docClient, PutCommand } = await this.getDocClient();
+    await docClient.send(new PutCommand({
+      TableName: this.tableName,
+      Item: incident,
+    }));
     return incident;
   }
 
@@ -48,56 +58,70 @@ export class DynamoIncidentStore {
 
   async list(filter?: { status?: IncidentStatus | IncidentStatus[]; priority?: Priority; q?: string; since?: number }): Promise<Incident[]> {
     const statusList = filter?.status
-      ? Array.isArray(filter.status)
-        ? filter.status
-        : [filter.status]
+      ? (Array.isArray(filter.status) ? filter.status : [filter.status])
       : [];
 
-    if (statusList.length === 1 && !filter?.priority && !filter?.since && !filter?.q) {
+    const queryIndex = async (indexName: string, keyName: string, keyValue: string): Promise<Incident[]> => {
       const { docClient, QueryCommand } = await this.getDocClient();
-      const res: any = await docClient.send(
-        new QueryCommand({
-          TableName: this.tableName,
-          IndexName: 'StatusCreatedAtIndex',
-          KeyConditionExpression: '#status = :status',
-          ExpressionAttributeNames: { '#status': 'status' },
-          ExpressionAttributeValues: { ':status': statusList[0] },
-          ScanIndexForward: false,
-        })
-      );
+      const expressionAttributeNames: Record<string, string> = { '#key': keyName };
+      const expressionAttributeValues: Record<string, any> = { ':key': keyValue };
+      let keyCondition = '#key = :key';
+      if (filter?.since !== undefined && Number.isFinite(filter.since)) {
+        expressionAttributeNames['#createdAt'] = 'createdAt';
+        expressionAttributeValues[':since'] = filter.since;
+        keyCondition += ' AND #createdAt >= :since';
+      }
+      const res: any = await docClient.send(new QueryCommand({
+        TableName: this.tableName,
+        IndexName: indexName,
+        KeyConditionExpression: keyCondition,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+        ScanIndexForward: false,
+      }));
       return (res.Items as Incident[]) || [];
+    };
+
+    // Indexed paths avoid a full table scan for the common responder filters.
+    if (statusList.length === 1 && !filter?.priority && !filter?.q) {
+      return queryIndex('StatusCreatedAtIndex', 'status', statusList[0]);
+    }
+    if (statusList.length === 0 && filter?.priority && !filter?.q) {
+      return queryIndex('PriorityCreatedAtIndex', 'priority', filter.priority);
+    }
+
+    // Multi-status queries use one indexed query per status and merge in memory.
+    if (statusList.length > 1 && !filter?.priority && !filter?.q) {
+      const groups = await Promise.all(statusList.map((status) => queryIndex('StatusCreatedAtIndex', 'status', status)));
+      return groups.flat().sort((a, b) => b.createdAt - a.createdAt);
     }
 
     const { docClient, ScanCommand } = await this.getDocClient();
-
     const filterExpressions: string[] = [];
     const expressionAttributeNames: Record<string, string> = {};
     const expressionAttributeValues: Record<string, any> = {};
 
     if (statusList.length > 0) {
       expressionAttributeNames['#status'] = 'status';
-      const keys = statusList.map((s, idx) => {
-        const k = `:st_${idx}`;
-        expressionAttributeValues[k] = s;
-        return k;
+      const keys = statusList.map((status, idx) => {
+        const key = `:st_${idx}`;
+        expressionAttributeValues[key] = status;
+        return key;
       });
       filterExpressions.push(`#status IN (${keys.join(', ')})`);
     }
-
     if (filter?.priority) {
       expressionAttributeNames['#priority'] = 'priority';
       expressionAttributeValues[':priority'] = filter.priority;
       filterExpressions.push('#priority = :priority');
     }
-
-    if (filter?.since !== undefined && !Number.isNaN(filter.since)) {
+    if (filter?.since !== undefined && Number.isFinite(filter.since)) {
       expressionAttributeNames['#updatedAt'] = 'updatedAt';
       expressionAttributeNames['#createdAt'] = 'createdAt';
       expressionAttributeValues[':since'] = filter.since;
       filterExpressions.push('(#updatedAt >= :since OR #createdAt >= :since)');
     }
-
-    if (filter?.q && filter.q.trim() !== '') {
+    if (filter?.q?.trim()) {
       const queryStr = filter.q.trim();
       expressionAttributeNames['#desc'] = 'description';
       expressionAttributeNames['#cat'] = 'category';
@@ -105,25 +129,18 @@ export class DynamoIncidentStore {
       filterExpressions.push('(contains(#desc, :qStr) OR contains(#cat, :qStr))');
     }
 
-    let items: Incident[] = [];
-    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
-
+    const items: Incident[] = [];
+    let lastEvaluatedKey: Record<string, any> | undefined;
     do {
-      const scanInput: any = {
-        TableName: this.tableName,
-        ExclusiveStartKey: lastEvaluatedKey,
-      };
-
-      if (filterExpressions.length > 0) {
+      const scanInput: any = { TableName: this.tableName };
+      if (lastEvaluatedKey) scanInput.ExclusiveStartKey = lastEvaluatedKey;
+      if (filterExpressions.length) {
         scanInput.FilterExpression = filterExpressions.join(' AND ');
         scanInput.ExpressionAttributeNames = expressionAttributeNames;
         scanInput.ExpressionAttributeValues = expressionAttributeValues;
       }
-
       const res: any = await docClient.send(new ScanCommand(scanInput));
-      if (res.Items) {
-        items.push(...(res.Items as Incident[]));
-      }
+      if (res.Items) items.push(...(res.Items as Incident[]));
       lastEvaluatedKey = res.LastEvaluatedKey;
     } while (lastEvaluatedKey);
 
@@ -141,7 +158,7 @@ export class DynamoIncidentStore {
       updatedAt: Date.now(),
     };
 
-    await this.create(updated);
+    await this.replace(updated);
     return updated;
   }
 

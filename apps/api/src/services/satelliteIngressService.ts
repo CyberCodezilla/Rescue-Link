@@ -92,7 +92,26 @@ export class SatelliteIngressService {
       };
     }
 
-    const created = await incidentStore.create(incident);
+    let created: Incident;
+    try {
+      created = await incidentStore.create(incident);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ConditionalCheckFailedException') {
+        const duplicate = await incidentStore.getById(incident.id);
+        if (duplicate) {
+          return {
+            accepted: true,
+            duplicate: true,
+            packetId: packet.packetId,
+            deviceId: packet.deviceId,
+            type: packet.type,
+            rawBytes: envelope.rawBytes,
+            incident: duplicate,
+          };
+        }
+      }
+      throw error;
+    }
     eventStreamManager.broadcast({
       type: 'incident:created',
       incident: created,

@@ -28,9 +28,14 @@ export class NotificationService {
       };
     }
 
-    const hasAwsKeys = Boolean(process.env.AWS_ACCESS_KEY_ID || process.env.AWS_PROFILE);
+    const hasAwsRuntimeCredentials = Boolean(
+      process.env.AWS_ACCESS_KEY_ID ||
+      process.env.AWS_PROFILE ||
+      process.env.AWS_EXECUTION_ENV ||
+      CONFIG.NODE_ENV === 'production'
+    );
 
-    if (hasAwsKeys) {
+    if (hasAwsRuntimeCredentials) {
       try {
         const [snsResult, sesResult] = await Promise.all([
           this.sendSnsNotification(incident),

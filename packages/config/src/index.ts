@@ -90,7 +90,7 @@ export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
   }
 
   if (nodeEnv === 'production') {
-    if (!env.API_KEY || env.API_KEY === 'rescuelink-responder-key-2026') {
+    if (!env.API_KEY || env.API_KEY.length < 32) {
       throw new Error('API_KEY environment variable must be explicitly defined in production');
     }
     if (env.DYNAMODB_TABLE_INCIDENTS !== undefined && env.DYNAMODB_TABLE_INCIDENTS.trim() === '') {
@@ -102,12 +102,12 @@ export function validateApiEnv(env: Env = process.env): ApiEnvironmentConfig {
     if (env.SES_ALERT_RECIPIENT && env.SES_ALERT_RECIPIENT.includes('example.com')) {
       throw new Error('SES_ALERT_RECIPIENT cannot use placeholder example.com in production');
     }
-    if (env.LAMBDA_CALLBACK_SECRET === 'change-me') {
-      throw new Error('LAMBDA_CALLBACK_SECRET must not be placeholder value in production');
+    if (!env.LAMBDA_CALLBACK_SECRET || env.LAMBDA_CALLBACK_SECRET.length < 32) {
+      throw new Error('LAMBDA_CALLBACK_SECRET must be at least 32 characters in production');
     }
   }
 
-  const apiKey = env.API_KEY ?? 'rescuelink-responder-key-2026';
+  const apiKey = env.API_KEY ?? '';
 
   return {
     PORT: integerValue(env, 'PORT', 3001, 1, 65535),
@@ -202,6 +202,10 @@ export function validateClientEnv(
     env.NEXT_PUBLIC_API_ORIGIN ||
     'http://localhost:3001';
 
+  if (env.NODE_ENV === 'production' && !env.NEXT_PUBLIC_API_KEY) {
+    throw new Error('NEXT_PUBLIC_API_KEY must be explicitly defined in production');
+  }
+
   try {
     new URL(origin);
   } catch {
@@ -210,7 +214,7 @@ export function validateClientEnv(
 
   return {
     RESCUE_LINK_API_ORIGIN: origin,
-    NEXT_PUBLIC_API_KEY: env.NEXT_PUBLIC_API_KEY || 'rescuelink-responder-key-2026',
+    NEXT_PUBLIC_API_KEY: env.NEXT_PUBLIC_API_KEY || '',
   };
 }
 
@@ -223,3 +227,6 @@ export const CONFIG = {
 };
 
 export * from './motion.js';
+
+
+

@@ -16,7 +16,7 @@ Centralized environment variable validation, parsing helper functions, feature t
 |-----|-------------|--------------------|
 | `PORT` | Express API Server Port | `3001` |
 | `NODE_ENV` | Runtime Environment (`development` \| `test` \| `production`) | `development` |
-| `API_KEY` | API Security Key for Responder operations | `rescuelink-responder-key-2026` |
+| `API_KEY` | API Security Key for Responder operations | empty in development, required in production |
 | `AWS_REGION` | AWS Region for Bedrock, DynamoDB, SNS, SES | `us-east-1` |
 | `DYNAMODB_TABLE_INCIDENTS` | DynamoDB Table Name | `rescue-incidents` |
 | `USE_LOCAL_MOCK_STORE` | Force in-memory store in dev/test | `false` |
@@ -35,7 +35,7 @@ Centralized environment variable validation, parsing helper functions, feature t
 ## 🔒 Production Validation Rules
 
 When `NODE_ENV=production`, `validateApiEnv()` enforces strict safety checks:
-1. `API_KEY` must be explicitly defined and cannot be the default placeholder (`rescuelink-responder-key-2026`).
+1. `API_KEY` must be explicitly defined and cannot be the default placeholder (empty in development, required in production).
 2. `DYNAMODB_TABLE_INCIDENTS` cannot be empty.
 3. `SES_FROM_EMAIL` and `SES_ALERT_RECIPIENT` cannot contain `example.com` placeholder domains.
-4. `LAMBDA_CALLBACK_SECRET` cannot be the default `change-me` placeholder.
+4. `LAMBDA_CALLBACK_SECRET` must be explicitly configured and at least 32 characters.

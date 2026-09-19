@@ -13,6 +13,7 @@ Globals:
         DYNAMODB_TABLE_INCIDENTS: !Ref IncidentTableName
         BEDROCK_MODEL_ID: us.anthropic.claude-haiku-4-5-20251001-v1:0
         BEDROCK_MAX_TOKENS: '300'
+        BEDROCK_TIMEOUT_MS: '3500'
         BEDROCK_TEMPERATURE: '0.2'
         TRIAGE_CRITICAL_PEOPLE_THRESHOLD: '5'
         TRIAGE_HIGH_PEOPLE_THRESHOLD: '3'
@@ -34,10 +35,12 @@ Parameters:
     Default: rescue-incidents
   SesFromEmail:
     Type: String
-    Default: alerts@example.com
+    Default: alerts@rescuelink.org
+    Description: Verified SES sender email address
   SesAlertRecipient:
     Type: String
-    Default: responders@example.com
+    Default: responders@rescuelink.org
+    Description: Emergency responder recipient email address
   RescueLinkCallbackUrl:
     Type: String
     Default: ''
@@ -45,7 +48,9 @@ Parameters:
   LambdaCallbackSecret:
     Type: String
     NoEcho: true
-    Default: change-me
+    Default: rescue-link-default-lambda-callback-secret-2026
+    MinLength: 32
+    Description: Random secret used to authenticate Step Functions callbacks
   SatelliteIotTopic:
     Type: String
     Default: rescuelink/satellite/+/uplink
@@ -63,6 +68,8 @@ Resources:
           AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
+        - AttributeName: priority
+          AttributeType: S
       KeySchema:
         - AttributeName: id
           KeyType: HASH
@@ -71,6 +78,14 @@ Resources:
         - IndexName: StatusCreatedAtIndex
           KeySchema:
             - AttributeName: status
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: PriorityCreatedAtIndex
+          KeySchema:
+            - AttributeName: priority
               KeyType: HASH
             - AttributeName: createdAt
               KeyType: RANGE

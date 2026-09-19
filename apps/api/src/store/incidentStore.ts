@@ -2,6 +2,13 @@ import { Incident, IncidentSchema, IncidentStatus, Priority } from '@rescue-link
 import { CONFIG } from '@rescue-link/config';
 import { DynamoIncidentStore } from './dynamoStore';
 
+export class IncidentPersistenceError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'IncidentPersistenceError';
+  }
+}
+
 export interface IIncidentStore {
   create(incident: Incident): Promise<Incident>;
   getById(id: string): Promise<Incident | null>;
@@ -83,6 +90,27 @@ export class InMemoryIncidentStore implements IIncidentStore {
   }
 }
 
+async function retryPersistentWrite<T>(operation: () => Promise<T>, label: string): Promise<T> {
+  const maxAttempts = 3;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (error instanceof Error && error.name === 'ConditionalCheckFailedException') {
+        throw error;
+      }
+      if (attempt < maxAttempts) {
+        const delayMs = 100 * 2 ** (attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  console.error(`[IncidentStore] Persistent ${label} failed after ${maxAttempts} attempts. No volatile success will be reported.`, lastError);
+  throw new IncidentPersistenceError(`Persistent ${label} failed after ${maxAttempts} attempts`, { cause: lastError });
+}
+
 export class DelegatingIncidentStore implements IIncidentStore {
   private fallbackCount = 0;
   private memoryStore = new InMemoryIncidentStore();
@@ -106,15 +134,9 @@ export class DelegatingIncidentStore implements IIncidentStore {
       return this.memoryStore.create(validated);
     }
 
-    try {
-      const created = await this.dynamoStore.create(validated);
-      await this.memoryStore.create(created);
-      return created;
-    } catch (err) {
-      this.fallbackCount++;
-      console.warn('[IncidentStore] DynamoDB create failed, falling back to memory store:', err);
-      return this.memoryStore.create(validated);
-    }
+    const created = await retryPersistentWrite(() => this.dynamoStore.create(validated), 'create');
+    await this.memoryStore.create(created);
+    return created;
   }
 
   async getById(id: string): Promise<Incident | null> {
@@ -161,15 +183,9 @@ export class DelegatingIncidentStore implements IIncidentStore {
       return this.memoryStore.update(id, validated);
     }
 
-    try {
-      const updated = await this.dynamoStore.update(id, validated);
-      if (updated) await this.memoryStore.create(updated);
-      return updated ?? this.memoryStore.update(id, validated);
-    } catch (err) {
-      this.fallbackCount++;
-      console.warn('[IncidentStore] DynamoDB update failed, falling back to memory store:', err);
-      return this.memoryStore.update(id, validated);
-    }
+    const updated = await retryPersistentWrite(() => this.dynamoStore.update(id, validated), 'update');
+    if (updated) await this.memoryStore.create(updated);
+    return updated;
   }
 
   async clear(): Promise<void> {

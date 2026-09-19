@@ -15,6 +15,7 @@ const CONFIG = {
   TABLE: process.env.DYNAMODB_TABLE_INCIDENTS || 'rescue-incidents',
   MODEL_ID: process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
   MAX_TOKENS: parseIntegerEnv(process.env.BEDROCK_MAX_TOKENS, 300),
+  TIMEOUT_MS: parseIntegerEnv(process.env.BEDROCK_TIMEOUT_MS, 3500),
   TEMPERATURE: parseNumberEnv(process.env.BEDROCK_TEMPERATURE, 0.2),
   CRITICAL_PEOPLE: parseIntegerEnv(process.env.TRIAGE_CRITICAL_PEOPLE_THRESHOLD, 5),
   HIGH_PEOPLE: parseIntegerEnv(process.env.TRIAGE_HIGH_PEOPLE_THRESHOLD, 3),
@@ -56,7 +57,7 @@ async function bedrockTriage(incident: Incident) {
     contentType: 'application/json',
     accept: 'application/json',
     body: JSON.stringify({ anthropic_version: 'bedrock-2023-05-31', max_tokens: CONFIG.MAX_TOKENS, temperature: CONFIG.TEMPERATURE, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }] }),
-  }));
+  }), { abortSignal: AbortSignal.timeout(CONFIG.TIMEOUT_MS) });
   const body = new TextDecoder().decode(response.body);
   return parseBedrockTriageOutput(body);
 }

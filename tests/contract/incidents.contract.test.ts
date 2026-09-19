@@ -147,7 +147,7 @@ describe('API Contract Tests - /api/incidents', () => {
       const incidentId = postRes.body.id;
       const ackRes = await request(app)
         .post(`/api/incidents/${incidentId}/acknowledge`)
-        .set('x-api-key', 'rescuelink-responder-key-2026')
+        .set('x-api-key', 'test-only-rescue-link-key')
         .send({ assignedTo: 'responder-unit-42' });
 
       expect(ackRes.status).toBe(200);
@@ -169,7 +169,7 @@ describe('API Contract Tests - /api/incidents', () => {
       const incidentId = postRes.body.id;
       const bcastRes = await request(app)
         .post(`/api/incidents/${incidentId}/broadcast`)
-        .set('x-api-key', 'rescuelink-responder-key-2026')
+        .set('x-api-key', 'test-only-rescue-link-key')
         .send({
           message: 'EVACUATE TO ROOF IMMEDIATELY',
           channel: 'wifi',
@@ -207,7 +207,7 @@ describe('API Contract Tests - /api/incidents', () => {
     it('dispatches manual test alert via NotificationService (200 OK)', async () => {
       const res = await request(app)
         .post('/api/notifications/test')
-        .set('x-api-key', 'rescuelink-responder-key-2026')
+        .set('x-api-key', 'test-only-rescue-link-key')
         .send({ priority: 'critical', category: 'fire' });
 
       expect(res.status).toBe(200);

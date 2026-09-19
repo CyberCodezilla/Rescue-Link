@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateApiEnv, validateClientEnv, ApiEnvSchema, ClientEnvSchema } from '@rescue-link/config';
+import { validateApiEnv, validateClientEnv } from '@rescue-link/config';
 
 describe('Centralized Environment Schema Validation', () => {
   it('validates default API configuration correctly when environment variables are missing', () => {
@@ -9,14 +9,15 @@ describe('Centralized Environment Schema Validation', () => {
     expect(config.AWS_REGION).toBe('us-east-1');
     expect(config.BEDROCK_MAX_TOKENS).toBe(300);
     expect(config.BEDROCK_TIMEOUT_MS).toBe(3500);
-    expect(config.API_KEY).toBe('rescuelink-responder-key-2026');
+    expect(config.API_KEY).toBe('');
   });
 
   it('parses and coerces custom env overrides correctly', () => {
     const customEnv = {
       PORT: '8080',
       NODE_ENV: 'production',
-      API_KEY: 'prod-secure-key-999',
+      API_KEY: 'prod-secure-key-999-prod-secure-key-999',
+      LAMBDA_CALLBACK_SECRET: 'a'.repeat(32),
       AWS_REGION: 'us-west-2',
       BEDROCK_MAX_TOKENS: '500',
       BEDROCK_TIMEOUT_MS: '5000',
@@ -27,7 +28,7 @@ describe('Centralized Environment Schema Validation', () => {
     const config = validateApiEnv(customEnv);
     expect(config.PORT).toBe(8080);
     expect(config.NODE_ENV).toBe('production');
-    expect(config.API_KEY).toBe('prod-secure-key-999');
+    expect(config.API_KEY).toBe('prod-secure-key-999-prod-secure-key-999');
     expect(config.AWS_REGION).toBe('us-west-2');
     expect(config.BEDROCK_MAX_TOKENS).toBe(500);
     expect(config.BEDROCK_TIMEOUT_MS).toBe(5000);

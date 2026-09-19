@@ -1,10 +1,10 @@
-﻿import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { CONFIG } from '@rescue-link/config';
 
-function safeCompare(a: string, b: string): boolean {
-  const hashA = createHash('sha256').update(a).digest();
-  const hashB = createHash('sha256').update(b).digest();
+export function safeCompare(a: string, b: string): boolean {
+  const hashA = createHash('sha256').update(a, 'utf8').digest();
+  const hashB = createHash('sha256').update(b, 'utf8').digest();
   return timingSafeEqual(hashA, hashB);
 }
 
@@ -14,7 +14,12 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction): 
     return next();
   }
 
-  const configuredKey = CONFIG.API_KEY || process.env.API_KEY || 'rescuelink-responder-key-2026';
+  const configuredKey = CONFIG.API_KEY || process.env.API_KEY;
+  if (!configuredKey) {
+    res.status(503).json({ error: 'API authentication is not configured' });
+    return;
+  }
+
   const authHeader = req.header('authorization');
   const bearerKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
   const providedKey =

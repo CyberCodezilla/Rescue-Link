@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { SatelliteUplinkRequestSchema } from '@rescue-link/schema';
 import { CONFIG } from '@rescue-link/config';
 import { satelliteIngressService } from '../services/satelliteIngressService';
+import { safeCompare } from '../middleware/auth';
+import { IncidentPersistenceError } from '../store/incidentStore';
 
 export const satelliteRouter = Router();
 
@@ -22,7 +24,7 @@ satelliteRouter.post('/uplink', async (req: Request, res: Response): Promise<voi
   }
 
   const providedKey = req.header('x-satellite-api-key');
-  if (!providedKey || providedKey !== configuredKey) {
+  if (!providedKey || !safeCompare(providedKey, configuredKey)) {
     res.status(401).json({ error: 'Unauthorized satellite uplink' });
     return;
   }
@@ -40,6 +42,10 @@ satelliteRouter.post('/uplink', async (req: Request, res: Response): Promise<voi
     const result = await satelliteIngressService.ingest(parsed.data);
     res.status(result.duplicate ? 200 : 202).json(result);
   } catch (error) {
+    if (error instanceof IncidentPersistenceError) {
+      res.status(503).json({ error: 'Satellite incident persistence is temporarily unavailable' });
+      return;
+    }
     const message = error instanceof Error ? error.message : 'Invalid satellite packet';
     res.status(400).json({ error: message });
   }

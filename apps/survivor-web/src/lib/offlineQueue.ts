@@ -91,29 +91,48 @@ export async function flushPendingIncidents(
   const pending = await getPendingIncidents();
   const syncedIncidents: Array<{ localId: string; serverId: string }> = [];
   let failedCount = 0;
+  let nextIndex = 0;
+  const concurrency = Math.min(4, pending.length);
 
-  for (const item of pending) {
-    try {
-      const response = await fetch(`${apiBase}/api/incidents`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(item.payload),
-      });
-
-      if (response.status === 201 || response.status === 200) {
-        const data = (await response.json()) as { id?: string; incident?: { id?: string } };
-        const serverId = data.id || data.incident?.id || `srv-${Date.now()}`;
-        await removePendingIncident(item.localId);
-        syncedIncidents.push({ localId: item.localId, serverId });
-      } else {
-        failedCount++;
+  const syncOne = async (item: PendingIncident): Promise<void> => {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await fetch(`${apiBase}/api/incidents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item.payload),
+        });
+        if (response.status === 201 || response.status === 200) {
+          const data = (await response.json()) as { id?: string; incident?: { id?: string } };
+          const serverId = data.id || data.incident?.id;
+          if (!serverId) throw new Error('Server accepted incident without returning an ID');
+          await removePendingIncident(item.localId);
+          syncedIncidents.push({ localId: item.localId, serverId });
+          return;
+        }
+        if (response.status < 500 && response.status !== 429) {
+          failedCount++;
+          return;
+        }
+      } catch {
+        // Retry transient network failures below.
       }
-    } catch {
-      failedCount++;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)));
+      }
     }
-  }
+    failedCount++;
+  };
 
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= pending.length) return;
+      await syncOne(pending[index]);
+    }
+  };
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
   return { syncedIncidents, failedCount };
 }

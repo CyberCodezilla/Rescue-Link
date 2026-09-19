@@ -16,7 +16,8 @@ export interface BedrockTriageResult {
 
 export class BedrockService {
   private lastFailureAt: number | null = null;
-  private circuitState: 'CLOSED' | 'OPEN' = 'CLOSED';
+  private circuitState: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+  private halfOpenProbeInFlight = false;
   private failureCount = 0;
   private circuitOpenedAt: number | null = null;
   private readonly FAILURE_THRESHOLD = 3;
@@ -32,8 +33,8 @@ export class BedrockService {
 
     if (this.circuitState === 'OPEN') {
       if (this.circuitOpenedAt && now - this.circuitOpenedAt > this.RESET_TIMEOUT_MS) {
-        this.circuitState = 'CLOSED';
-        this.failureCount = 0;
+        this.circuitState = 'HALF_OPEN';
+        this.halfOpenProbeInFlight = false;
       } else {
         LifeSafetyTracer.log({
           traceId: effectiveTraceId,
@@ -45,6 +46,13 @@ export class BedrockService {
         });
         return this.generateHeuristicTriage(incident);
       }
+    }
+
+    if (this.circuitState === 'HALF_OPEN') {
+      if (this.halfOpenProbeInFlight) {
+        return this.generateHeuristicTriage(incident);
+      }
+      this.halfOpenProbeInFlight = true;
     }
 
     LifeSafetyTracer.log({
@@ -59,6 +67,7 @@ export class BedrockService {
       const result = await this.invokeBedrockSDK(incident);
       this.failureCount = 0;
       this.circuitState = 'CLOSED';
+      this.halfOpenProbeInFlight = false;
       return result;
     } catch (error) {
       this.failureCount++;
@@ -66,6 +75,7 @@ export class BedrockService {
       if (this.failureCount >= this.FAILURE_THRESHOLD) {
         this.circuitState = 'OPEN';
         this.circuitOpenedAt = Date.now();
+        this.halfOpenProbeInFlight = false;
       }
 
       console.warn('[BedrockService] AWS Bedrock call failed, using heuristic fallback:', error);
@@ -121,7 +131,7 @@ export class BedrockService {
     };
 
     const command = new InvokeModelCommand(input);
-    const response = await client.send(command);
+    const response = await client.send(command, { abortSignal: AbortSignal.timeout(CONFIG.BEDROCK_TIMEOUT_MS) });
     const responseBody = new TextDecoder().decode(response.body);
 
     return parseBedrockTriageOutput(responseBody);
@@ -142,7 +152,7 @@ export class BedrockService {
     });
   }
   public getCircuitTelemetry(): {
-    circuitState: "CLOSED" | "OPEN";
+    circuitState: "CLOSED" | "OPEN" | "HALF_OPEN";
     consecutiveFailures: number;
     lastFailureAt: number | null;
     circuitOpenedAt: number | null;

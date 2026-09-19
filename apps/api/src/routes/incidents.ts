@@ -63,7 +63,14 @@ incidentsRouter.post('/', sosRateLimit, async (req: Request, res: Response): Pro
     priority: newIncident.priority,
   });
 
-  const created = await incidentStore.create(newIncident);
+  let created: Incident;
+  try {
+    created = await incidentStore.create(newIncident);
+  } catch (error) {
+    console.error(`[IncidentsRouter] Persistent incident create failed for ${newIncident.id}:`, error);
+    res.status(503).json({ error: 'Incident persistence is temporarily unavailable' });
+    return;
+  }
 
   // Broadcast creation to connected SSE clients
   eventStreamManager.broadcast({
@@ -191,7 +198,14 @@ incidentsRouter.patch('/:id', requireApiKey, async (req: Request, res: Response)
     }
   }
 
-  const updated = await incidentStore.update(id, updates);
+  let updated: Incident | null;
+  try {
+    updated = await incidentStore.update(id, updates);
+  } catch (error) {
+    console.error(`[IncidentsRouter] Persistent incident update failed for ${id}:`, error);
+    res.status(503).json({ error: 'Incident persistence is temporarily unavailable' });
+    return;
+  }
   if (updated) {
     eventStreamManager.broadcast({
       type: 'incident:updated',
@@ -213,10 +227,17 @@ incidentsRouter.post('/:id/acknowledge', requireApiKey, async (req: Request, res
     return;
   }
 
-  const updated = await incidentStore.update(id, {
-    status: 'acknowledged',
-    assignedTo: req.body.assignedTo || existing.assignedTo,
-  });
+  let updated: Incident | null;
+  try {
+    updated = await incidentStore.update(id, {
+      status: 'acknowledged',
+      assignedTo: req.body.assignedTo || existing.assignedTo,
+    });
+  } catch (error) {
+    console.error(`[IncidentsRouter] Persistent acknowledge failed for ${id}:`, error);
+    res.status(503).json({ error: 'Incident persistence is temporarily unavailable' });
+    return;
+  }
 
   if (updated) {
     eventStreamManager.broadcast({
@@ -252,7 +273,14 @@ incidentsRouter.post('/:id/broadcast', requireApiKey, async (req: Request, res: 
     notes: `Broadcast sent via ${channel || CONFIG.DEFAULT_BROADCAST_CHANNEL} to ${target || 'zone'}: ${message}`,
   };
 
-  const updated = await incidentStore.update(id, { triage: updatedTriage });
+  let updated: Incident | null;
+  try {
+    updated = await incidentStore.update(id, { triage: updatedTriage });
+  } catch (error) {
+    console.error(`[IncidentsRouter] Persistent broadcast update failed for ${id}:`, error);
+    res.status(503).json({ error: 'Incident persistence is temporarily unavailable' });
+    return;
+  }
 
   if (updated) {
     eventStreamManager.broadcast({
