@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, Activity, User, LogOut, Radio, Sparkles, ShieldCheck } from 'lucide-react';
+import { RefreshCw, Activity, User, LogOut, Radar, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { StreamStatus } from '@/hooks/useIncidentStream';
 
@@ -36,16 +36,73 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
 
   return (
     <header className="sticky top-0 z-30 flex flex-col gap-3 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+      {/* Dynamic Scoped Keyframes for Scanner Radar & Continuous Waves */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes radar-sweep {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes radar-wave {
+          0% {
+            transform: scale(0.4);
+            opacity: 0.95;
+            border-width: 1.5px;
+          }
+          60% {
+            opacity: 0.45;
+            border-width: 1px;
+          }
+          100% {
+            transform: scale(1.75);
+            opacity: 0;
+            border-width: 0.5px;
+          }
+        }
+      `}} />
+
       {/* Brand & System Health Indicator */}
       <div className="flex items-center gap-3.5">
-        {/* Futuristic AI Beacon Logo (Replaces plain 'RL' box) */}
-        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600/30 via-slate-900 to-cyan-950/50 border border-blue-500/40 shadow-[0_0_18px_rgba(59,130,246,0.35)] backdrop-blur-md group hover:border-blue-400/70 hover:shadow-[0_0_24px_rgba(59,130,246,0.5)] transition-all duration-300">
-          <div className="absolute inset-0 rounded-xl bg-blue-500/10 blur-sm -z-10 group-hover:bg-blue-500/20 transition-all" />
-          <Radio className="h-5 w-5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
-          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-          </span>
+        {/* Futuristic Flashlight Scanner Radar Logo with Continuous Smaller Waves */}
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950/90 border border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.3)] backdrop-blur-md overflow-hidden group hover:border-cyan-400/80 transition-all duration-300">
+          {/* Faint Concentric Grid / Crosshair Reticle */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+            <div className="h-7 w-7 rounded-full border border-cyan-400/30" />
+            <div className="absolute h-4 w-4 rounded-full border border-cyan-400/40" />
+            <div className="absolute h-full w-[1px] bg-cyan-400/20" />
+            <div className="absolute w-full h-[1px] bg-cyan-400/20" />
+          </div>
+
+          {/* Flashlight Scanner Radar Sweep Beam */}
+          <div
+            className="absolute inset-0 pointer-events-none origin-center"
+            style={{
+              background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(6,182,212,0.06) 300deg, rgba(56,189,248,0.45) 360deg)',
+              animation: 'radar-sweep 2.4s linear infinite',
+            }}
+          />
+
+          {/* Continuous Smaller Wave 1 */}
+          <span
+            className="absolute rounded-full border border-cyan-400 pointer-events-none"
+            style={{
+              width: '18px',
+              height: '18px',
+              animation: 'radar-wave 2.2s cubic-bezier(0.1, 0.4, 0.8, 1) infinite',
+            }}
+          />
+
+          {/* Continuous Smaller Wave 2 (Staggered) */}
+          <span
+            className="absolute rounded-full border border-cyan-300 pointer-events-none"
+            style={{
+              width: '18px',
+              height: '18px',
+              animation: 'radar-wave 2.2s cubic-bezier(0.1, 0.4, 0.8, 1) infinite 1.1s',
+            }}
+          />
+
+          {/* Core Radar Icon */}
+          <Radar className="relative z-10 h-5 w-5 text-cyan-400 group-hover:text-cyan-200 transition-colors drop-shadow-[0_0_8px_rgba(6,182,212,0.7)]" />
         </div>
 
         {/* Title & Status Pills */}
@@ -54,10 +111,6 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
             <h1 className="text-base font-extrabold tracking-tight text-white font-sans flex items-center">
               Rescue<span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">Link</span>
             </h1>
-            <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/25 px-2.5 py-0.5 font-mono font-bold text-[10px] tracking-wider uppercase shadow-[0_0_10px_rgba(59,130,246,0.15)]">
-              <Sparkles size={10} className="text-cyan-400 animate-pulse" />
-              AI Command
-            </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 px-2.5 py-0.5 font-mono font-semibold text-[10px] tracking-wider uppercase">
               <ShieldCheck size={11} className="text-emerald-400" />
               Active
