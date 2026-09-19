@@ -1,4 +1,4 @@
-﻿import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { healthRouter } from './routes/health';
 import { incidentsRouter } from './routes/incidents';
@@ -20,7 +20,9 @@ export const createApp = (): Express => {
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     })
   );
-  app.use(express.json());
+  // Support high-resolution Voice SOS audio blobs and telemetry payloads up to 10MB
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(generalRateLimit);
 
   app.get('/', (req: Request, res: Response) => {
@@ -52,9 +54,13 @@ export const createApp = (): Express => {
   });
 
   // Global error handler
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    if (err?.status === 413 || err?.type === 'entity.too.large') {
+      res.status(413).json({ error: 'Payload Too Large', message: 'SOS audio or message payload exceeds 10MB limit.' });
+      return;
+    }
     console.error('Unhandled API Error:', err);
-    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+    res.status(500).json({ error: 'Internal Server Error', message: err?.message || String(err) });
   });
 
   return app;
