@@ -1,3 +1,5 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700;800&family=Noto+Sans+Gujarati:wght@400;600;700&family=Noto+Sans+Gurmukhi:wght@400;600;700&family=Noto+Sans+Kannada:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans:wght@400;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,6 +16,8 @@
   --accent-warning: #f59e0b;
   --accent-success: #10b981;
   --accent-info: #3b82f6;
+
+  --font-indic: 'Noto Sans Devanagari', 'Noto Sans Bengali', 'Noto Sans Tamil', 'Noto Sans Telugu', 'Noto Sans Gujarati', 'Noto Sans Kannada', 'Noto Sans Gurmukhi', 'Nirmala UI', 'Mangal', sans-serif;
 }
 
 * {
@@ -26,7 +30,7 @@
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   min-height: 100vh;
   line-height: 1.5;
 }
@@ -38,6 +42,26 @@ button {
 
 input, textarea, select {
   font-family: inherit;
+}
+
+/* Indic Script Clean Text & Complex Text Layout (CTL) Protection */
+.indic-text {
+  font-family: var(--font-indic) !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere;
+  font-feature-settings: "kern" 1, "liga" 1, "clig" 1;
+}
+
+/* RTL Support for Arabic */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .ltr-only {
+  direction: ltr;
+  text-align: left;
 }
 
 /* Panic Accessibility: Minimum 48px touch targets */
@@ -61,4 +85,15 @@ input, textarea, select {
 
 .beacon-pulse {
   animation: beacon-pulse 2s infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

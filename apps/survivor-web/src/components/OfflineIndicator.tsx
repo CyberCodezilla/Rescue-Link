@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface OfflineIndicatorProps {
   isOnline: boolean;
@@ -16,6 +17,8 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
   isSyncing,
   onSyncNow,
 }) => {
+  const { t, isIndic } = useLanguage();
+
   return (
     <aside
       aria-label="Network connectivity and synchronization status"
@@ -31,7 +34,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
         gap: '10px',
         fontSize: '14px',
         fontWeight: 600,
-        letterSpacing: '0.02em',
+        letterSpacing: isIndic ? 'normal' : '0.02em',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -40,10 +43,8 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
         ) : (
           <WifiOff size={20} color="#fca5a5" aria-hidden="true" />
         )}
-        <span>
-          {isOnline
-            ? 'LIVE CONNECTION: Edge Uplink Active'
-            : 'OFFLINE MESH MODE: Captive Beacon Only (Local Storage Active)'}
+        <span className={isIndic ? 'indic-text' : ''}>
+          {isOnline ? t.connectivity.onlineActive : t.connectivity.offlineActive}
         </span>
       </div>
 
@@ -61,8 +62,8 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
             }}
           >
             <AlertCircle size={16} color="#fbbf24" />
-            <span>
-              {pendingCount} report{pendingCount > 1 ? 's' : ''} queued offline
+            <span className={isIndic ? 'indic-text' : ''}>
+              {pendingCount} {t.connectivity.pendingCount}
             </span>
           </div>
         )}
@@ -92,7 +93,9 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
                 animation: isSyncing ? 'spin 1s linear infinite' : 'none',
               }}
             />
-            {isSyncing ? 'Syncing...' : 'Sync Now'}
+            <span className={isIndic ? 'indic-text' : ''}>
+              {isSyncing ? t.connectivity.syncing : t.connectivity.syncNow}
+            </span>
           </button>
         )}
       </div>

@@ -99,7 +99,8 @@ export function buildBedrockTriagePrompt(incident: Incident): string {
     ? `Landmark: ${incident.locationContext.landmark || 'None'}, Shelter/Camp: ${incident.locationContext.shelterName || 'None'}, Road Access Blocked: ${incident.locationContext.roadAccessBlocked ? 'YES (CUT OFF)' : 'No'}`
     : 'None';
 
-  return `You are an expert emergency dispatch AI for RescueLink. Triage the following disaster SOS report:
+  return `You are an expert multilingual emergency dispatch triage AI for RescueLink.
+Triage the following disaster SOS report:
 Category: ${incident.category}
 Description: ${incident.description}
 Audio Distress Signal: ${audioSignal}
@@ -109,19 +110,22 @@ Location Context & Accessibility: ${locContextInfo}
 Urgent Needs: ${incident.urgentNeeds.join(', ') || 'None specified'}
 Location: Lat ${incident.location.lat}, Lng ${incident.location.lng}
 
+CRITICAL MULTILINGUAL & TACTICAL INSTRUCTIONS:
+1. The survivor's description may be written in ANY language or dialect (e.g. Hindi, Marathi, Bengali, Telugu, Tamil, Gujarati, Kannada, Punjabi, Spanish, French, Arabic, Hinglish, etc.). Accurately comprehend the situation, hazards, trapped state, and urgency.
+2. The tactical responder/rescuer dashboard MUST ALWAYS receive information in standard ENGLISH.
+3. All output fields ("suggestedAction", "summary", "reasoning") MUST BE IN ENGLISH.
+4. In "summary", provide a clear English translation/summary of what the survivor reported so English-speaking rescue teams can respond immediately without language barriers.
+
 Respond ONLY with a valid JSON object matching this exact schema:
 {
   "priority": "critical" | "high" | "medium" | "low",
-  "suggestedAction": "Immediate survival directive for survivor",
-  "summary": "Brief dispatcher summary",
-  "reasoning": "Reason for priority assignment",
+  "suggestedAction": "Immediate life-safety directive in English",
+  "summary": "Brief dispatcher summary in English (with translated description if non-English)",
+  "reasoning": "Reason for priority assignment in English",
   "confidence": 0.95
 }`;
 }
 
-/**
- * Parses and validates Bedrock AI JSON output into priority and triage structure.
- */
 export function parseBedrockTriageOutput(responseBodyText: string): { priority: Priority; triage: IncidentTriage } {
   const jsonMatch = responseBodyText.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {

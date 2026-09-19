@@ -18,7 +18,6 @@ import {
   HelpCircle,
   Mic,
   Square,
-  Trash2,
 } from 'lucide-react';
 import {
   SOSSubmissionSchema,
@@ -32,6 +31,7 @@ import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { VoiceSOSPlayer } from '@/components/VoiceSOSPlayer';
 import { enqueueIncident } from '@/lib/offlineQueue';
 import { fetchWithRetry } from '@/lib/api';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface SOSFormProps {
   isOnline: boolean;
@@ -44,32 +44,12 @@ interface SOSFormProps {
   onQueueUpdated?: () => void;
 }
 
-const CATEGORIES: Array<{
-  id: IncidentCategory;
-  label: string;
-  icon: React.ComponentType<{ size?: number; color?: string; className?: string }>;
-  color: string;
-  bgColor: string;
-}> = [
-  { id: 'flood', label: 'Flood / Water', icon: Waves, color: '#38bdf8', bgColor: '#082f49' },
-  { id: 'fire', label: 'Fire / Wildfire', icon: Flame, color: '#f87171', bgColor: '#450a0a' },
-  { id: 'landslide', label: 'Landslide / Debris', icon: Mountain, color: '#fbbf24', bgColor: '#451a03' },
-  { id: 'other', label: 'Other Threat', icon: AlertOctagon, color: '#c084fc', bgColor: '#3b0764' },
-];
-
-const URGENT_NEEDS: Array<{ id: UrgentNeed; label: string }> = [
-  { id: 'medical', label: 'Medical Aid' },
-  { id: 'boat', label: 'Rescue Boat' },
-  { id: 'food', label: 'Food Ration' },
-  { id: 'clean_water', label: 'Clean Water' },
-  { id: 'infant_care', label: 'Infant / Elderly Care' },
-];
-
 export const SOSForm: React.FC<SOSFormProps> = ({
   isOnline,
   onSubmitted,
   onQueueUpdated,
 }) => {
+  const { t, isIndic } = useLanguage();
   const [category, setCategory] = useState<IncidentCategory>('flood');
   const [description, setDescription] = useState<string>('');
   const [peopleAffected, setPeopleAffected] = useState<number>(1);
@@ -88,6 +68,27 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     captureLocation,
     setManualLocation,
   } = useGeolocation();
+
+  const categories: Array<{
+    id: IncidentCategory;
+    label: string;
+    icon: React.ComponentType<{ size?: number; color?: string; className?: string }>;
+    color: string;
+    bgColor: string;
+  }> = [
+    { id: 'flood', label: t.categories.flood, icon: Waves, color: '#38bdf8', bgColor: '#082f49' },
+    { id: 'fire', label: t.categories.fire, icon: Flame, color: '#f87171', bgColor: '#450a0a' },
+    { id: 'landslide', label: t.categories.landslide, icon: Mountain, color: '#fbbf24', bgColor: '#451a03' },
+    { id: 'other', label: t.categories.other, icon: AlertOctagon, color: '#c084fc', bgColor: '#3b0764' },
+  ];
+
+  const urgentNeedsList: Array<{ id: UrgentNeed; label: string }> = [
+    { id: 'medical', label: t.urgentNeeds.medical },
+    { id: 'boat', label: t.urgentNeeds.evacuation },
+    { id: 'food', label: t.urgentNeeds.food },
+    { id: 'clean_water', label: t.urgentNeeds.water },
+    { id: 'infant_care', label: t.urgentNeeds.shelter },
+  ];
 
   const toggleUrgentNeed = (need: UrgentNeed) => {
     setUrgentNeeds((prev) =>
@@ -134,7 +135,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
         };
       } else {
         setFormErrors([
-          'Location required: Please acquire your GPS position or enter valid latitude (-90 to 90) and longitude (-180 to 180) coordinates.',
+          `${t.form.location}: ${t.form.detectGps}`,
         ]);
         return;
       }
@@ -168,7 +169,6 @@ export const SOSForm: React.FC<SOSFormProps> = ({
     const validPayload = validationResult.data;
     setIsSubmitting(true);
 
-    // If offline, or if online POST fails, enqueue directly into IndexedDB
     if (!isOnline) {
       try {
         const queued = await enqueueIncident(validPayload);
@@ -180,7 +180,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
           isLocal: true,
         });
       } catch {
-        setFormErrors(['Failed to save report to local emergency cache. Please retry.']);
+        setFormErrors(['Emergency cache failed. Please retry.']);
       } finally {
         setIsSubmitting(false);
       }
@@ -212,7 +212,6 @@ export const SOSForm: React.FC<SOSFormProps> = ({
         throw new Error(`Server returned status ${response.status}`);
       }
     } catch {
-      // Fallback: Enqueue locally if network fails unexpectedly
       try {
         const queued = await enqueueIncident(validPayload);
         if (onQueueUpdated) onQueueUpdated();
@@ -247,15 +246,16 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       {/* Emergency Header */}
       <div style={{ textAlign: 'center' }}>
         <h1
+          className={isIndic ? 'indic-text' : ''}
           style={{
-            fontSize: '28px',
+            fontSize: '26px',
             fontWeight: 800,
             color: '#f8fafc',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '10px',
-            letterSpacing: '-0.02em',
+            letterSpacing: isIndic ? 'normal' : '-0.02em',
           }}
         >
           <span
@@ -268,10 +268,13 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             }}
             className="beacon-pulse"
           />
-          EMERGENCY DISTRESS SOS
+          {t.brand.title} • {t.brand.beacon}
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '15px', marginTop: '6px' }}>
-          Transmit immediate location and hazard details to nearby rescue responders.
+        <p
+          className={isIndic ? 'indic-text' : ''}
+          style={{ color: '#94a3b8', fontSize: '15px', marginTop: '6px', lineHeight: 1.5 }}
+        >
+          {t.brand.subtitle}
         </p>
       </div>
 
@@ -288,10 +291,12 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             fontSize: '14px',
           }}
         >
-          <div style={{ fontWeight: 700, marginBottom: '6px' }}>Please complete the following:</div>
+          <div style={{ fontWeight: 700, marginBottom: '6px' }} className={isIndic ? 'indic-text' : ''}>
+            {t.form.validationError}
+          </div>
           <ul style={{ paddingLeft: '20px' }}>
             {formErrors.map((err, idx) => (
-              <li key={idx}>{err}</li>
+              <li key={idx} className={isIndic ? 'indic-text' : ''}>{err}</li>
             ))}
           </ul>
         </div>
@@ -300,17 +305,18 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       {/* Step 1: Hazard Category */}
       <div>
         <label
+          className={isIndic ? 'indic-text' : ''}
           style={{
             display: 'block',
             fontSize: '14px',
             fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            textTransform: isIndic ? 'none' : 'uppercase',
+            letterSpacing: isIndic ? 'normal' : '0.05em',
             color: '#cbd5e1',
             marginBottom: '10px',
           }}
         >
-          1. Select Hazard Category
+          {t.form.selectCategory}
         </label>
         <div
           style={{
@@ -319,7 +325,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             gap: '12px',
           }}
         >
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const Icon = cat.icon;
             const isSelected = category === cat.id;
             return (
@@ -346,7 +352,17 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 }}
               >
                 <Icon size={32} color={isSelected ? cat.color : '#94a3b8'} />
-                <span style={{ fontSize: '15px', fontWeight: 700 }}>{cat.label}</span>
+                <span
+                  className={isIndic ? 'indic-text' : ''}
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {cat.label}
+                </span>
               </button>
             );
           })}
@@ -357,24 +373,26 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       <div>
         <label
           htmlFor="sos-description"
+          className={isIndic ? 'indic-text' : ''}
           style={{
             display: 'block',
             fontSize: '14px',
             fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            textTransform: isIndic ? 'none' : 'uppercase',
+            letterSpacing: isIndic ? 'normal' : '0.05em',
             color: '#cbd5e1',
             marginBottom: '8px',
           }}
         >
-          2. Describe Immediate Threat / Trapped State
+          {t.form.description}
         </label>
         <textarea
           id="sos-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. Water at ceiling level, 3 people trapped in attic, power lines down outside..."
+          placeholder={t.form.descriptionPlaceholder}
           rows={3}
+          className={isIndic ? 'indic-text' : ''}
           style={{
             width: '100%',
             padding: '14px',
@@ -382,9 +400,10 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             border: '2px solid #2a364f',
             backgroundColor: '#121826',
             color: '#ffffff',
-            fontSize: '16px',
+            fontSize: '15px',
             resize: 'vertical',
             outline: 'none',
+            lineHeight: 1.5,
           }}
         />
 
@@ -394,6 +413,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             <button
               type="button"
               onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
+              className={isIndic ? 'indic-text' : ''}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -419,12 +439,12 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                     <span className="wave-bar-2" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
                     <span className="wave-bar-3" style={{ width: '3px', backgroundColor: '#ffffff', borderRadius: '2px', display: 'inline-block' }} />
                   </div>
-                  <span>Recording Voice SOS ({voice.recordingDuration}s / 30s) — Click to Complete</span>
+                  <span>{t.form.stopRecording} ({voice.recordingDuration}s / 30s)</span>
                 </>
               ) : (
                 <>
                   <Mic size={18} color="#60a5fa" />
-                  <span>1-Tap: Record Voice Distress (30s Max for Trapped Victims)</span>
+                  <span>{t.form.startRecording}</span>
                 </>
               )}
             </button>
@@ -447,17 +467,18 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       {/* Step 3: Location Capture */}
       <div>
         <label
+          className={isIndic ? 'indic-text' : ''}
           style={{
             display: 'block',
             fontSize: '14px',
             fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            textTransform: isIndic ? 'none' : 'uppercase',
+            letterSpacing: isIndic ? 'normal' : '0.05em',
             color: '#cbd5e1',
             marginBottom: '8px',
           }}
         >
-          3. Emergency Location (GPS or Manual)
+          {t.form.location}
         </label>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -465,7 +486,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             type="button"
             onClick={captureLocation}
             disabled={geoLoading}
-            className="touch-target-large"
+            className={`touch-target-large ${isIndic ? 'indic-text' : ''}`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -477,24 +498,24 @@ export const SOSForm: React.FC<SOSFormProps> = ({
               borderRadius: '8px',
               padding: '14px 20px',
               fontWeight: 700,
-              fontSize: '16px',
+              fontSize: '15px',
               cursor: geoLoading ? 'not-allowed' : 'pointer',
             }}
           >
             {geoLoading ? (
               <>
                 <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-                <span>Acquiring High-Accuracy GPS Fix...</span>
+                <span>{t.form.detectingGps}</span>
               </>
             ) : location ? (
               <>
                 <Check size={20} color="#10b981" />
-                <span>GPS Locked: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}</span>
+                <span>{t.form.gpsAcquired}: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}</span>
               </>
             ) : (
               <>
                 <MapPin size={20} color="#60a5fa" />
-                <span>1-Tap: Capture Browser GPS Coordinates</span>
+                <span>{t.form.detectGps}</span>
               </>
             )}
           </button>
@@ -528,7 +549,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 id="manual-lat"
                 type="number"
                 step="any"
-                placeholder={location ? String(location.lat) : 'e.g. 37.7749'}
+                placeholder={location ? String(location.lat) : 'e.g. 19.0760'}
                 value={manualLat}
                 onChange={(e) => handleManualCoordinateChange(e.target.value, manualLng)}
                 style={{
@@ -553,7 +574,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 id="manual-lng"
                 type="number"
                 step="any"
-                placeholder={location ? String(location.lng) : 'e.g. -122.4194'}
+                placeholder={location ? String(location.lng) : 'e.g. 72.8777'}
                 value={manualLng}
                 onChange={(e) => handleManualCoordinateChange(manualLat, e.target.value)}
                 style={{
@@ -574,18 +595,25 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       {/* Step 4: People Affected Stepper */}
       <div>
         <label
+          className={isIndic ? 'indic-text' : ''}
           style={{
             display: 'block',
             fontSize: '14px',
             fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            textTransform: isIndic ? 'none' : 'uppercase',
+            letterSpacing: isIndic ? 'normal' : '0.05em',
             color: '#cbd5e1',
-            marginBottom: '8px',
+            marginBottom: '4px',
           }}
         >
-          4. Number of People Affected
+          {t.form.peopleAffected}
         </label>
+        <p
+          className={isIndic ? 'indic-text' : ''}
+          style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '10px', lineHeight: 1.4 }}
+        >
+          {t.form.peopleHelpText}
+        </p>
         <div
           style={{
             display: 'flex',
@@ -599,7 +627,9 @@ export const SOSForm: React.FC<SOSFormProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#cbd5e1' }}>
             <Users size={20} />
-            <span style={{ fontSize: '15px' }}>Total Individuals with you:</span>
+            <span className={isIndic ? 'indic-text' : ''} style={{ fontSize: '15px' }}>
+              {t.form.peopleAffected}:
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -703,26 +733,28 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       {/* Step 5: Urgent Needs Multi-Select */}
       <div>
         <label
+          className={isIndic ? 'indic-text' : ''}
           style={{
             display: 'block',
             fontSize: '14px',
             fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            textTransform: isIndic ? 'none' : 'uppercase',
+            letterSpacing: isIndic ? 'normal' : '0.05em',
             color: '#cbd5e1',
             marginBottom: '8px',
           }}
         >
-          5. Urgent Resource Needs (Select All That Apply)
+          {t.form.selectUrgentNeeds}
         </label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {URGENT_NEEDS.map((need) => {
+          {urgentNeedsList.map((need) => {
             const isSelected = urgentNeeds.includes(need.id);
             return (
               <button
                 key={need.id}
                 type="button"
                 onClick={() => toggleUrgentNeed(need.id)}
+                className={isIndic ? 'indic-text' : ''}
                 style={{
                   padding: '12px 18px',
                   borderRadius: '24px',
@@ -739,7 +771,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
                 }}
               >
                 {isSelected && <Check size={16} color="#fbbf24" />}
-                {need.label}
+                <span className={isIndic ? 'indic-text' : ''}>{need.label}</span>
               </button>
             );
           })}
@@ -759,7 +791,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             marginBottom: '8px',
           }}
         >
-          6. Contact Method for Rescuers (Optional)
+          Contact Method (Optional)
         </label>
         <div
           style={{
@@ -812,7 +844,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
               onChange={(e) => setContactValue(e.target.value)}
               placeholder={
                 contactMethod === 'phone'
-                  ? 'Enter phone number (e.g. +1 555-0199)'
+                  ? 'Enter phone number (e.g. +91 98765 43210)'
                   : 'Enter email address'
               }
               style={{
@@ -827,7 +859,6 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             />
           )}
 
-          {/* Phase 5: SNS/SES Notification Helper Text */}
           {contactMethod === 'phone' && (
             <div
               style={{
@@ -844,7 +875,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             >
               <Phone size={13} style={{ marginTop: '1px', flexShrink: 0 }} color="#34d399" />
               <span>
-                <strong style={{ color: '#34d399' }}>Emergency SMS Active:</strong> Your phone number enables an automatic emergency SMS alert to be dispatched directly to you the moment your distress signal reaches our command center.
+                <strong style={{ color: '#34d399' }}>Emergency SMS Active:</strong> Automatic SMS dispatch alert will trigger the moment your SOS reaches our command center.
               </span>
             </div>
           )}
@@ -864,7 +895,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
             >
               <Mail size={13} style={{ marginTop: '1px', flexShrink: 0 }} color="#60a5fa" />
               <span>
-                <strong style={{ color: '#60a5fa' }}>Emergency Email Active:</strong> An HTML emergency dispatch notification will be sent to the RescueLink response coordination team on your behalf when your SOS is received.
+                <strong style={{ color: '#60a5fa' }}>Emergency Email Active:</strong> Response coordination email will dispatch to the rescue team on your behalf.
               </span>
             </div>
           )}
@@ -875,7 +906,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="touch-target-large"
+        className={`touch-target-large ${isIndic ? 'indic-text' : ''}`}
         style={{
           backgroundColor: '#dc2626',
           color: '#ffffff',
@@ -884,7 +915,7 @@ export const SOSForm: React.FC<SOSFormProps> = ({
           padding: '18px 24px',
           fontSize: '20px',
           fontWeight: 900,
-          letterSpacing: '0.04em',
+          letterSpacing: isIndic ? 'normal' : '0.04em',
           cursor: isSubmitting ? 'not-allowed' : 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -897,12 +928,12 @@ export const SOSForm: React.FC<SOSFormProps> = ({
         {isSubmitting ? (
           <>
             <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
-            <span>TRANSMITTING DISTRESS SIGNAL...</span>
+            <span>{t.form.transmitting}</span>
           </>
         ) : (
           <>
             <Send size={24} />
-            <span>TRANSMIT DISTRESS SOS</span>
+            <span>{t.form.transmitSos}</span>
           </>
         )}
       </button>
