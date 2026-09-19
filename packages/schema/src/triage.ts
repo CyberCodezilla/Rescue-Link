@@ -31,10 +31,20 @@ export function generateHeuristicTriage(
 
   const needs = incident.urgentNeeds || [];
   const count = incident.peopleAffected || 1;
+  const household = incident.householdComposition;
+  const locCtx = incident.locationContext;
 
-  const hasCriticalNeed = hasAny(needs, criticalNeeds);
+  const hasVulnerableGroups = Boolean(
+    (household?.pregnantOrLactating && household.pregnantOrLactating > 0) ||
+    (household?.childrenUnder5 && household.childrenUnder5 > 0) ||
+    (household?.disabled && household.disabled > 0) ||
+    (household?.elderly && household.elderly > 0)
+  );
+  const isRoadBlocked = Boolean(locCtx?.roadAccessBlocked);
+
+  const hasCriticalNeed = hasAny(needs, criticalNeeds) || needs.includes('evacuation');
   const hasCriticalCategory = criticalCategories.includes(incident.category);
-  const hasHighNeed = hasAny(needs, highNeeds);
+  const hasHighNeed = hasAny(needs, highNeeds) || needs.includes('sanitation') || needs.includes('shelter');
   const hasHighCategory = highCategories.includes(incident.category);
 
   let priority: Priority = 'medium';
@@ -42,7 +52,7 @@ export function generateHeuristicTriage(
   let summary = `Standard ${incident.category} alert queued for responder review.`;
   let reasoning = 'Assigned MEDIUM priority for stable non-life-threatening assistance request.';
 
-  if (hasCriticalNeed || count >= criticalPeople || hasCriticalCategory) {
+  if (hasCriticalNeed || count >= criticalPeople || hasCriticalCategory || (hasVulnerableGroups && isRoadBlocked)) {
     priority = 'critical';
     suggestedAction =
       incident.category === 'flood'
@@ -51,15 +61,15 @@ export function generateHeuristicTriage(
         ? 'CRITICAL: Stay low beneath smoke. Cover face with wet cloth and move away from fire line.'
         : 'CRITICAL: Prepare for immediate medical evacuation. Keep air passages clear.';
     summary = `CRITICAL DISTRESS: ${count} people affected. High casualty risk.`;
-    reasoning = `Assigned CRITICAL priority due to urgent needs [${needs.join(', ')}] and ${count} casualties reported.`;
-  } else if (hasHighNeed || hasHighCategory || count >= highPeople) {
+    reasoning = `Assigned CRITICAL priority due to urgent needs [${needs.join(', ')}], ${count} casualties, or vulnerable individuals trapped without road access.`;
+  } else if (hasHighNeed || hasHighCategory || count >= highPeople || hasVulnerableGroups || isRoadBlocked) {
     priority = 'high';
     suggestedAction =
       incident.category === 'landslide'
         ? 'HIGH HAZARD: Move perpendicular to landslide flow direction toward stable rocky ground.'
         : 'High priority alert registered. Prepare emergency supply pickup zone.';
     summary = `HIGH PRIORITY: ${incident.category} incident requiring active responder intervention.`;
-    reasoning = `Assigned HIGH priority based on hazard classification (${incident.category}) and survivor population.`;
+    reasoning = `Assigned HIGH priority based on hazard classification (${incident.category}), vulnerable group presence, or road blockage context.`;
   }
 
   return {
@@ -81,11 +91,21 @@ export function buildBedrockTriagePrompt(incident: Incident): string {
     ? 'Yes (Recorded voice distress signal attached by survivor)'
     : 'None';
 
+  const householdInfo = incident.householdComposition
+    ? `Adults: ${incident.householdComposition.adults}, Children (<5): ${incident.householdComposition.childrenUnder5}, Elderly: ${incident.householdComposition.elderly}, Pregnant/Lactating: ${incident.householdComposition.pregnantOrLactating}, Disabled: ${incident.householdComposition.disabled}`
+    : 'Standard Household';
+
+  const locContextInfo = incident.locationContext
+    ? `Landmark: ${incident.locationContext.landmark || 'None'}, Shelter/Camp: ${incident.locationContext.shelterName || 'None'}, Road Access Blocked: ${incident.locationContext.roadAccessBlocked ? 'YES (CUT OFF)' : 'No'}`
+    : 'None';
+
   return `You are an expert emergency dispatch AI for RescueLink. Triage the following disaster SOS report:
 Category: ${incident.category}
 Description: ${incident.description}
 Audio Distress Signal: ${audioSignal}
 People Affected: ${incident.peopleAffected}
+Household Composition & Vulnerabilities: ${householdInfo}
+Location Context & Accessibility: ${locContextInfo}
 Urgent Needs: ${incident.urgentNeeds.join(', ') || 'None specified'}
 Location: Lat ${incident.location.lat}, Lng ${incident.location.lng}
 
