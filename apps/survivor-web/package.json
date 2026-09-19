@@ -25,6 +25,6 @@
     "@types/react-dom": "^19.0.4",
     "fake-indexeddb": "^6.0.0",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.7"
+    "vitest": "^5.0.1"
   }
 }
