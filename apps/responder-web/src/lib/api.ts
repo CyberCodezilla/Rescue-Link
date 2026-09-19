@@ -144,10 +144,11 @@ async function request(
   }
 }
 
-function parseIncident(data: unknown): IncidentResponse {
+function parseIncident(data: unknown): IncidentResponse | null {
   const result = IncidentSchema.safeParse(data);
   if (!result.success) {
-    throw new ApiError('The server returned an incident that does not match the expected shape.');
+    console.warn('[parseIncident] Invalid incident shape, skipping item:', result.error);
+    return null;
   }
   return result.data;
 }
@@ -163,7 +164,17 @@ function parseIncidentList(data: unknown): IncidentResponse[] {
     throw new ApiError('The server returned an unexpected incident list shape.');
   }
   const rawList = Array.isArray(envelope.data) ? envelope.data : envelope.data.incidents;
-  return rawList.map(parseIncident);
+  return rawList
+    .map(parseIncident)
+    .filter((item): item is IncidentResponse => item !== null);
+}
+
+function parseIncidentOrThrow(data: unknown): IncidentResponse {
+  const parsed = parseIncident(data);
+  if (!parsed) {
+    throw new ApiError('The server returned an incident that does not match the expected shape.');
+  }
+  return parsed;
 }
 
 /**
@@ -188,7 +199,7 @@ export async function getIncidents(signal?: AbortSignal): Promise<IncidentRespon
 
 export async function getIncident(id: string, signal?: AbortSignal): Promise<IncidentResponse> {
   const data = await request(`/incidents/${encodeURIComponent(id)}`, { signal });
-  return parseIncident(data);
+  return parseIncidentOrThrow(data);
 }
 
 export interface UpdateIncidentPayload {
@@ -212,7 +223,7 @@ export async function updateIncident(
     body: JSON.stringify(payload),
     signal,
   });
-  return parseIncident(data);
+  return parseIncidentOrThrow(data);
 }
 
 /**
@@ -229,7 +240,7 @@ export async function acknowledgeIncident(
     body: JSON.stringify(assignedTo ? { assignedTo } : {}),
     signal,
   });
-  return parseIncident(data);
+  return parseIncidentOrThrow(data);
 }
 
 /**

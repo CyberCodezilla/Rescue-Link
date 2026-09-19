@@ -19,7 +19,17 @@ export const IncidentStatusEnum = z.enum([
 ]);
 export type IncidentStatus = z.infer<typeof IncidentStatusEnum>;
 
-export const UrgentNeedEnum = z.enum(['medical', 'boat', 'food', 'clean_water', 'infant_care']);
+export const UrgentNeedEnum = z.enum([
+  'medical',
+  'boat',
+  'food',
+  'clean_water',
+  'infant_care',
+  'sanitation',
+  'shelter',
+  'psychosocial_support',
+  'evacuation',
+]);
 export type UrgentNeed = z.infer<typeof UrgentNeedEnum>;
 
 export const ContactMethodEnum = z.enum(['email', 'phone', 'none']);
@@ -61,23 +71,23 @@ export type IncidentTriage = z.infer<typeof IncidentTriageSchema>;
 
 export const IncidentResponseSchema = z.object({
   id: z.string(),
-  category: IncidentCategoryEnum,
-  description: z.string(),
-  location: LocationSchema,
-  peopleAffected: z.number(),
-  urgentNeeds: z.array(UrgentNeedEnum),
+  category: IncidentCategoryEnum.optional().default('other'),
+  description: z.string().optional().default(''),
+  location: LocationSchema.optional().default({ lat: 0, lng: 0 }),
+  peopleAffected: z.coerce.number().optional().default(1),
+  urgentNeeds: z.array(UrgentNeedEnum).optional().default([]),
   reporter: ReporterSchema.optional(),
-  status: IncidentStatusEnum,
-  priority: PriorityEnum,
-  createdAt: z.union([z.string(), z.number()]),
-  updatedAt: z.union([z.string(), z.number()]).optional(),
+  status: IncidentStatusEnum.optional().default('new'),
+  priority: PriorityEnum.optional().default('pending_triage'),
+  createdAt: z.union([z.string(), z.number()]).optional().default(() => Date.now()),
+  updatedAt: z.union([z.string(), z.number()]).optional().default(() => Date.now()),
   triage: IncidentTriageSchema.optional(),
   audioBlob: z.string().optional(),
   details: z.object({
-    category: IncidentCategoryEnum,
-    description: z.string(),
-    peopleAffected: z.number(),
-    urgentNeeds: z.array(UrgentNeedEnum),
+    category: IncidentCategoryEnum.optional().default('other'),
+    description: z.string().optional().default(''),
+    peopleAffected: z.coerce.number().optional().default(1),
+    urgentNeeds: z.array(UrgentNeedEnum).optional().default([]),
   }).optional(),
   assignedTo: z.string().optional(),
 });
