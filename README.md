@@ -537,6 +537,6 @@ flowchart TB
 <br><br>
 
 <img src="https://img.shields.io/badge/Made%20With-❤️%20%26%20Code-red?style=for-the-badge">
-<img src="https://img.shields.io/badge/Powered%20By-Claude%20%2B%20AWS-6c47ff?style=for-the-badge">
+<img src="https://img.shields.io/badge/Powered%20By-%20AWS-6c47ff?style=for-the-badge">
 
 </div>
