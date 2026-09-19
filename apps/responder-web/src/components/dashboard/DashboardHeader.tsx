@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { RefreshCw, Activity } from 'lucide-react';
 import type { StreamStatus } from '@/hooks/useIncidentStream';
 
@@ -18,6 +18,20 @@ const STREAM_LABEL: Record<StreamStatus, string> = {
 };
 
 export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, streamStatus }: DashboardHeaderProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const formattedTime = mounted && lastRefreshedAt
+    ? `SYNCED: ${lastRefreshedAt.toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })}`
+    : 'AWAITING INITIAL SYNC';
+
   return (
     <header className="flex flex-col gap-3 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sticky top-0 z-30 shadow-panel">
       <div className="flex items-center gap-3">
@@ -38,7 +52,7 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
             <span className="font-semibold text-slate-300 text-[11px] font-mono">STATUS: ACTIVE</span>
             {streamStatus ? (
               <>
-                <span className="text-slate-600">•</span>
+                <span className="text-slate-600">?</span>
                 <span className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 bg-slate-900 border border-slate-700/80 font-mono text-[10px] text-slate-300 font-medium">
                   <Activity size={11} className={streamStatus === 'live' ? 'text-emerald-400' : 'text-slate-400'} />
                   {STREAM_LABEL[streamStatus]}
@@ -50,14 +64,12 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
       </div>
 
       <div className="flex items-center gap-3 text-xs text-slate-400">
-        <span aria-live="polite" className="font-mono text-[11px] text-slate-400 bg-slate-900/80 border border-slate-800 rounded-full px-3 py-1">
-          {lastRefreshedAt
-            ? `SYNCED: ${lastRefreshedAt.toLocaleTimeString(undefined, {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })}`
-            : 'AWAITING INITIAL SYNC'}
+        <span
+          aria-live="polite"
+          suppressHydrationWarning
+          className="font-mono text-[11px] text-slate-400 bg-slate-900/80 border border-slate-800 rounded-full px-3 py-1"
+        >
+          {formattedTime}
         </span>
         <button
           type="button"

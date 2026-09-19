@@ -10,46 +10,6 @@ const POLL_INTERVAL_MS = 15_000;
 let memoryIncidentsCache: IncidentResponse[] | null = null;
 let memoryLastRefreshedAt: Date | null = null;
 
-function getInitialIncidents(): IncidentResponse[] | null {
-  if (memoryIncidentsCache && memoryIncidentsCache.length > 0) {
-    return memoryIncidentsCache;
-  }
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = sessionStorage.getItem('rescuelink_incidents_cache');
-      if (stored) {
-        const parsed = JSON.parse(stored) as IncidentResponse[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryIncidentsCache = parsed;
-          return parsed;
-        }
-      }
-    } catch {
-      // Ignore sessionStorage exceptions
-    }
-  }
-  return null;
-}
-
-function getInitialTimestamp(): Date | null {
-  if (memoryLastRefreshedAt) return memoryLastRefreshedAt;
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = sessionStorage.getItem('rescuelink_synced_at');
-      if (stored) {
-        const parsed = new Date(stored);
-        if (!isNaN(parsed.getTime())) {
-          memoryLastRefreshedAt = parsed;
-          return parsed;
-        }
-      }
-    } catch {
-      // Ignore
-    }
-  }
-  return null;
-}
-
 interface UseIncidentsState {
   incidents: IncidentResponse[] | null;
   isInitialLoading: boolean;
@@ -61,18 +21,45 @@ interface UseIncidentsState {
 }
 
 export function useIncidents(): UseIncidentsState {
-  const initialData = getInitialIncidents();
-  const initialTime = getInitialTimestamp();
-
-  const [incidents, setIncidents] = useState<IncidentResponse[] | null>(initialData);
-  const [isInitialLoading, setIsInitialLoading] = useState(initialData === null);
+  // Always initialize identically on SSR and first client hydration to prevent hydration mismatch
+  const [incidents, setIncidents] = useState<IncidentResponse[] | null>(() => memoryIncidentsCache);
+  const [isInitialLoading, setIsInitialLoading] = useState(() => memoryIncidentsCache === null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(initialTime);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(() => memoryLastRefreshedAt);
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const latestRequestId = useRef(0);
   const isFetchingRef = useRef(false);
+
+  // Restore cache from sessionStorage safely after mount without causing SSR hydration mismatch
+  useEffect(() => {
+    try {
+      if (!memoryIncidentsCache) {
+        const stored = sessionStorage.getItem('rescuelink_incidents_cache');
+        if (stored) {
+          const parsed = JSON.parse(stored) as IncidentResponse[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            memoryIncidentsCache = parsed;
+            setIncidents(parsed);
+            setIsInitialLoading(false);
+          }
+        }
+      }
+      if (!memoryLastRefreshedAt) {
+        const storedTime = sessionStorage.getItem('rescuelink_synced_at');
+        if (storedTime) {
+          const parsedTime = new Date(storedTime);
+          if (!isNaN(parsedTime.getTime())) {
+            memoryLastRefreshedAt = parsedTime;
+            setLastRefreshedAt(parsedTime);
+          }
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
 
   const load = useCallback(() => {
     if (isFetchingRef.current) return;

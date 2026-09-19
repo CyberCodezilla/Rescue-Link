@@ -17,8 +17,8 @@ export function OfflineBanner({ isServingCachedData, lastRefreshedAt }: OfflineB
       className="flex items-center gap-2 border-b border-amber-500/40 bg-amber-950/40 px-4 py-2 text-xs font-mono text-amber-200 sm:px-6 backdrop-blur-sm"
     >
       <WifiOff size={14} className="text-amber-400 shrink-0" />
-      <span>
-        OFFLINE CACHE ACTIVE â€” Displaying locally cached telemetry
+      <span suppressHydrationWarning>
+        OFFLINE CACHE ACTIVE — Displaying locally cached telemetry
         {lastRefreshedAt
           ? ` as of ${lastRefreshedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
           : ''}
