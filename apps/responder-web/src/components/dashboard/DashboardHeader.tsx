@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, Activity, User, LogOut, Radar, ShieldCheck } from 'lucide-react';
+import { RefreshCw, Activity, User, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { StreamStatus } from '@/hooks/useIncidentStream';
 
@@ -36,73 +36,40 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
 
   return (
     <header className="sticky top-0 z-30 flex flex-col gap-3 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
-      {/* Dynamic Scoped Keyframes for Scanner Radar & Continuous Waves */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes radar-sweep {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes radar-wave {
-          0% {
-            transform: scale(0.4);
-            opacity: 0.95;
-            border-width: 1.5px;
-          }
-          60% {
-            opacity: 0.45;
-            border-width: 1px;
-          }
-          100% {
-            transform: scale(1.75);
-            opacity: 0;
-            border-width: 0.5px;
-          }
-        }
-      `}} />
-
       {/* Brand & System Health Indicator */}
       <div className="flex items-center gap-3.5">
-        {/* Futuristic Flashlight Scanner Radar Logo with Continuous Smaller Waves */}
-        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950/90 border border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.3)] backdrop-blur-md overflow-hidden group hover:border-cyan-400/80 transition-all duration-300">
-          {/* Faint Concentric Grid / Crosshair Reticle */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
-            <div className="h-7 w-7 rounded-full border border-cyan-400/30" />
-            <div className="absolute h-4 w-4 rounded-full border border-cyan-400/40" />
-            <div className="absolute h-full w-[1px] bg-cyan-400/20" />
-            <div className="absolute w-full h-[1px] bg-cyan-400/20" />
+        {/* Tactical Circular Motion Radar Scope */}
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-950/95 border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.35)] backdrop-blur-md overflow-hidden group hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] transition-all duration-300">
+          {/* Faint Concentric Range Rings & Crosshairs */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-35">
+            <div className="h-7 w-7 rounded-full border border-cyan-400/40" />
+            <div className="absolute h-4 w-4 rounded-full border border-cyan-400/50" />
+            <div className="absolute h-full w-[1px] bg-cyan-400/25" />
+            <div className="absolute w-full h-[1px] bg-cyan-400/25" />
           </div>
 
-          {/* Flashlight Scanner Radar Sweep Beam */}
+          {/* Continuous Smaller Radar Wave 1 */}
+          <span className="radar-wave-1 absolute rounded-full border border-cyan-400/80 pointer-events-none w-5 h-5" />
+
+          {/* Continuous Smaller Radar Wave 2 (Staggered) */}
+          <span className="radar-wave-2 absolute rounded-full border border-cyan-300/70 pointer-events-none w-5 h-5" />
+
+          {/* Rotating Flashlight Scanner Beam (Full 360° Circular Motion) */}
           <div
-            className="absolute inset-0 pointer-events-none origin-center"
+            className="radar-sweep-spin absolute inset-0 pointer-events-none origin-center"
             style={{
-              background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(6,182,212,0.06) 300deg, rgba(56,189,248,0.45) 360deg)',
-              animation: 'radar-sweep 2.4s linear infinite',
+              background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(6,182,212,0.08) 300deg, rgba(56,189,248,0.55) 360deg)',
             }}
-          />
+          >
+            {/* Leading Flashlight Sweep Needle Line */}
+            <div className="absolute top-1/2 left-1/2 w-1/2 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400 to-cyan-200 shadow-[0_0_8px_#38bdf8] origin-left -translate-y-1/2" />
+          </div>
 
-          {/* Continuous Smaller Wave 1 */}
-          <span
-            className="absolute rounded-full border border-cyan-400 pointer-events-none"
-            style={{
-              width: '18px',
-              height: '18px',
-              animation: 'radar-wave 2.2s cubic-bezier(0.1, 0.4, 0.8, 1) infinite',
-            }}
-          />
+          {/* Detected Target Blip (Pings as the beam sweeps over) */}
+          <span className="radar-target-blip absolute top-2 right-2.5 h-1.5 w-1.5 rounded-full bg-cyan-300 pointer-events-none" />
 
-          {/* Continuous Smaller Wave 2 (Staggered) */}
-          <span
-            className="absolute rounded-full border border-cyan-300 pointer-events-none"
-            style={{
-              width: '18px',
-              height: '18px',
-              animation: 'radar-wave 2.2s cubic-bezier(0.1, 0.4, 0.8, 1) infinite 1.1s',
-            }}
-          />
-
-          {/* Core Radar Icon */}
-          <Radar className="relative z-10 h-5 w-5 text-cyan-400 group-hover:text-cyan-200 transition-colors drop-shadow-[0_0_8px_rgba(6,182,212,0.7)]" />
+          {/* Center Radar Beacon Dot */}
+          <span className="relative z-20 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] border border-cyan-200/80" />
         </div>
 
         {/* Title & Status Pills */}
