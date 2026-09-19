@@ -76,7 +76,6 @@ async function request(
       const headers: Record<string, string> = {
         Accept: 'application/json',
         'x-api-key': apiKey,
-        'X-API-Key': apiKey,
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
         ...(init?.headers as Record<string, string>),
       };

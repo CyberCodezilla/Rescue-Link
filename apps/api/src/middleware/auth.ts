@@ -22,11 +22,14 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction): 
 
   const authHeader = req.header('authorization');
   const bearerKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
-  const providedKey =
+  const rawKey =
     req.header('x-api-key') ||
     req.header('X-API-Key') ||
     bearerKey ||
     (typeof req.query?.apiKey === 'string' ? req.query.apiKey : undefined);
+
+  // Handle case where HTTP parser combined duplicate headers with a comma
+  const providedKey = rawKey?.includes(',') ? rawKey.split(',')[0].trim() : rawKey;
 
   if (!providedKey || !safeCompare(providedKey, configuredKey)) {
     res.status(401).json({ error: 'Unauthorized access' });
