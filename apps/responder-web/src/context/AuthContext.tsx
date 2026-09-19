@@ -85,14 +85,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userEmail,
         isAuthenticated: !!user,
         isLoading,
-        signIn: async (...args) => {
-          const res = await amplifySignIn(...args);
+        signIn: async (input) => {
+          const res = await amplifySignIn(input);
           await refreshSession();
           return res;
         },
         signUp: amplifySignUp,
-        confirmSignUp: async (...args) => {
-          const res = await amplifyConfirmSignUp(...args);
+        confirmSignUp: async (input) => {
+          const res = await amplifyConfirmSignUp(input);
           await refreshSession();
           return res;
         },
