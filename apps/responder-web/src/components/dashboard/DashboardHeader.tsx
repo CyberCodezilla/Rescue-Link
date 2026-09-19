@@ -44,7 +44,7 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
               Rescue-Link // Tactical Operations Command
             </h1>
             <span className="rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30 px-2.5 py-0.5 font-mono font-bold text-[10px] tracking-wider shadow-sm">
-              V2.4 HUD
+              
             </span>
           </div>
           <p className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
