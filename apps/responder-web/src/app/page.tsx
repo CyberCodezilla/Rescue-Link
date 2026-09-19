@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardHeader } from '@responder/components/dashboard/DashboardHeader';
 import { CriticalAlertBanner } from '@responder/components/dashboard/CriticalAlertBanner';
@@ -25,6 +25,7 @@ import { buildDashboardMapLayerData } from '@responder/lib/dashboardIntegration'
 import { DEFAULT_FILTERS } from '@responder/lib/schema';
 import type { IncidentFilters as IncidentFiltersState } from '@responder/lib/schema';
 import type { GeofenceShape } from '@responder/components/map/IncidentMap';
+import IncidentDetailClient from './incidents/[id]/IncidentDetailClient';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const [filters, setFilters] = useState<IncidentFiltersState>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<MapMode>('satellite');
   const [showSensors, setShowSensors] = useState(false);
   const [showHazardZones, setShowHazardZones] = useState(false);
@@ -55,14 +57,56 @@ export default function DashboardPage() {
   const mapLayerData = buildDashboardMapLayerData(sensors, hazardZones, unitPositions);
   const showTelemetry = showSensors || showHazardZones;
 
+  // Client-side deep link route watcher for AWS Amplify static hosting & deep links
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const parseRoute = () => {
+      const match = window.location.pathname.match(/\/incidents\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1] && match[1] !== 'demo') {
+        setActiveIncidentId(match[1]);
+        return;
+      }
+      const queryId = new URLSearchParams(window.location.search).get('incident');
+      if (queryId) {
+        setActiveIncidentId(queryId);
+        return;
+      }
+      setActiveIncidentId(null);
+    };
+
+    parseRoute();
+    window.addEventListener('popstate', parseRoute);
+    return () => window.removeEventListener('popstate', parseRoute);
+  }, []);
+
   function handleSelect(id: string) {
     setSelectedId(id);
-    router.push(`/incidents/${id}`);
+    setActiveIncidentId(id);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `/incidents/${id}`);
+    }
   }
 
   async function handleUnlockAudio() {
     const unlocked = await unlockCriticalAlertAudio();
     setAudioUnlocked(unlocked);
+  }
+
+  // If a deep incident is requested (via direct URL /incidents/<id> or ?incident=<id>),
+  // seamlessly render the tactical incident dossier
+  if (activeIncidentId) {
+    return (
+      <IncidentDetailClient
+        initialId={activeIncidentId}
+        onBack={() => {
+          setActiveIncidentId(null);
+          if (typeof window !== 'undefined') {
+            window.history.pushState({}, '', '/');
+          }
+        }}
+      />
+    );
   }
 
   return (
@@ -128,7 +172,7 @@ export default function DashboardPage() {
         />
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-          <section className="flex flex-col gap-4 xl:col-span-7">
+          <section className="flex flex-col gap-4 xl:col-span-7" aria-label="Incident queue">
             <IncidentFilters filters={filters} onChange={setFilters} />
 
             {isInitialLoading ? (
@@ -146,10 +190,9 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="relative xl:col-span-5 xl:sticky xl:top-4 flex flex-col gap-2.5">
-            {/* Unified Tactical Map Panel with Dedicated Command Toolbar */}
+          <section className="relative xl:col-span-5 xl:sticky xl:top-4 flex flex-col gap-2.5" aria-label="Map view">
             <div className="flex flex-col rounded-xl border border-line-2 bg-surface-2 shadow-panel overflow-hidden">
-              {/* Tactical Controls Header Toolbar (100% Unobstructed Map Below) */}
+              {/* Tactical Controls Header Toolbar */}
               {incidents && (
                 <div className="bg-[#0b1329] border-b border-[#1e293b] p-2">
                   <MapLayerControls
@@ -167,13 +210,14 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Map Canvas: 100% Free of Overlapping Buttons */}
+              {/* Map Canvas */}
               <div className="relative h-[480px] xl:h-[calc(100vh-340px)] w-full">
                 {incidents ? (
                   <IncidentMapClient
                     incidents={incidents}
                     selectedId={selectedId}
                     onSelect={handleSelect}
+                    hoveredId={hoveredId}
                     currentMode={mapMode}
                     onSelectMode={setMapMode}
                     sensors={mapLayerData.sensors}
@@ -200,7 +244,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* OUTSIDE THE MAP: Dedicated Map Recon Legend in Dispatch Form */}
+            {/* OUTSIDE THE MAP: Dedicated Map Recon Legend */}
             <MapLegend currentMode={mapMode} />
           </section>
         </div>
@@ -208,4 +252,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

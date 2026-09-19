@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import type { IncidentResponse } from '@responder/lib/schema';
@@ -18,9 +18,7 @@ interface UseIncidentStreamOptions {
  *   { type: 'incident:created' | 'incident:updated' | 'broadcast:sent',
  *     incident: Incident, message?: string, timestamp: number }
  * This hook unwraps `.incident` from that envelope before handing it to the
- * caller. (An earlier version of this hook incorrectly treated the whole
- * envelope as the Incident — fixed once the real endpoint's wire format
- * was confirmed by reading the backend source directly.)
+ * caller.
  */
 export function useIncidentStream({ onIncident }: UseIncidentStreamOptions): StreamStatus {
   const [status, setStatus] = useState<StreamStatus>('connecting');
@@ -36,6 +34,15 @@ export function useIncidentStream({ onIncident }: UseIncidentStreamOptions): Str
     let source: EventSource | null = null;
     let cancelled = false;
 
+    // Timeout fallback: AWS API Gateway buffers chunked SSE streams and disconnects after 29s.
+    // If the SSE connection has not opened within 3.5 seconds, gracefully drop back to POLLING
+    // mode so the responder UI displays reliable polling telemetry instead of getting stuck on "CONNECTING...".
+    const timeoutTimer = setTimeout(() => {
+      if (!cancelled) {
+        setStatus((prev) => (prev === 'connecting' ? 'unavailable' : prev));
+      }
+    }, 3500);
+
     try {
       const apiOrigin =
         process.env.NEXT_PUBLIC_RESCUE_LINK_API_ORIGIN ||
@@ -44,11 +51,13 @@ export function useIncidentStream({ onIncident }: UseIncidentStreamOptions): Str
       const baseUrl = apiOrigin.trim().replace(/\/$/, '');
       source = new EventSource(`${baseUrl}/api/events`);
     } catch {
+      clearTimeout(timeoutTimer);
       setStatus('unavailable');
       return;
     }
 
     source.addEventListener('open', () => {
+      clearTimeout(timeoutTimer);
       if (!cancelled) setStatus('live');
     });
 
@@ -68,14 +77,24 @@ export function useIncidentStream({ onIncident }: UseIncidentStreamOptions): Str
     });
 
     source.addEventListener('error', () => {
+      clearTimeout(timeoutTimer);
       if (cancelled) return;
       setStatus('unavailable');
-      source?.close();
+      try {
+        source?.close();
+      } catch {
+        // ignore
+      }
     });
 
     return () => {
       cancelled = true;
-      source?.close();
+      clearTimeout(timeoutTimer);
+      try {
+        source?.close();
+      } catch {
+        // ignore
+      }
     };
   }, []);
 

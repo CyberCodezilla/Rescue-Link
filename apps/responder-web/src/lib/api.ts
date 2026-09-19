@@ -67,6 +67,8 @@ async function request(
         headers: {
           Accept: 'application/json',
           'x-api-key': apiKey,
+          'X-API-Key': apiKey,
+          'Authorization': 'Bearer ' + apiKey,
           ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
           ...init?.headers,
         },

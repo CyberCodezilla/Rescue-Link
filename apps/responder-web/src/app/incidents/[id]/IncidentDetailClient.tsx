@@ -36,9 +36,21 @@ import {
   getUrgentNeeds,
 } from '@responder/lib/schema';
 
-export default function IncidentDetailClient() {
+export interface IncidentDetailClientProps {
+  initialId?: string;
+  onBack?: () => void;
+}
+
+export default function IncidentDetailClient({ initialId, onBack }: IncidentDetailClientProps = {}) {
   const params = useParams<{ id: string }>();
-  const id = params.id;
+  const idFromPath =
+    typeof window !== 'undefined'
+      ? window.location.pathname.match(/\/incidents\/([a-zA-Z0-9_-]+)/)?.[1] ||
+        new URLSearchParams(window.location.search).get('incident') ||
+        undefined
+      : undefined;
+
+  const id = initialId || params?.id || idFromPath || '';
   const { incident, isLoading, error, notFound, refresh, setIncident } = useIncident(id);
 
   return (
@@ -47,13 +59,24 @@ export default function IncidentDetailClient() {
       <header className="border-b border-line bg-surface/90 backdrop-blur-md px-4 py-3 sm:px-6 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-action hover:bg-surface hover:text-action-hover transition-colors"
-            >
-              <ArrowLeft size={13} />
-              <span>DASHBOARD</span>
-            </Link>
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                className="inline-flex items-center gap-2 rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-action hover:bg-surface hover:text-action-hover transition-colors"
+              >
+                <ArrowLeft size={13} />
+                <span>DASHBOARD</span>
+              </button>
+            ) : (
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded border border-line-2 bg-surface-2 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-action hover:bg-surface hover:text-action-hover transition-colors"
+              >
+                <ArrowLeft size={13} />
+                <span>DASHBOARD</span>
+              </Link>
+            )}
             <div className="h-4 w-px bg-line" />
             <div className="flex items-center gap-2 font-mono text-xs text-ink-500 uppercase tracking-widest">
               <span>TACTICAL DOSSIER</span>
@@ -118,86 +141,62 @@ export default function IncidentDetailClient() {
 
               {/* Narrative Threat Assessment */}
               <section className="hud-panel p-5 border border-line bg-surface">
-                <div className="flex items-center gap-2 border-b border-line pb-2.5 mb-3">
-                  <FileText size={15} className="text-action" />
+                <div className="flex items-center gap-2 border-b border-line pb-2 mb-3">
+                  <FileText size={14} className="text-action" />
                   <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900">
-                    CIVILIAN DISTRESS NARRATIVE
+                    SITUATION REPORT
                   </h2>
                 </div>
-                <div className="p-4 rounded border border-line-2 bg-surface-2/60">
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-900">
-                    {getDescription(incident)}
-                  </p>
-                </div>
+                <p className="text-sm text-ink-900 leading-relaxed font-sans bg-canvas p-3 rounded border border-line-2">
+                  {getDescription(incident)}
+                </p>
               </section>
 
-              {/* Bedrock AI Triage Directive */}
+              {/* AI Triage & Evacuation Directives */}
               <TriageCard triage={incident.triage} />
 
-              {/* Distress Audio Player */}
-              <DistressAudioPlayer incident={incident} />
-
-              {/* Location Coordinates & Zoomed Tactical Recon Map */}
-              <section className="hud-panel p-5 border border-line bg-surface space-y-3">
-                <div className="flex items-center justify-between border-b border-line pb-2.5">
+              {/* High-Resolution Focus Reconnaissance Map */}
+              <section className="hud-panel p-5 border border-line bg-surface">
+                <div className="flex items-center justify-between border-b border-line pb-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <MapPin size={15} className="text-action" />
+                    <MapPin size={14} className="text-action" />
                     <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900">
-                      GEOLOCATION & TACTICAL RECON MAP (ZOOMED FIX)
+                      TACTICAL RECONNAISSANCE MAP // 15.0X ZOOM
                     </h2>
                   </div>
-                  <span className="font-mono text-xs text-status-resolved flex items-center gap-1">
-                    <ShieldCheck size={12} /> TARGET ACQUIRED
+                  <span className="font-mono text-[11px] text-ink-500">
+                    {formatLocation(incident.location)}
                   </span>
                 </div>
-
-                {/* High-Resolution Tactical Focused Location Map */}
                 <IncidentFocusMapClient
                   location={incident.location}
                   priority={incident.priority}
                   category={getCategory(incident)}
                   incidentId={incident.id}
                 />
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                  <div className="p-3 rounded border border-line-2 bg-surface-2/50 font-mono text-xs">
-                    <span className="text-ink-500 uppercase block mb-1">STREET / DISTRICT FIX:</span>
-                    <span className="font-bold text-ink-900 text-sm truncate block">{formatLocation(incident.location)}</span>
-                  </div>
-                  <div className="p-3 rounded border border-line-2 bg-surface-2/50 font-mono text-xs">
-                    <span className="text-ink-500 uppercase block mb-1">GPS RAW COORDINATES:</span>
-                    <span className="font-bold text-action text-sm">
-                      {incident.location.lat.toFixed(6)}, {incident.location.lng.toFixed(6)}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded border border-line-2 bg-surface-2/50 font-mono text-xs">
-                    <span className="text-amber-400 uppercase block mb-1 font-bold">HEIGHT & DEPTH DATUM:</span>
-                    <span className="font-bold text-amber-300 text-sm">
-                      ~{Math.round(18 + Math.abs(Math.sin(incident.location.lat * 11.23 + incident.location.lng * 19.47)) * 64)}m ASL
-                    </span>
-                    <span className="text-[10px] text-ink-500 block">10m Contour Isolines Active</span>
-                  </div>
-                </div>
               </section>
 
-              {/* Casualties & Needs Matrix */}
+              {/* Civilian Distress Audio Recording */}
+              <DistressAudioPlayer incident={incident} />
+
+              {/* Casualty & Urgent Needs Metrics */}
               <section className="hud-panel p-5 border border-line bg-surface">
-                <div className="flex items-center gap-2 border-b border-line pb-2.5 mb-3">
-                  <Users size={15} className="text-action" />
+                <div className="flex items-center gap-2 border-b border-line pb-2 mb-3">
+                  <Users size={14} className="text-action" />
                   <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-ink-900">
-                    CASUALTIES & LIFE-SAFETY NEEDS
+                    CASUALTY IMPACT &amp; SUPPLY REQUIREMENTS
                   </h2>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3 rounded border border-line-2 bg-surface-2/50 font-mono text-xs">
-                    <span className="text-ink-500 uppercase block mb-1">PERSONS AT RISK:</span>
-                    <span className="text-xl font-bold text-priority-critical">
+                <div className="grid grid-cols-2 gap-4 font-mono text-xs">
+                  <div className="p-3 rounded border border-line-2 bg-surface-2/40">
+                    <span className="text-ink-500 uppercase block mb-1">CIVILIANS AT RISK:</span>
+                    <span className="text-xl font-bold text-ink-900">
                       {getPeopleAffected(incident)}
                     </span>
                   </div>
-                  <div className="sm:col-span-2 p-3 rounded border border-line-2 bg-surface-2/50 font-mono text-xs">
-                    <span className="text-ink-500 uppercase block mb-1.5">URGENT SUPPLIES / RESCUE ASSETS:</span>
-                    <div className="flex flex-wrap gap-1.5">
+                  <div className="p-3 rounded border border-line-2 bg-surface-2/40">
+                    <span className="text-ink-500 uppercase block mb-1">URGENT NEEDS:</span>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
                       {getUrgentNeeds(incident).length > 0 ? (
                         getUrgentNeeds(incident).map((need) => (
                           <span
@@ -248,15 +247,19 @@ export default function IncidentDetailClient() {
                   <div className="font-mono text-xs space-y-1">
                     <div className="flex justify-between">
                       <span className="text-ink-500 uppercase">CHANNEL:</span>
-                      <span className="font-bold text-action uppercase">{incident.reporter.contactMethod}</span>
+                      <span className="font-bold text-ink-900 uppercase">
+                        {incident.reporter.contactMethod}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-ink-500 uppercase">CONTACT:</span>
-                      <span className="font-bold text-ink-900">{incident.reporter.contactValue}</span>
+                      <span className="text-ink-500 uppercase">IDENTIFIER:</span>
+                      <span className="font-bold text-action">
+                        {incident.reporter.contactValue}
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  <p className="font-mono text-xs text-ink-500">No reporter contact logged.</p>
+                  <p className="text-xs text-ink-500 font-mono">No contact info submitted.</p>
                 )}
               </section>
             </div>

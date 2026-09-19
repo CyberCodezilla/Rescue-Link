@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+﻿import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { healthRouter } from './routes/health';
 import { incidentsRouter } from './routes/incidents';
@@ -12,7 +12,14 @@ import { generalRateLimit } from './middleware/rateLimit';
 export const createApp = (): Express => {
   const app = express();
 
-  app.use(cors());
+  app.use(
+    cors({
+      origin: true,
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'X-API-Key', 'Accept'],
+      methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    })
+  );
   app.use(express.json());
   app.use(generalRateLimit);
 

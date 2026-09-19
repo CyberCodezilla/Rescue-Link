@@ -52,7 +52,7 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
             <span className="font-semibold text-slate-300 text-[11px] font-mono">STATUS: ACTIVE</span>
             {streamStatus ? (
               <>
-                <span className="text-slate-600">?</span>
+                <span className="text-slate-600">&bull;</span>
                 <span className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 bg-slate-900 border border-slate-700/80 font-mono text-[10px] text-slate-300 font-medium">
                   <Activity size={11} className={streamStatus === 'live' ? 'text-emerald-400' : 'text-slate-400'} />
                   {STREAM_LABEL[streamStatus]}

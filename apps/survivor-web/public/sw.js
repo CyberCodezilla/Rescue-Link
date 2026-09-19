@@ -30,19 +30,41 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Never intercept API routes, SSE streams, or POST submissions
-  if (url.pathname.startsWith('/api/') || request.method !== 'GET') {
+  // 1. Strictly bypass API endpoints, SSE streams, non-GET, and range requests
+  if (
+    request.method !== 'GET' ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.includes('/events') ||
+    url.pathname.includes('/incidents') ||
+    request.headers.has('range')
+  ) {
     return;
   }
 
-  // In development, network-first to prevent stale dev caching
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        // 2. Only cache successful, non-opaque, non-streamed static assets
+        if (
+          !response ||
+          response.status !== 200 ||
+          response.type !== 'basic' ||
+          response.bodyUsed // Guard against already-consumed streams
+        ) {
+          return response;
         }
+
+        try {
+          // 3. Clone synchronously BEFORE any async cache opening
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseToCache).catch(() => {});
+          });
+        } catch (err) {
+          // Non-fatal: if cloning fails, serve the original network response
+          console.warn('[SW] Cache clone skipped:', err);
+        }
+
         return response;
       })
       .catch(() => {
