@@ -73,20 +73,23 @@ async function request(
       const baseUrl = apiOrigin.trim().replace(/\/$/, '');
       const apiKey = process.env.NEXT_PUBLIC_API_KEY || 'rescuelink-responder-key-2026';
       
-      const authHeader = cognitoToken
-        ? `Bearer ${cognitoToken}`
-        : (init?.headers as Record<string, string>)?.[ 'Authorization'] || `Bearer ${apiKey}`;
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+        'x-api-key': apiKey,
+        'X-API-Key': apiKey,
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init?.headers as Record<string, string>),
+      };
+
+      if (cognitoToken) {
+        headers['Authorization'] = `Bearer ${cognitoToken}`;
+      } else if (init?.headers && (init.headers as Record<string, string>)['Authorization']) {
+        headers['Authorization'] = (init.headers as Record<string, string>)['Authorization'];
+      }
 
       response = await fetch(`${baseUrl}/api${path}`, {
         ...init,
-        headers: {
-          Accept: 'application/json',
-          'x-api-key': apiKey,
-          'X-API-Key': apiKey,
-          'Authorization': authHeader,
-          ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-          ...init?.headers,
-        },
+        headers,
       });
 
       // HTTP 429 (Rate Limited) handling with exponential backoff & Retry-After header support
