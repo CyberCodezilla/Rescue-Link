@@ -72,6 +72,10 @@ export const URGENT_NEED_LABELS: Record<UrgentNeed, string> = {
   food: 'Food',
   clean_water: 'Clean Water',
   infant_care: 'Infant Care',
+  sanitation: 'Sanitation',
+  shelter: 'Shelter',
+  psychosocial_support: 'Psychosocial Support',
+  evacuation: 'Evacuation',
 };
 
 /**
