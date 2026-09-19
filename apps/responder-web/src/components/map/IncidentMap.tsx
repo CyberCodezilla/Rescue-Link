@@ -1,9 +1,8 @@
-'use client';
+﻿'use client';
 
 import { Mountain } from 'lucide-react';
-
 import { useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
+import L from '@responder/lib/leaflet-safe';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw';
 import 'leaflet-draw/dist/leaflet.draw.css';
@@ -134,6 +133,7 @@ export function IncidentMap({
   const unitLayerRef = useRef<L.LayerGroup | null>(null);
   const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
   const drawControlRef = useRef<any | null>(null);
+  const initialFitDone = useRef(false);
   const onGeofenceChangeRef = useRef(onGeofenceChange);
   onGeofenceChangeRef.current = onGeofenceChange;
 
@@ -167,11 +167,26 @@ export function IncidentMap({
     mapRef.current = map;
 
     return () => {
-      map.remove();
-      mapRef.current = null;
+      if (mapRef.current) {
+        try {
+          mapRef.current.stop();
+          mapRef.current.closePopup();
+          markersRef.current.forEach((m) => {
+            try {
+              m.remove();
+            } catch {
+              // ignore
+            }
+          });
+          markersRef.current.clear();
+          mapRef.current.remove();
+        } catch {
+          // ignore unmount cleanup errors
+        }
+        mapRef.current = null;
+      }
     };
   }, []);
-
 
   // Dynamic Smart Multi-Map Base Tile Layer & Thermal Overlay Switcher
   useEffect(() => {
@@ -179,7 +194,11 @@ export function IncidentMap({
     if (!map) return;
 
     if (baseLayerRef.current) {
-      map.removeLayer(baseLayerRef.current);
+      try {
+        map.removeLayer(baseLayerRef.current);
+      } catch {
+        // ignore
+      }
       baseLayerRef.current = null;
     }
 
@@ -189,29 +208,35 @@ export function IncidentMap({
     let subdomains: string[] = ['a', 'b', 'c'];
     let attribution = '&copy; Esri &mdash; Tactical Dark HUD';
 
-    const container = map.getContainer();
-    if (activeMode === 'satellite') {
-      container.classList.remove('leaflet-thermal-mode');
-      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      maxZoom = 18;
-      attribution = '&copy; Esri, DigitalGlobe, Earthstar Geographics &mdash; Photorealistic Satellite Recon';
-    } else if (activeMode === 'topo') {
-      container.classList.remove('leaflet-thermal-mode');
-      tileUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
-      maxZoom = 18;
-      maxNativeZoom = 17;
-      subdomains = ['a', 'b', 'c'];
-      attribution = '&copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)';
-    } else if (activeMode === 'thermal') {
-      container.classList.add('leaflet-thermal-mode');
-      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      maxZoom = 18;
-      attribution = '&copy; Esri, DigitalGlobe &mdash; False-Color Infrared Satellite Thermal Recon';
-    } else {
-      container.classList.remove('leaflet-thermal-mode');
-      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-      maxZoom = 16;
-      attribution = '&copy; Esri &mdash; Tactical Dark HUD';
+    try {
+      const container = map.getContainer();
+      if (container) {
+        if (activeMode === 'satellite') {
+          container.classList.remove('leaflet-thermal-mode');
+          tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+          maxZoom = 18;
+          attribution = '&copy; Esri, DigitalGlobe, Earthstar Geographics &mdash; Photorealistic Satellite Recon';
+        } else if (activeMode === 'topo') {
+          container.classList.remove('leaflet-thermal-mode');
+          tileUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+          maxZoom = 18;
+          maxNativeZoom = 17;
+          subdomains = ['a', 'b', 'c'];
+          attribution = '&copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)';
+        } else if (activeMode === 'thermal') {
+          container.classList.add('leaflet-thermal-mode');
+          tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+          maxZoom = 18;
+          attribution = '&copy; Esri, DigitalGlobe &mdash; False-Color Infrared Satellite Thermal Recon';
+        } else {
+          container.classList.remove('leaflet-thermal-mode');
+          tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+          maxZoom = 16;
+          attribution = '&copy; Esri &mdash; Tactical Dark HUD';
+        }
+      }
+    } catch {
+      // ignore
     }
 
     const newBase = L.tileLayer(tileUrl, { maxZoom, maxNativeZoom, subdomains, attribution });
@@ -223,8 +248,6 @@ export function IncidentMap({
     if (thermalLayer) {
       thermalLayer.clearLayers();
       if (activeMode === 'thermal') {
-        // Pure false-color thermal infrared satellite map without distracting incident circles
-        // Only sensor perimeters if active
         sensors.forEach((s) => {
           if (s.kind === 'fire_perimeter' && s.status === 'critical') {
             L.circle([s.location.lat, s.location.lng], {
@@ -245,7 +268,13 @@ export function IncidentMap({
     const map = mapRef.current;
     if (!map) return;
 
-    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current.forEach((marker) => {
+      try {
+        marker.remove();
+      } catch {
+        // ignore
+      }
+    });
     markersRef.current.clear();
 
     plottable.forEach((incident) => {
@@ -263,7 +292,8 @@ export function IncidentMap({
            <span style="color:#CBD5E1;">${category} // ${incident.priority.toUpperCase()}</span><br/>
            <span style="color:#8A93A3;font-size:11px;">${locationLabel}</span><br/>
            <div style="margin-top:6px;"><a href="/incidents/${incident.id}" style="color:#60A5FA;text-decoration:none;font-weight:bold;">TACTICAL DETAILS &rarr;</a></div>
-         </div>`
+         </div>`,
+        { autoPan: false }
       );
 
       marker.on('click', () => onSelect(incident.id));
@@ -271,28 +301,39 @@ export function IncidentMap({
     });
 
     if (plottable.length > 0) {
-      const bounds = L.latLngBounds(
-        plottable.map((incident) => [incident.location.lat, incident.location.lng] as [number, number])
-      );
-      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 12 });
+      if (!initialFitDone.current) {
+        const bounds = L.latLngBounds(
+          plottable.map((incident) => [incident.location.lat, incident.location.lng] as [number, number])
+        );
+        try {
+          map.fitBounds(bounds, { padding: [32, 32], maxZoom: 12 });
+          initialFitDone.current = true;
+        } catch {
+          // ignore
+        }
+      }
     } else {
       map.setView(FALLBACK_CENTER, FALLBACK_ZOOM);
     }
   }, [plottable]);
 
-
-  // Hover zoom (zooms in 60% at the respective incident location on hover)
+  // Hover zoom (zooms safely at the respective incident location on hover)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !hoveredId) return;
     const marker = markersRef.current.get(hoveredId);
-    if (marker) {
-      const targetLatLng = marker.getLatLng();
-      map.flyTo(targetLatLng, 13, {
-        animate: true,
-        duration: 0.5,
-      });
-      marker.openPopup();
+    if (marker && marker.getElement?.()) {
+      try {
+        map.stop();
+        const targetLatLng = marker.getLatLng();
+        map.flyTo(targetLatLng, 13, {
+          animate: true,
+          duration: 0.3,
+        });
+        marker.openPopup();
+      } catch {
+        // ignore
+      }
     }
   }, [hoveredId]);
 
@@ -300,9 +341,14 @@ export function IncidentMap({
     const map = mapRef.current;
     if (!map || !selectedId) return;
     const marker = markersRef.current.get(selectedId);
-    if (marker) {
-      map.setView(marker.getLatLng(), Math.max(map.getZoom(), FOCUSED_ZOOM));
-      marker.openPopup();
+    if (marker && marker.getElement?.()) {
+      try {
+        map.stop();
+        map.setView(marker.getLatLng(), Math.max(map.getZoom(), FOCUSED_ZOOM));
+        marker.openPopup();
+      } catch {
+        // ignore
+      }
     }
   }, [selectedId]);
 
@@ -324,7 +370,8 @@ export function IncidentMap({
            <strong style="color:#EAB308;">${sensor.label}</strong><br/>
            ${sensor.value}${sensor.unit} // ${pct}% threshold<br/>
            STATUS: <strong style="color:${SENSOR_STATUS_COLOR[sensor.status]}">${statusStr.toUpperCase()}</strong>
-         </div>`
+         </div>`,
+        { autoPan: false }
       );
       layer.addLayer(marker);
     });
@@ -355,7 +402,8 @@ export function IncidentMap({
            <strong style="color:${color}">${label}</strong><br/>
            TYPE: ${kind.toUpperCase()}<br/>
            SEVERITY: ${severity.toUpperCase()}
-         </div>`
+         </div>`,
+        { autoPan: false }
       );
       layer.addLayer(circle);
     });
@@ -383,7 +431,8 @@ export function IncidentMap({
              <strong style="color:#60A5FA;">${unitName}</strong><br/>
              DISTANCE: ${formatDistance(distance)}<br/>
              EST. ETA: ~<strong style="color:#34D399">${eta} MIN</strong>
-           </div>`
+           </div>`,
+          { autoPan: false }
         );
         layer.addLayer(marker);
       });
@@ -398,7 +447,11 @@ export function IncidentMap({
 
     if (!geofenceEnabled) {
       if (drawControlRef.current) {
-        map.removeControl(drawControlRef.current);
+        try {
+          map.removeControl(drawControlRef.current);
+        } catch {
+          // ignore
+        }
         drawControlRef.current = null;
       }
       return;
@@ -463,12 +516,16 @@ export function IncidentMap({
     map.on((L as any).Draw.Event.DELETED, onDeleted);
 
     return () => {
-      map.off((L as any).Draw.Event.CREATED, onCreated);
-      map.off((L as any).Draw.Event.EDITED, onEdited);
-      map.off((L as any).Draw.Event.DELETED, onDeleted);
-      if (drawControlRef.current) {
-        map.removeControl(drawControlRef.current);
-        drawControlRef.current = null;
+      try {
+        map.off((L as any).Draw.Event.CREATED, onCreated);
+        map.off((L as any).Draw.Event.EDITED, onEdited);
+        map.off((L as any).Draw.Event.DELETED, onDeleted);
+        if (drawControlRef.current) {
+          map.removeControl(drawControlRef.current);
+          drawControlRef.current = null;
+        }
+      } catch {
+        // ignore
       }
     };
   }, [geofenceEnabled]);
@@ -503,8 +560,3 @@ export function IncidentMap({
     </div>
   );
 }
-
-
-
-
-

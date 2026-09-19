@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
+import L from '@responder/lib/leaflet-safe';
 import 'leaflet/dist/leaflet.css';
 import { Eye, Mountain, Flame, Shield } from 'lucide-react';
 import { MapLegend, type MapMode } from './MapLegend';
@@ -75,6 +75,8 @@ export function IncidentFocusMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const baseLayerRef = useRef<L.TileLayer | null>(null);
+  const unitsLayerRef = useRef<L.LayerGroup | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
   const [activeMode, setActiveMode] = useState<MapMode>('topo');
 
   const { lat, lng } = location;
@@ -90,7 +92,7 @@ export function IncidentFocusMap({
       ? 'Moderate Incline / Escarpment Slope'
       : 'Upland Ridge / High Escarpment';
 
-  // 1. Map Initialization (once)
+  // 1. Map Initialization (once when container is mounted)
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -103,6 +105,9 @@ export function IncidentFocusMap({
 
     // Add zoom control at bottom-right so it never collides with ribbons or switchers
     L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Create unit positions layer group
+    unitsLayerRef.current = L.layerGroup().addTo(map);
 
     // Exact Incident Point Marker: Precise Red Round Dot (no surrounding circles)
     const targetDotIcon = L.divIcon({
@@ -121,6 +126,8 @@ export function IncidentFocusMap({
     });
 
     const marker = L.marker([lat, lng], { icon: targetDotIcon }).addTo(map);
+    markerRef.current = marker;
+
     const categoryLabel = (CATEGORY_LABELS as Record<string, string>)[category] || category;
 
     marker.bindPopup(
@@ -130,71 +137,115 @@ export function IncidentFocusMap({
          <span style="color:#94A3B8;font-size:11px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</span><br/>
          <div style="margin-top:4px;color:#FBBF24;font-size:11px;">ELEV: ~${estimatedAltitudeM}m (${estimatedAltitudeFt}ft) ASL</div>
          <span style="color:#38BDF8;font-size:10px;">ID: ${incidentId.slice(0, 8)}</span>
-       </div>`
+       </div>`,
+      { autoPan: false }
     );
-    marker.openPopup();
 
-    // Plot nearby field units
-    unitPositions.forEach((unit) => {
-      const uIcon = L.divIcon({
-        className: '',
-        html: `<div style="
-          display:flex;align-items:center;justify-content:center;
-          width:24px;height:24px;border-radius:4px;
-          background:#3B82F6;border:2px solid #FFFFFF;
-          color:#FFFFFF;font-family:monospace;font-size:11px;font-weight:bold;
-          box-shadow:0 0 10px rgba(59,130,246,0.8);
-          transform:rotate(45deg);
-        "><span style="transform:rotate(-45deg);">${unit.unitName.slice(0, 2)}</span></div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-      L.marker([unit.lat, unit.lng], { icon: uIcon })
-        .addTo(map)
-        .bindPopup(
-          `<div style="font-family:monospace;font-size:11px;background:#1E293B;color:#FFF;padding:4px;border-radius:4px;">
-             <strong>UNIT: ${unit.unitName}</strong><br/>
-             GPS: ${unit.lat.toFixed(4)}, ${unit.lng.toFixed(4)}
-           </div>`
-        );
-    });
+    // Safely invalidate size and open popup once container layout settles
+    const timer = setTimeout(() => {
+      if (mapRef.current && markerRef.current) {
+        try {
+          mapRef.current.invalidateSize();
+          markerRef.current.openPopup();
+        } catch {
+          // ignore
+        }
+      }
+    }, 60);
 
     mapRef.current = map;
 
     return () => {
-      map.remove();
-      mapRef.current = null;
+      clearTimeout(timer);
+      if (mapRef.current) {
+        try {
+          mapRef.current.stop();
+          mapRef.current.closePopup();
+          if (unitsLayerRef.current) {
+            unitsLayerRef.current.clearLayers();
+          }
+          mapRef.current.remove();
+        } catch {
+          // ignore cleanup errors
+        }
+        mapRef.current = null;
+      }
     };
-  }, [lat, lng, priority, category, incidentId, unitPositions, estimatedAltitudeM, estimatedAltitudeFt]);
+  }, [lat, lng, priority, category, incidentId, estimatedAltitudeM, estimatedAltitudeFt]);
 
   // 2. Base Tile & Thermal Mode Switching
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    const container = map.getContainer();
+    try {
+      const container = map.getContainer();
 
-    if (baseLayerRef.current) {
-      map.removeLayer(baseLayerRef.current);
-      baseLayerRef.current = null;
+      if (baseLayerRef.current) {
+        try {
+          map.removeLayer(baseLayerRef.current);
+        } catch {
+          // ignore
+        }
+        baseLayerRef.current = null;
+      }
+
+      if (activeMode === 'thermal') {
+        container.classList.add('leaflet-thermal-mode');
+      } else {
+        container.classList.remove('leaflet-thermal-mode');
+      }
+
+      const cfg = MODE_CONFIG[activeMode];
+      const newBase = L.tileLayer(cfg.url, {
+        maxZoom: cfg.maxZoom,
+        maxNativeZoom: cfg.maxNativeZoom,
+        subdomains: cfg.subdomains || ['a', 'b', 'c'],
+        attribution: cfg.attribution,
+      });
+      newBase.addTo(map);
+      baseLayerRef.current = newBase;
+    } catch {
+      // ignore
     }
-
-    if (activeMode === 'thermal') {
-      container.classList.add('leaflet-thermal-mode');
-    } else {
-      container.classList.remove('leaflet-thermal-mode');
-    }
-
-    const cfg = MODE_CONFIG[activeMode];
-    const newBase = L.tileLayer(cfg.url, {
-      maxZoom: cfg.maxZoom,
-      maxNativeZoom: cfg.maxNativeZoom,
-      subdomains: cfg.subdomains || ['a', 'b', 'c'],
-      attribution: cfg.attribution,
-    });
-    newBase.addTo(map);
-    baseLayerRef.current = newBase;
   }, [activeMode]);
+
+  // 3. Update nearby field units
+  useEffect(() => {
+    const map = mapRef.current;
+    const unitsLayer = unitsLayerRef.current;
+    if (!map || !unitsLayer) return;
+
+    try {
+      unitsLayer.clearLayers();
+      unitPositions.forEach((unit) => {
+        const uIcon = L.divIcon({
+          className: '',
+          html: `<div style="
+            display:flex;align-items:center;justify-content:center;
+            width:24px;height:24px;border-radius:4px;
+            background:#3B82F6;border:2px solid #FFFFFF;
+            color:#FFFFFF;font-family:monospace;font-size:11px;font-weight:bold;
+            box-shadow:0 0 10px rgba(59,130,246,0.8);
+            transform:rotate(45deg);
+          "><span style="transform:rotate(-45deg);">${unit.unitName.slice(0, 2)}</span></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+        L.marker([unit.lat, unit.lng], { icon: uIcon })
+          .addTo(unitsLayer)
+          .bindPopup(
+            `<div style="font-family:monospace;font-size:11px;background:#1E293B;color:#FFF;padding:4px;border-radius:4px;">
+               <strong>UNIT: ${unit.unitName}</strong><br/>
+               GPS: ${unit.lat.toFixed(4)}, ${unit.lng.toFixed(4)}
+             </div>`,
+            { autoPan: false }
+          );
+      });
+    } catch {
+      // ignore
+    }
+  }, [unitPositions]);
 
   return (
     <div className="space-y-3 w-full">
@@ -254,4 +305,3 @@ export function IncidentFocusMap({
     </div>
   );
 }
-

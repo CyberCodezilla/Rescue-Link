@@ -21,6 +21,7 @@ describe('Phase 4 Survivor-Side Incident Lifecycle & Synchronization Tests', () 
     status: 'new',
     priority: 'high',
     createdAt: Date.now(),
+    updatedAt: Date.now(),
   };
 
   describe('1. IncidentStatusEnum Phase 4 Schema Alignment', () => {

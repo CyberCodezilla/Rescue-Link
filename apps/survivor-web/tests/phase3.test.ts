@@ -32,6 +32,7 @@ describe('Phase 3 Two-Way Relay & Survivor Tactical Terminal Tests', () => {
     status: 'in_progress',
     priority: 'critical',
     createdAt: Date.now(),
+    updatedAt: Date.now(),
     audioBlob: 'data:audio/webm;base64,GkXfo59ChoEBQveBAULygQ8USAkJq65FA9...',
     triage: {
       suggestedAction: 'FLASH DIRECTIVE: Move to rooftop immediately. Floodgates opened.',
