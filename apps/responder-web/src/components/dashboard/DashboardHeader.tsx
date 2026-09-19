@@ -84,3 +84,4 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
     </header>
   );
 }
+
