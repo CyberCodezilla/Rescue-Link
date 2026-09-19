@@ -38,38 +38,91 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
     <header className="sticky top-0 z-30 flex flex-col gap-3 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
       {/* Brand & System Health Indicator */}
       <div className="flex items-center gap-3.5">
-        {/* Tactical Circular Motion Radar Scope */}
-        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-950/95 border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.35)] backdrop-blur-md overflow-hidden group hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] transition-all duration-300">
-          {/* Faint Concentric Range Rings & Crosshairs */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-35">
-            <div className="h-7 w-7 rounded-full border border-cyan-400/40" />
-            <div className="absolute h-4 w-4 rounded-full border border-cyan-400/50" />
-            <div className="absolute h-full w-[1px] bg-cyan-400/25" />
-            <div className="absolute w-full h-[1px] bg-cyan-400/25" />
-          </div>
-
-          {/* Continuous Smaller Radar Wave 1 */}
-          <span className="radar-wave-1 absolute rounded-full border border-cyan-400/80 pointer-events-none w-5 h-5" />
-
-          {/* Continuous Smaller Radar Wave 2 (Staggered) */}
-          <span className="radar-wave-2 absolute rounded-full border border-cyan-300/70 pointer-events-none w-5 h-5" />
-
-          {/* Rotating Flashlight Scanner Beam (Full 360° Circular Motion) */}
-          <div
-            className="radar-sweep-spin absolute inset-0 pointer-events-none origin-center"
-            style={{
-              background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(6,182,212,0.08) 300deg, rgba(56,189,248,0.55) 360deg)',
-            }}
+        {/* Tactical Circular Motion Radar Scope (Hardware-accelerated native SVG 360° sweep + waves) */}
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-950/95 border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.4)] backdrop-blur-md overflow-hidden group hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all duration-300">
+          <svg
+            viewBox="0 0 40 40"
+            className="h-10 w-10 shrink-0 rounded-full"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            {/* Leading Flashlight Sweep Needle Line */}
-            <div className="absolute top-1/2 left-1/2 w-1/2 h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400 to-cyan-200 shadow-[0_0_8px_#38bdf8] origin-left -translate-y-1/2" />
-          </div>
+            <defs>
+              <radialGradient id="headerRadarBg" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#082f49" stopOpacity="0.85" />
+                <stop offset="65%" stopColor="#020617" stopOpacity="0.95" />
+                <stop offset="100%" stopColor="#020617" stopOpacity="1" />
+              </radialGradient>
+              <linearGradient id="headerBeamGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
+                <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+              </linearGradient>
+              <filter id="headerRadarGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="0.8" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
 
-          {/* Detected Target Blip (Pings as the beam sweeps over) */}
-          <span className="radar-target-blip absolute top-2 right-2.5 h-1.5 w-1.5 rounded-full bg-cyan-300 pointer-events-none" />
+            {/* Scope Outer Bezel */}
+            <circle cx="20" cy="20" r="19" fill="url(#headerRadarBg)" stroke="#0ea5e9" strokeWidth="1.2" strokeOpacity="0.7" />
 
-          {/* Center Radar Beacon Dot */}
-          <span className="relative z-20 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] border border-cyan-200/80" />
+            {/* Static Tactical Grid Rings & Crosshairs */}
+            <circle cx="20" cy="20" r="13.5" stroke="#0284c7" strokeWidth="0.7" strokeOpacity="0.4" />
+            <circle cx="20" cy="20" r="7.5" stroke="#0284c7" strokeWidth="0.7" strokeOpacity="0.45" />
+            <line x1="2" y1="20" x2="38" y2="20" stroke="#0284c7" strokeWidth="0.5" strokeOpacity="0.3" />
+            <line x1="20" y1="2" x2="20" y2="38" stroke="#0284c7" strokeWidth="0.5" strokeOpacity="0.3" />
+
+            {/* Continuous Smaller Radar Wave 1 */}
+            <circle cx="20" cy="20" r="2" stroke="#38bdf8" strokeWidth="1.2" fill="none" opacity="0.9">
+              <animate attributeName="r" values="2; 18" dur="2.2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.9; 0.35; 0" dur="2.2s" repeatCount="indefinite" />
+              <animate attributeName="stroke-width" values="1.2; 0.5" dur="2.2s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Continuous Smaller Radar Wave 2 (Staggered) */}
+            <circle cx="20" cy="20" r="2" stroke="#22d3ee" strokeWidth="1.2" fill="none" opacity="0.9">
+              <animate attributeName="r" values="2; 18" begin="1.1s" dur="2.2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.9; 0.35; 0" begin="1.1s" dur="2.2s" repeatCount="indefinite" />
+              <animate attributeName="stroke-width" values="1.2; 0.5" begin="1.1s" dur="2.2s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Active Circular Motion Rotating Scanner Sweep (Continuous 360° Rotation) */}
+            <g>
+              <animateTransform
+                attributeName="transform"
+                type="rotate"
+                from="0 20 20"
+                to="360 20 20"
+                dur="2s"
+                repeatCount="indefinite"
+              />
+              {/* Flashlight Scanner Sector */}
+              <path d="M 20 20 L 20 1 A 19 19 0 0 1 39 20 Z" fill="url(#headerBeamGradient)" />
+              {/* Leading High-Intensity Scanner Needle */}
+              <line
+                x1="20"
+                y1="20"
+                x2="39"
+                y2="20"
+                stroke="#38bdf8"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                filter="url(#headerRadarGlow)"
+              />
+            </g>
+
+            {/* Detected Target Blip */}
+            <circle cx="28" cy="11" r="1.5" fill="#38bdf8" filter="url(#headerRadarGlow)">
+              <animate attributeName="opacity" values="0.1; 0.1; 1; 0.6; 0.1; 0.1" dur="2s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Central Radar Transmitter Beacon */}
+            <circle cx="20" cy="20" r="2.2" fill="#38bdf8" filter="url(#headerRadarGlow)" />
+            <circle cx="20" cy="20" r="1" fill="#ffffff" />
+          </svg>
         </div>
 
         {/* Title & Status Pills */}
