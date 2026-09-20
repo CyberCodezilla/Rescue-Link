@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Radio, X } from 'lucide-react';
 import { DashboardHeader } from '@responder/components/dashboard/DashboardHeader';
 import { CriticalAlertBanner } from '@responder/components/dashboard/CriticalAlertBanner';
 import { SensorTelemetryPanel } from '@responder/components/dashboard/SensorTelemetryPanel';
@@ -50,6 +50,35 @@ export default function DashboardPage() {
   const [geofenceEnabled, setGeofenceEnabled] = useState(false);
   const [geofenceShape, setGeofenceShape] = useState<GeofenceShape | null>(null);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [showSpotlight, setShowSpotlight] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hasSeen = localStorage.getItem('rescuelink_spotlight_dismissed');
+    if (!hasSeen) {
+      setShowSpotlight(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isInitialLoading && incidents && incidents.length === 0) {
+      const sessionDismissed = sessionStorage.getItem('rescuelink_spotlight_session_closed');
+      if (!sessionDismissed) {
+        setShowSpotlight(true);
+      }
+    }
+  }, [incidents, isInitialLoading]);
+
+  function handleDismissSpotlight(permanent = false) {
+    setShowSpotlight(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('rescuelink_spotlight_session_closed', 'true');
+      if (permanent) {
+        localStorage.setItem('rescuelink_spotlight_dismissed', 'true');
+      }
+    }
+  }
 
   const streamStatus = useIncidentStream({ onIncident: applyIncidentUpdate });
   const { isActive, latestIncident, dismiss } = useCriticalAlert(incidents);
@@ -126,28 +155,139 @@ export default function DashboardPage() {
         onView={handleSelect}
       />
 
+      {/* Dark Spotlight Backdrop Overlay for First Visit & Empty Queue */}
+      {showSpotlight && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => handleDismissSpotlight(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Floating Tutorial Pointer Card pointing to REPORT SURVIVOR SOS button */}
+      {showSpotlight && (
+        <div className="fixed z-[60] top-[140px] sm:top-[125px] right-4 sm:right-6 max-w-sm sm:max-w-md animate-in fade-in slide-in-from-top-3 duration-300">
+          <div className="relative rounded-2xl border-2 border-amber-400 bg-slate-950/95 p-5 text-left shadow-[0_0_50px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+            {/* Top pointing arrow */}
+            <div className="absolute -top-3 right-28 h-5 w-5 rotate-45 border-t-2 border-l-2 border-amber-400 bg-slate-950" />
+
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-[11px] font-black border border-amber-500/40">
+                  !
+                </span>
+                <span>STEP 1: REPORT SOS FIRST</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDismissSpotlight(false)}
+                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
+                title="Dismiss tutorial"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              <p className="text-sm font-bold text-white font-sans">
+                Notice: Survivor SOS Required First
+              </p>
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                The Rescuer Dashboard is waiting for emergency telemetry. Everything on the screen is paused until an incident is reported.
+                <span className="text-amber-300 font-semibold block mt-1">
+                  Click the highlighted button above to open the Survivor Portal and dispatch a test distress call.
+                </span>
+              </p>
+            </div>
+
+            <div className="mt-3.5 rounded-xl bg-slate-900/90 border border-slate-800/80 p-3 font-mono text-[11px] text-slate-400 space-y-1.5">
+              <div className="text-cyan-400 flex items-center gap-2 font-semibold">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-cyan-500/20 text-[10px]">1</span>
+                <span>Click &apos;REPORT SURVIVOR SOS&apos; button</span>
+              </div>
+              <div className="text-amber-300 flex items-center gap-2 font-semibold">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 text-[10px]">2</span>
+                <span>Send distress message (in any language)</span>
+              </div>
+              <div className="text-emerald-400 flex items-center gap-2 font-semibold">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20 text-[10px]">3</span>
+                <span>Watch Amazon Bedrock AI triage appear here!</span>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => handleDismissSpotlight(false)}
+                className="text-[11px] font-mono font-medium text-slate-400 hover:text-slate-200 underline decoration-slate-600 underline-offset-2"
+              >
+                Dismiss / I understand
+              </button>
+
+              <a
+                href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => handleDismissSpotlight(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 font-mono text-xs font-black tracking-wider transition-all duration-150 shadow-md active:scale-95"
+              >
+                <span>OPEN SURVIVOR APP</span>
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-line-2 bg-surface-2/80 px-3.5 py-2 font-mono text-xs shadow-sm">
-          <p className="text-ink-500">
-            {audioUnlocked
-              ? 'TACTICAL AUDIO ALERT RELAY: ARMED & ACTIVE'
-              : 'TACTICAL AUDIO ALERT RELAY: VISUAL-ONLY (DISARMED)'}
+        <div className="relative flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line-2 bg-surface-2/80 px-4 py-2.5 font-mono text-xs shadow-sm">
+          <p className="text-ink-500 flex items-center gap-2">
+            <span className="text-slate-400">TACTICAL AUDIO RELAY:</span>
+            <span className={audioUnlocked ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>
+              {audioUnlocked ? 'ARMED & ACTIVE' : 'VISUAL-ONLY (DISARMED)'}
+            </span>
           </p>
-          <button
-            type="button"
-            onClick={handleUnlockAudio}
-            disabled={audioUnlocked}
-            className={`flex items-center gap-2 rounded-lg border px-3.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all duration-200 shadow-sm active:scale-95 disabled:cursor-not-allowed ${
-              audioUnlocked
-                ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                : 'border-blue-500/50 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50 hover:text-white shadow-[0_0_10px_rgba(59,130,246,0.2)]'
-            }`}
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${audioUnlocked ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]' : 'bg-blue-400 shadow-[0_0_6px_#60a5fa] animate-pulse'}`}
-            />
-            {audioUnlocked ? 'AUDIO RELAY ARMED' : 'ARM AUDIO ALERTS'}
-          </button>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Dedicated High-Contrast Action Button Beside ARM AUDIO ALERTS */}
+            <a
+              id="survivor-sos-btn"
+              href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => handleDismissSpotlight(true)}
+              className={`relative inline-flex items-center gap-2 rounded-lg border px-3.5 py-1.5 font-mono text-xs font-black tracking-wider transition-all duration-300 active:scale-95 shadow-md ${
+                showSpotlight
+                  ? 'z-[60] border-amber-300 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 shadow-[0_0_35px_rgba(245,158,11,0.95)] ring-4 ring-amber-400/90 animate-pulse'
+                  : 'border-amber-500/50 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/10 text-amber-300 hover:bg-amber-500 hover:text-slate-950 hover:border-amber-400 hover:shadow-[0_0_16px_rgba(245,158,11,0.4)]'
+              }`}
+              title="Open Survivor Portal to report or simulate an emergency SOS"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400 shadow-[0_0_6px_#f59e0b]" />
+              </span>
+              <Radio size={13} />
+              <span>REPORT SURVIVOR SOS</span>
+              <ExternalLink size={12} />
+            </a>
+
+            <button
+              type="button"
+              onClick={handleUnlockAudio}
+              disabled={audioUnlocked}
+              className={`flex items-center gap-2 rounded-lg border px-3.5 py-1.5 font-mono text-xs font-bold tracking-wider transition-all duration-200 shadow-sm active:scale-95 disabled:cursor-not-allowed ${
+                audioUnlocked
+                  ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                  : 'border-blue-500/50 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50 hover:text-white shadow-[0_0_10px_rgba(59,130,246,0.2)]'
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${audioUnlocked ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]' : 'bg-blue-400 shadow-[0_0_6px_#60a5fa] animate-pulse'}`}
+              />
+              {audioUnlocked ? 'AUDIO RELAY ARMED' : 'ARM AUDIO ALERTS'}
+            </button>
+          </div>
         </div>
 
         {isInitialLoading ? (
