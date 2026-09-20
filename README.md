@@ -1,10 +1,18 @@
+```
+██████╗ ███████╗███████╗ ██████╗██╗   ██╗███████╗    ██╗     ██╗███╗   ██╗██╗  ██╗
+██╔══██╗██╔════╝██╔════╝██╔════╝██║   ██║██╔════╝    ██║     ██║████╗  ██║██║ ██╔╝
+██████╔╝█████╗  ███████╗██║     ██║   ██║█████╗      ██║     ██║██╔██╗ ██║█████╔╝ 
+██╔══██╗██╔══╝  ╚════██║██║     ██║   ██║██╔══╝      ██║     ██║██║╚██╗██║██╔═██╗ 
+██║  ██║███████╗███████║╚██████╗╚██████╔╝███████╗    ███████╗██║██║ ╚████║██║  ██╗
+╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
+```
+
 <div align="center">
 
-# 🚨 RESCUE-LINK
-
-**Offline-First Disaster Emergency Response & Tactical AI Command Platform**
+### 🚨 Offline-First Disaster Emergency Response & Tactical AI Command Platform
 
 <img src="https://img.shields.io/badge/STATUS-LIVE%20OPERATIONAL-00ff88?style=for-the-badge&logo=statuspage">
+<img src="https://img.shields.io/badge/POWERED%20BY-AWS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white">
 <img src="https://img.shields.io/badge/AI-Amazon%20Bedrock-blueviolet?style=for-the-badge&logo=amazon">
 <img src="https://img.shields.io/badge/PWA-OFFLINE%20FIRST-purple?style=for-the-badge">
 <img src="https://img.shields.io/badge/Tests-139%20Passing-success?style=for-the-badge">
@@ -15,6 +23,7 @@
 <br>
 
 🆘 *Life-saving infrastructure for disasters, floods, earthquakes & network blackouts*
+🏆 *Built on AWS — Serverless, AI-Native, Mission Critical*
 
 <img src="https://img.shields.io/github/stars/CyberCodezilla/Rescue-Link?style=social">
 <img src="https://img.shields.io/github/forks/CyberCodezilla/Rescue-Link?style=social">
@@ -37,7 +46,28 @@
 
 ## ⚡ Mission Overview
 
-**Rescue-Link** is an offline-first disaster communication system connecting trapped survivors with emergency responders during infrastructure failures — combining Progressive Web Apps, offline queues, AI-driven triage, and real-time tactical dashboards.
+**Rescue-Link** is an offline-first disaster communication system connecting trapped survivors with emergency responders during infrastructure failures — powered end-to-end by **AWS**, combining Progressive Web Apps, offline queues, AI-driven triage, and real-time tactical dashboards.
+
+---
+
+<div align="center">
+
+## ☁️ POWERED BY AWS
+
+<img src="https://img.shields.io/badge/-Built%20Entirely%20On%20Amazon%20Web%20Services-232F3E?style=for-the-badge&logo=amazonaws&logoColor=FF9900">
+
+</div>
+
+### 🧠 Key AWS Services Leveraged
+
+| AWS Service | Role in Rescue-Link |
+|---|---|
+| 🛰️ **AWS IoT Core** | Ultra-low-bandwidth MQTT distress ingestion with offline-first client buffering for blacked-out networks |
+| 🧠 **Amazon Bedrock** (Claude 3 / Titan) | Autonomous medical & hazard triage, casualty extraction, priority classification, and gear recommendations |
+| 🌍 **Amazon Translate** | Instant translation of survivor distress messages from any language into English, while archiving original source transcripts |
+| 🗃️ **Amazon DynamoDB** | Single-digit millisecond latency persistence for active incidents, geospatial coordinates, and responder audits |
+| 📣 **Amazon SNS & SES** | Immediate broadcast dispatch of high-priority mission alerts via SMS and email to field rescue teams |
+| 🔐 **AWS Amplify & Amazon Cognito** | Serverless, high-availability global hosting with tactical role-based authentication for emergency personnel |
 
 ---
 
@@ -47,14 +77,16 @@
 flowchart LR
 A[🧍 Survivor] --> B[📱 Offline PWA]
 B --> C{Network?}
-C -->|Yes| D[API Gateway]
+C -->|Yes| D[AWS IoT Core]
 C -->|No| E[IndexedDB Queue] --> D
-D --> G[AWS Lambda] --> H[Amazon Bedrock AI]
+D --> G[AWS Lambda] --> H["🧠 Amazon Bedrock<br/>Claude 3 / Titan"]
+H --> T[Amazon Translate]
 H --> I{Triage}
 I -->|Critical| J[🚨 Immediate Rescue]
 I -->|High| K[🚑 Priority Dispatch]
 I -->|Medium| L[📍 Monitoring]
-G --> M[DynamoDB] --> N[🚒 Responder HUD]
+G --> M[Amazon DynamoDB] --> N[🚒 Responder HUD]
+M --> S["Amazon SNS / SES<br/>Alert Broadcast"]
 ```
 
 ## 🏗️ System Architecture
@@ -62,14 +94,17 @@ G --> M[DynamoDB] --> N[🚒 Responder HUD]
 ```mermaid
 graph TD
 SURVIVOR["📱 Survivor PWA"] --> OFFLINE["IndexedDB Offline Queue"]
-OFFLINE --> API["Express API + SSE"]
-API --> LAMBDA["AWS Lambda"]
-LAMBDA --> BEDROCK["Amazon Bedrock AI"]
-LAMBDA --> DB["DynamoDB"]
+OFFLINE --> IOT["🛰️ AWS IoT Core<br/>MQTT Ingestion"]
+IOT --> LAMBDA["⚡ AWS Lambda"]
+LAMBDA --> BEDROCK["🧠 Amazon Bedrock<br/>AI Triage Engine"]
+LAMBDA --> TRANSLATE["🌍 Amazon Translate"]
+LAMBDA --> DB["🗃️ Amazon DynamoDB"]
+DB --> ALERT["📣 Amazon SNS / SES<br/>Rescue Team Alerts"]
 DB --> HUD["🚒 Responder Command HUD"]
-SAT["🛰️ Satellite / IoT Sensors"] --> LAMBDA
+AUTH["🔐 Amazon Cognito"] --> HUD
+HOST["☁️ AWS Amplify"] --> SURVIVOR
+HOST --> HUD
 HUD --> GIS["Leaflet GIS Map"]
-HUD --> ALERT["Emergency Broadcast"]
 ```
 
 ## 🔄 SOS Request Sequence
@@ -78,23 +113,31 @@ HUD --> ALERT["Emergency Broadcast"]
 sequenceDiagram
     participant S as 🧍 Survivor
     participant P as 📱 PWA
+    participant IOT as 🛰️ AWS IoT Core
     participant L as ⚡ Lambda
     participant B as 🧠 Bedrock AI
+    participant TR as 🌍 Translate
     participant D as 🗃️ DynamoDB
+    participant SNS as 📣 SNS/SES
     participant R as 🚒 Responder HUD
 
-    S->>P: Trigger SOS
-    P->>L: Send request (or sync when online)
-    L->>B: Analyze emergency text
-    B-->>L: Risk score + priority
+    S->>P: Trigger SOS (any language)
+    P->>IOT: Publish distress (or sync when online)
+    IOT->>L: Forward event
+    L->>TR: Translate message
+    TR-->>L: English transcript
+    L->>B: Analyze emergency + risk score
+    B-->>L: Triage priority + recommendations
     L->>D: Persist incident record
+    D-->>SNS: Trigger alert on high priority
+    SNS-->>R: SMS + Email dispatch
     D-->>R: Push real-time update
     R-->>S: Acknowledge + ETA
 ```
 
 ---
 
-## ☁️ AWS Services Used
+## ☁️ Full AWS Services Stack
 
 <div align="center">
 
@@ -139,6 +182,7 @@ sequenceDiagram
 - 📴 Offline emergency mode — works with zero connectivity
 - 🗄️ Local SOS storage with automatic background sync
 - 📍 Location capture + 🎙️ audio recording on trigger
+- 🌍 Auto-translated distress messages (Amazon Translate)
 - 🔐 Encrypted upload → 🧠 AI triage → 🚑 dispatch
 
 ## 🚒 Tactical Responder HUD
@@ -148,18 +192,21 @@ sequenceDiagram
 - 📡 Live sensor monitoring (flood, seismic, acoustic, air quality, signal)
 - 📣 Emergency broadcast & audio directives
 
-## 🧠 AI Emergency Intelligence
+## 🧠 AI Emergency Intelligence (Amazon Bedrock)
 
 | Feature | Status |
 |---|---|
 | Disaster Text Analysis | ✅ |
-| Priority Detection | ✅ |
+| Priority / Hazard Classification | ✅ |
+| Casualty Extraction | ✅ |
+| Gear Recommendations | ✅ |
 | Confidence Scoring | ✅ |
 | AI Failure Backup | ✅ |
 | Audit Logging | ✅ |
 
 ## 🔐 Security
 
+- Amazon Cognito role-based authentication for emergency personnel
 - Constant-time (SHA256) authentication
 - Rate-limited SOS endpoints
 - Encrypted communication end-to-end
@@ -217,12 +264,20 @@ npm run build
 
 <div align="center">
 
-### 🚨 RESCUE-LINK
+```
+██████╗ ███████╗███████╗ ██████╗██╗   ██╗███████╗    ██╗     ██╗███╗   ██╗██╗  ██╗
+██╔══██╗██╔════╝██╔════╝██╔════╝██║   ██║██╔════╝    ██║     ██║████╗  ██║██║ ██╔╝
+██████╔╝█████╗  ███████╗██║     ██║   ██║█████╗      ██║     ██║██╔██╗ ██║█████╔╝ 
+██╔══██╗██╔══╝  ╚════██║██║     ██║   ██║██╔══╝      ██║     ██║██║╚██╗██║██╔═██╗ 
+██║  ██║███████╗███████║╚██████╗╚██████╔╝███████╗    ███████╗██║██║ ╚████║██║  ██╗
+╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
+```
+
 **Built for the moment when everything else fails**
 
-🛰️ Offline Ready · 🤖 AI Assisted · 🚒 Rescue Focused · 🌎 Disaster Resilient
+🛰️ Offline Ready · 🤖 AI Assisted · 🚒 Rescue Focused · 🌎 Disaster Resilient · ☁️ AWS Powered
 
 <img src="https://img.shields.io/badge/Made%20With-❤️%20%26%20Code-red?style=for-the-badge">
-<img src="https://img.shields.io/badge/Powered%20By-AWS-6c47ff?style=for-the-badge">
+<img src="https://img.shields.io/badge/Powered%20By-AWS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white">
 
 </div>
