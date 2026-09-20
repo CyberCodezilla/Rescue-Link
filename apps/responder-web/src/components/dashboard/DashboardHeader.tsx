@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, Activity, User, LogOut, ShieldCheck, ExternalLink } from 'lucide-react';
+import { RefreshCw, Activity, User, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { StreamStatus } from '@/hooks/useIncidentStream';
 
@@ -195,22 +195,6 @@ export function DashboardHeader({ lastRefreshedAt, isRefreshing, onRefresh, stre
 
       {/* User Session, Sync Status & Tactical Controls */}
       <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-400">
-        {/* Direct Link to Survivor Portal */}
-        <a
-          href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/40 via-blue-950/40 to-slate-900/90 px-3.5 py-1.5 font-mono text-xs font-bold text-cyan-300 hover:text-white hover:border-cyan-400/80 hover:shadow-[0_0_16px_rgba(6,182,212,0.3)] transition-all duration-200 active:scale-95 shadow-sm group"
-          title="Open Survivor Portal to report or simulate an emergency SOS"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
-          </span>
-          <span>SURVIVOR PORTAL</span>
-          <ExternalLink size={11} className="text-cyan-400/80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-        </a>
-
         {isAuthenticated && userEmail && (
           <div className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/50 to-slate-900/80 px-3 py-1.5 font-mono text-[11px] text-blue-300 shadow-sm backdrop-blur-md">
             <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-blue-500/20 text-blue-300">
