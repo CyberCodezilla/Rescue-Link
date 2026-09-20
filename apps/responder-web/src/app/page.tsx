@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ExternalLink } from 'lucide-react';
 import { DashboardHeader } from '@responder/components/dashboard/DashboardHeader';
 import { CriticalAlertBanner } from '@responder/components/dashboard/CriticalAlertBanner';
 import { SensorTelemetryPanel } from '@responder/components/dashboard/SensorTelemetryPanel';
@@ -173,6 +174,36 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
           <section className="flex flex-col gap-4 xl:col-span-7" aria-label="Incident queue">
+            {incidents && incidents.length === 0 && (
+              <div className="relative overflow-hidden rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-slate-900/90 to-blue-950/40 p-4 shadow-[0_0_20px_rgba(245,158,11,0.15)] backdrop-blur-md">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-3 w-3 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
+                    </span>
+                    <div>
+                      <p className="font-mono text-xs font-bold uppercase tracking-wider text-amber-200">
+                        SURVIVOR SIDE MUST REPORT SOS FIRST
+                      </p>
+                      <p className="text-[11px] text-slate-300 font-sans mt-0.5">
+                        Tactical queue is on standby. Click below to launch the Survivor Portal and dispatch an emergency distress call.
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 shrink-0 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 font-mono text-xs font-black tracking-wider transition-all duration-150 shadow-md active:scale-95"
+                  >
+                    <span>GO TO SURVIVOR PAGE</span>
+                    <ExternalLink size={12} />
+                  </a>
+                </div>
+              </div>
+            )}
+
             <IncidentFilters filters={filters} onChange={setFilters} />
 
             {isInitialLoading ? (
