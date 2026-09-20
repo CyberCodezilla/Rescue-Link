@@ -74,16 +74,29 @@ export default function DashboardPage() {
     if (typeof window === 'undefined') return;
     const timer = setTimeout(() => {
       setShowSpotlight(true);
-    }, 350);
+    }, 250);
     return () => clearTimeout(timer);
   }, []);
 
-  // If active incidents are present, automatically close spotlight so it never interrupts responders
+  // Actively measure button coordinates whenever spotlight is visible
   useEffect(() => {
-    if (incidents && incidents.length > 0) {
-      setShowSpotlight(false);
-    }
-  }, [incidents]);
+    if (!showSpotlight) return;
+    measureTarget();
+    const id = requestAnimationFrame(measureTarget);
+    const t1 = setTimeout(measureTarget, 60);
+    const t2 = setTimeout(measureTarget, 250);
+    const t3 = setTimeout(measureTarget, 600);
+    window.addEventListener('resize', measureTarget);
+    window.addEventListener('scroll', measureTarget);
+    return () => {
+      cancelAnimationFrame(id);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', measureTarget);
+      window.removeEventListener('scroll', measureTarget);
+    };
+  }, [showSpotlight, measureTarget]);
 
   // Non-annoying UX: instant dismiss on Escape key or gentle dismiss if user scrolls down
   useEffect(() => {
@@ -188,7 +201,7 @@ export default function DashboardPage() {
         onView={handleSelect}
       />
 
-      {/* Dark Spotlight Backdrop Overlay for First Visit & Empty Queue */}
+      {/* Dark Spotlight Backdrop Overlay */}
       {showSpotlight && (
         <div
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-[3px] transition-opacity duration-300"
@@ -197,116 +210,129 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Fully Illuminated Active Button Elevated in z-[60] Above the Dark Backdrop */}
+      {/* Fully Illuminated Active Button Elevated in z-[60] Directly Over Target */}
       {showSpotlight && targetRect && (
-        <>
-          <a
-            href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => handleDismissSpotlight()}
-            style={{
-              position: 'fixed',
-              top: targetRect.top,
-              left: targetRect.left,
-              width: targetRect.width,
-              height: targetRect.height,
-            }}
-            className="z-[60] inline-flex items-center justify-center gap-2 rounded-lg border-2 border-amber-300 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-3.5 py-1.5 font-mono text-xs font-black tracking-wider text-slate-950 shadow-[0_0_40px_rgba(245,158,11,1)] ring-4 ring-amber-400/90 animate-pulse hover:brightness-110 active:scale-95"
-            title="Open Survivor Portal to report or simulate an emergency SOS"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-950 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-950 shadow-[0_0_6px_#000]" />
-            </span>
-            <Radio size={13} className="text-slate-950" />
-            <span>REPORT SURVIVOR SOS</span>
-            <ExternalLink size={12} className="text-slate-950" />
-          </a>
+        <a
+          href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => handleDismissSpotlight()}
+          style={{
+            position: 'fixed',
+            top: targetRect.top,
+            left: targetRect.left,
+            width: targetRect.width,
+            height: targetRect.height,
+          }}
+          className="z-[60] inline-flex items-center justify-center gap-2 rounded-lg border-2 border-amber-300 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-3.5 py-1.5 font-mono text-xs font-black tracking-wider text-slate-950 shadow-[0_0_40px_rgba(245,158,11,1)] ring-4 ring-amber-400/90 animate-pulse hover:brightness-110 active:scale-95"
+          title="Open Survivor Portal to report or simulate an emergency SOS"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-950 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-950 shadow-[0_0_6px_#000]" />
+          </span>
+          <Radio size={13} className="text-slate-950" />
+          <span>REPORT SURVIVOR SOS</span>
+          <ExternalLink size={12} className="text-slate-950" />
+        </a>
+      )}
 
-          {/* Floating Tutorial Pointer Card pointing to the illuminated button */}
-          <div
-            style={{
-              position: 'fixed',
-              top: targetRect.top + targetRect.height + 12,
-              right: typeof window !== 'undefined' ? Math.max(16, window.innerWidth - (targetRect.left + targetRect.width)) : 16,
-            }}
-            className="z-[60] max-w-sm sm:max-w-md animate-in fade-in slide-in-from-top-2 duration-300"
-          >
-            <div className="relative rounded-2xl border-2 border-amber-400 bg-slate-950/98 p-5 text-left shadow-[0_0_50px_rgba(0,0,0,0.95)] backdrop-blur-xl">
-              {/* Top pointer arrow pointing up directly at the illuminated button */}
-              <div
-                style={{ right: Math.min(Math.max(20, targetRect.width / 2 - 10), 140) }}
-                className="absolute -top-2.5 h-5 w-5 rotate-45 border-t-2 border-l-2 border-amber-400 bg-slate-950"
-              />
+      {/* Floating Tutorial Pointer Card pointing to the illuminated button (Always renders when spotlight is active) */}
+      {showSpotlight && (
+        <div
+          style={
+            targetRect
+              ? {
+                  position: 'fixed',
+                  top: targetRect.top + targetRect.height + 14,
+                  right: typeof window !== 'undefined' ? Math.max(16, window.innerWidth - (targetRect.left + targetRect.width)) : 16,
+                }
+              : {
+                  position: 'fixed',
+                  top: '130px',
+                  right: '24px',
+                }
+          }
+          className="z-[60] w-[380px] max-w-[calc(100vw-32px)]"
+        >
+          <div className="relative rounded-2xl border-2 border-amber-400 bg-slate-950/98 p-5 text-left shadow-[0_0_50px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+            {/* Top pointer arrow pointing up directly at the button */}
+            <div
+              style={{
+                right: targetRect
+                  ? Math.min(Math.max(24, targetRect.width / 2 - 10), 160)
+                  : 80,
+              }}
+              className="absolute -top-2.5 h-5 w-5 rotate-45 border-t-2 border-l-2 border-amber-400 bg-slate-950"
+            />
 
-              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-[11px] font-black border border-amber-500/40">
-                    !
-                  </span>
-                  <span>STEP 1: REPORT SOS FIRST</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDismissSpotlight()}
-                  className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
-                  title="Dismiss tutorial"
-                >
-                  <X size={14} />
-                </button>
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-[11px] font-black border border-amber-500/40">
+                  !
+                </span>
+                <span>STEP 1: REPORT SOS FIRST</span>
               </div>
+              <button
+                type="button"
+                onClick={() => handleDismissSpotlight()}
+                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
+                title="Dismiss tutorial"
+              >
+                <X size={14} />
+              </button>
+            </div>
 
-              <div className="mt-3 space-y-2">
-                <p className="text-sm font-bold text-white font-sans">
-                  Notice: Survivor SOS Required First
-                </p>
-                <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                  The Rescuer Dashboard is waiting for emergency telemetry. Everything on the screen is paused until an incident is reported.
-                  <span className="text-amber-300 font-semibold block mt-1">
-                    Click the highlighted button above to open the Survivor Portal and dispatch a test distress call.
-                  </span>
-                </p>
+            <div className="mt-3 space-y-2">
+              <p className="text-sm font-bold text-white font-sans">
+                Survivor SOS Required First
+              </p>
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                The Rescuer Dashboard listens for emergency distress calls.
+                <span className="text-amber-300 font-semibold block mt-1">
+                  Click the highlighted button above to open the Survivor Portal and dispatch a test distress call.
+                </span>
+              </p>
+            </div>
+
+            <div className="mt-3.5 rounded-xl bg-slate-900/90 border border-slate-800/80 p-3 font-mono text-[11px] text-slate-400 space-y-1.5">
+              <div className="text-cyan-400 flex items-center gap-2 font-semibold">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-cyan-500/20 text-[10px]">1</span>
+                <span>Click &apos;REPORT SURVIVOR SOS&apos; button</span>
               </div>
-
-              <div className="mt-3.5 rounded-xl bg-slate-900/90 border border-slate-800/80 p-3 font-mono text-[11px] text-slate-400 space-y-1.5">
-                <div className="text-cyan-400 flex items-center gap-2 font-semibold">
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-cyan-500/20 text-[10px]">1</span>
-                  <span>Click &apos;REPORT SURVIVOR SOS&apos; button</span>
-                </div>
-                <div className="text-amber-300 flex items-center gap-2 font-semibold">
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 text-[10px]">2</span>
-                  <span>Send distress message (in any language)</span>
-                </div>
-                <div className="text-emerald-400 flex items-center gap-2 font-semibold">
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20 text-[10px]">3</span>
-                  <span>Watch Amazon Bedrock AI triage appear here!</span>
-                </div>
+              <div className="text-amber-300 flex items-center gap-2 font-semibold">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 text-[10px]">2</span>
+                <span>Send distress message (in any language)</span>
               </div>
-
-              <div className="mt-4 flex items-center justify-between gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleDismissSpotlight()}
-                  className="text-[11px] font-mono font-medium text-slate-400 hover:text-slate-200 underline decoration-slate-600 underline-offset-2"
-                >
-                  Dismiss / I understand
-                </button>
-
-                <a
-                  href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => handleDismissSpotlight()}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 font-mono text-xs font-black tracking-wider transition-all duration-150 shadow-md active:scale-95"
-                >
-                  <span>OPEN SURVIVOR APP</span>
-                  <ExternalLink size={12} />
-                </a>
+              <div className="text-emerald-400 flex items-center gap-2 font-semibold">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20 text-[10px]">3</span>
+                <span>Watch Amazon Bedrock AI triage appear here!</span>
               </div>
             </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => handleDismissSpotlight()}
+                className="text-[11px] font-mono font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors"
+              >
+                <span>Got it</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-slate-400 border border-slate-700">Esc</kbd>
+              </button>
+
+              <a
+                href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => handleDismissSpotlight()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 font-mono text-xs font-black tracking-wider transition-all duration-150 shadow-md active:scale-95"
+              >
+                <span>OPEN SURVIVOR APP</span>
+                <ExternalLink size={12} />
+              </a>
+            </div>
           </div>
-        </>
+        </div>
       )}
 
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
