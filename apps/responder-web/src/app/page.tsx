@@ -69,47 +69,48 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Trigger spotlight on every fresh page visit / manual refresh
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const hasSeen = localStorage.getItem('rescuelink_spotlight_dismissed');
-    if (!hasSeen) {
+    const timer = setTimeout(() => {
       setShowSpotlight(true);
-    }
+    }, 350);
+    return () => clearTimeout(timer);
   }, []);
 
+  // If active incidents are present, automatically close spotlight so it never interrupts responders
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!isInitialLoading && incidents && incidents.length === 0) {
-      const sessionDismissed = sessionStorage.getItem('rescuelink_spotlight_session_closed');
-      if (!sessionDismissed) {
-        setShowSpotlight(true);
-      }
+    if (incidents && incidents.length > 0) {
+      setShowSpotlight(false);
     }
-  }, [incidents, isInitialLoading]);
+  }, [incidents]);
 
+  // Non-annoying UX: instant dismiss on Escape key or gentle dismiss if user scrolls down
   useEffect(() => {
     if (!showSpotlight) return;
-    measureTarget();
-    const t1 = setTimeout(measureTarget, 80);
-    const t2 = setTimeout(measureTarget, 300);
-    window.addEventListener('resize', measureTarget);
-    window.addEventListener('scroll', measureTarget);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      window.removeEventListener('resize', measureTarget);
-      window.removeEventListener('scroll', measureTarget);
-    };
-  }, [showSpotlight, measureTarget]);
 
-  function handleDismissSpotlight(permanent = false) {
-    setShowSpotlight(false);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('rescuelink_spotlight_session_closed', 'true');
-      if (permanent) {
-        localStorage.setItem('rescuelink_spotlight_dismissed', 'true');
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowSpotlight(false);
       }
-    }
+    };
+
+    const handleScroll = () => {
+      if (window.scrollY > 80) {
+        setShowSpotlight(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [showSpotlight]);
+
+  function handleDismissSpotlight() {
+    setShowSpotlight(false);
   }
 
   const streamStatus = useIncidentStream({ onIncident: applyIncidentUpdate });
@@ -191,7 +192,7 @@ export default function DashboardPage() {
       {showSpotlight && (
         <div
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-[3px] transition-opacity duration-300"
-          onClick={() => handleDismissSpotlight(false)}
+          onClick={() => handleDismissSpotlight()}
           aria-hidden="true"
         />
       )}
@@ -203,7 +204,7 @@ export default function DashboardPage() {
             href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => handleDismissSpotlight(true)}
+            onClick={() => handleDismissSpotlight()}
             style={{
               position: 'fixed',
               top: targetRect.top,
@@ -248,7 +249,7 @@ export default function DashboardPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleDismissSpotlight(false)}
+                  onClick={() => handleDismissSpotlight()}
                   className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
                   title="Dismiss tutorial"
                 >
@@ -286,7 +287,7 @@ export default function DashboardPage() {
               <div className="mt-4 flex items-center justify-between gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => handleDismissSpotlight(false)}
+                  onClick={() => handleDismissSpotlight()}
                   className="text-[11px] font-mono font-medium text-slate-400 hover:text-slate-200 underline decoration-slate-600 underline-offset-2"
                 >
                   Dismiss / I understand
@@ -296,7 +297,7 @@ export default function DashboardPage() {
                   href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => handleDismissSpotlight(true)}
+                  onClick={() => handleDismissSpotlight()}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 font-mono text-xs font-black tracking-wider transition-all duration-150 shadow-md active:scale-95"
                 >
                   <span>OPEN SURVIVOR APP</span>
@@ -324,7 +325,7 @@ export default function DashboardPage() {
               href="https://survivor.d3uwi22i8lbsov.amplifyapp.com/"
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => handleDismissSpotlight(true)}
+              onClick={() => handleDismissSpotlight()}
               className={`relative inline-flex items-center gap-2 rounded-lg border px-3.5 py-1.5 font-mono text-xs font-black tracking-wider transition-all duration-300 active:scale-95 shadow-md ${
                 showSpotlight
                   ? 'z-[60] border-amber-300 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 shadow-[0_0_35px_rgba(245,158,11,0.95)] ring-4 ring-amber-400/90 animate-pulse'
