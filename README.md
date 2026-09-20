@@ -37,8 +37,8 @@
 
 | Service | Link | Status |
 |---|---|---|
-| 🧍 Survivor Emergency Portal | https://survivor.rescuelink.org | 🟢 Online |
-| 🚒 Tactical Responder HUD | https://rescuer.rescuelink.org | 🟢 Online |
+| 🧍 Survivor Emergency Portal | https://survivor.d3uwi22i8lbsov.amplifyapp.com/ | 🟢 Online |
+| 🚒 Tactical Responder HUD | https://rescuer.d3uwi22i8lbsov.amplifyapp.com/ | 🟢 Online |
 | 📚 Documentation | `docs/` | 📖 Available |
 | ☁️ Cloud Infrastructure | AWS Serverless Stack | 🟢 Healthy |
 
