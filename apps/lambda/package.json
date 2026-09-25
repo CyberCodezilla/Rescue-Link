@@ -9,18 +9,18 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.1132.0",
-    "@aws-sdk/client-dynamodb": "^3.1132.0",
-    "@aws-sdk/client-ses": "^3.1132.0",
-    "@aws-sdk/client-sns": "^3.1132.0",
-    "@aws-sdk/lib-dynamodb": "^3.1132.0",
-    "@aws-sdk/client-sfn": "^3.1132.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1137.0",
+    "@aws-sdk/client-dynamodb": "^3.1137.0",
+    "@aws-sdk/client-ses": "^3.1137.0",
+    "@aws-sdk/client-sns": "^3.1137.0",
+    "@aws-sdk/lib-dynamodb": "^3.1137.0",
+    "@aws-sdk/client-sfn": "^3.1137.0",
     "@rescue-link/config": "*",
     "@rescue-link/schema": "*"
   },
   "devDependencies": {
-    "@types/node": "^22.13.9",
-    "typescript": "^5.8.2",
-    "vitest": "^3.0.7"
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
   }
 }
